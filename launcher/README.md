@@ -1,8 +1,9 @@
 # Deco Launcher
 
 A lightweight home screen for the Chromecast with Google TV and other Android TV
-devices. No ads, no sponsored rows, and no internet permission, so it can't send
-anything anywhere. The APK is about 250 KB.
+devices. No ads, no sponsored rows, no accounts. The only thing it fetches from the internet
+is public show info and artwork from TVmaze (see [Show artwork](#show-artwork)), which you can
+turn off. The APK is about 390 KB.
 
 ![Deco Launcher home screen](docs/preview-home.png)
 
@@ -42,16 +43,51 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 
 ## What it does
 
-- **Home tab:** a **Favourites** row (once you add some), then **TV apps** and **Other apps** (phone apps)
+- **Home tab:** a **Now playing** row while music plays (see [Now playing](#now-playing)), a
+  **Favourites** row (once you add some), then **TV apps** and **Other apps** (phone apps)
+- **Streaming apps show their shows:** focus Netflix, Disney+, Prime Video, HBO Max, Hulu,
+  Apple TV, Paramount+ or Peacock and the hero fills with that service's shows, changing every
+  8 seconds (see [Show artwork](#show-artwork))
 - **Apps tab:** every app in a 5-column grid. The order you set here is used everywhere.
 - **Hold OK on a card** (or press Menu on remotes that have one):
   - **Add to / Remove from Favourites**
   - **Move** (Apps tab): use the arrows to slide the card, then press OK
   - **Hide**, **App info**, **Uninstall**
-- **⚙** opens Android TV settings. **⋮** has hidden apps and Home button setup.
-- **Back** goes up to the tabs, then from Apps to Home. Focus coming up from the cards always lands on the current tab.
-- **Home** while already home jumps back to the first card.
+- **⚙** opens Android TV settings. **⋮** has hidden apps, Now playing setup, show artwork on/off
+  and Home button setup.
+- **Up** from the top row, or **Back** from anywhere, goes to the tabs. Back on the Apps tab goes
+  to Home. Focus coming up from the cards always lands on the current tab.
+- **Home** while already home jumps back to the top.
+- **Play/pause** on the remote controls what's playing.
 - **Updates by itself** when apps are installed, removed, updated or disabled.
+
+## Now playing
+
+While Spotify (or YouTube Music, a podcast app, any app with standard media controls) is playing
+or paused, Home starts with a **Now playing** row: cover, track, artist, previous / play-pause /
+next and a progress bar. OK on the track opens the player; the hero shows the cover.
+
+Android only shows other apps' media to apps with notification access, and Android TV has no
+screen to turn that on, so do it once from Termux:
+
+```bash
+adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService
+```
+
+Go back to Home and start some music. **⋮ → Now playing** shows whether access is on. To turn it
+off, run the same command with `disallow_listener`.
+
+## Show artwork
+
+Netflix, Disney+ and the other services only share their own recommendations with Google's
+built-in launcher. So instead, Deco Launcher uses [TVmaze](https://www.tvmaze.com)'s free public
+API (no account or key): twice a day it fetches the past week's new streaming episodes, keeps each
+service's most popular shows, and downloads their backgrounds once (shrunk to TV size, about 40 MB
+of cache at most). The hero then shows the show's name, genres, latest episode and summary, with
+"Show info from TVmaze" as credit (TVmaze's data is CC BY-SA).
+
+It covers TV shows with new episodes that week, not films. Turn it off with **⋮ → Show artwork**;
+then streaming apps show their own banner like every other app and nothing is downloaded.
 
 ## Install
 

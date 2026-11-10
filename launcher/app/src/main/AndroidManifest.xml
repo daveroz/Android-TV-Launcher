@@ -3,6 +3,8 @@
 
     <!-- Lets "Uninstall" in a tile's menu open the system uninstall prompt. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Only for show artwork from TVmaze (api.tvmaze.com, static.tvmaze.com); can be turned off. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -52,6 +54,17 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Being an enabled notification listener is what lets the launcher see what's playing. -->
+        <service
+            android:name=".MediaListenerService"
+            android:exported="true"
+            android:label="@string/now_playing_title"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <!-- Optional: sends the Home button here while Google TV stays installed. -->
         <service

@@ -9,11 +9,18 @@ import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Dialog;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.media.MediaMetadata;
+import android.media.session.MediaController;
+import android.media.session.MediaSession;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
 import android.net.Uri;
+import android.provider.Settings;
 import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
@@ -49,11 +56,17 @@ public class HomeActivityTest {
     private static final String VLC = "org.videolan.vlc";
 
     private ShadowPackageManager packages;
+    private TestNet net;
 
     @Before
     public void installApps() throws Exception {
         // A TV driven by a remote is never in touch mode, so D-pad focus is visible.
         ShadowInstrumentation.getInstrumentation().setInTouchMode(false);
+        // No real network in tests: TVmaze answers come from saved responses when a test wants them.
+        net = new TestNet();
+        net.offline = true;
+        HomeActivity.fetcherForTests = net;
+        ShowArt.requestGapMs = 0;
         packages = shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
         installApp(NETFLIX, "Netflix", Intent.CATEGORY_LEANBACK_LAUNCHER);
         installApp(YOUTUBE, "YouTube", Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -202,6 +215,20 @@ public class HomeActivityTest {
     }
 
     @Test
+    public void upFromTheTopRowGoesToTheTabs() throws Exception {
+        HomeActivity home = start().get();
+        // What the system does when Up is pressed: ask the focused view for the next focus upward.
+        assertEquals(home.findViewById(R.id.tab_home), card(home, 0, 0).focusSearch(View.FOCUS_UP));
+        assertEquals(home.findViewById(R.id.tab_home), card(home, 0, 2).focusSearch(View.FOCUS_UP));
+
+        home.findViewById(R.id.tab_apps).requestFocus();
+        idle();
+        gridCard(home, 1).requestFocus();
+        idle();
+        assertEquals(home.findViewById(R.id.tab_apps), gridCard(home, 1).focusSearch(View.FOCUS_UP));
+    }
+
+    @Test
     public void focusComingUpFromTheCardsLandsOnTheCurrentTab() throws Exception {
         HomeActivity home = start().get();
         TabBar tabs = home.findViewById(R.id.tabs);
@@ -250,6 +277,90 @@ public class HomeActivityTest {
     }
 
     @Test
+    public void streamingAppsFillTheHeroWithTheirShows() throws Exception {
+        net.offline = false;
+        HomeActivity home = start().get(); // Netflix is the first card and has focus
+        waitFor(() -> "Black Doves".equals(text(home, R.id.hero_title)));
+        assertEquals("S9 E99", text(home, R.id.hero_version));
+        assertTrue(text(home, R.id.hero_kind).endsWith("Netflix"));
+        assertEquals(View.VISIBLE, home.findViewById(R.id.hero_credit).getVisibility());
+        assertEquals(2, ((android.view.ViewGroup) home.findViewById(R.id.hero_dots)).getChildCount());
+
+        // Every few seconds the next show takes over.
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(9));
+        waitFor(() -> "Love Is Blind".equals(text(home, R.id.hero_title)));
+
+        // Apps that aren't streaming services keep their own banner and name.
+        card(home, 0, 2).requestFocus(); // YouTube
+        idle();
+        assertEquals("YouTube", text(home, R.id.hero_title));
+        assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
+
+        // Turned off in the menu: Netflix shows its banner again.
+        home.findViewById(R.id.tab_options).performClick();
+        idle();
+        choose("Show artwork: On");
+        card(home, 0, 0).requestFocus();
+        idle();
+        assertEquals("Netflix", text(home, R.id.hero_title));
+    }
+
+    @Test
+    public void whatsPlayingGetsItsOwnRowAtTheTop() throws Exception {
+        Context app = RuntimeEnvironment.getApplication();
+        Settings.Secure.putString(app.getContentResolver(), "enabled_notification_listeners",
+                new ComponentName(app, MediaListenerService.class).flattenToString());
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+
+        MediaController spotify = new MediaSession(app, "test").getController();
+        shadowOf(spotify).setPackageName("com.spotify.tv.android");
+        shadowOf(spotify).setMetadata(new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, "Midnight City")
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, "M83")
+                .putString(MediaMetadata.METADATA_KEY_ALBUM, "Hurry Up, We're Dreaming")
+                .putLong(MediaMetadata.METADATA_KEY_DURATION, 240000)
+                .build());
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PLAYING));
+        shadowOf(app.getSystemService(MediaSessionManager.class)).addController(spotify);
+        idle();
+
+        assertEquals("Now playing: []", rows(home).get(0));
+        RowsAdapter.NowPlayingHolder player = nowPlaying(home);
+        assertEquals("Midnight City", player.title.getText().toString());
+        assertEquals("M83", player.artist.getText().toString());
+        // We were at the top, so the player takes focus and fills the hero.
+        assertEquals(player.open, focus(home));
+        assertEquals("Midnight City", text(home, R.id.hero_title));
+        assertEquals("M83", text(home, R.id.hero_kind));
+        // Up still goes to the tabs; down goes to the apps.
+        assertEquals(home.findViewById(R.id.tab_home), player.open.focusSearch(View.FOCUS_UP));
+        assertTrue(rows(home).get(1).startsWith("TV apps"));
+
+        // Paused: the row stays, with a play button.
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PAUSED));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        idle();
+        assertEquals("Now playing: []", rows(home).get(0));
+
+        // Stopped: the row goes away and focus returns to the apps.
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_STOPPED));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        idle();
+        assertTrue(rows(home).get(0).startsWith("TV apps"));
+        assertEquals(card(home, 0, 0), focus(home));
+    }
+
+    @Test
+    public void withoutNotificationAccessThereIsNoPlayerRow() throws Exception {
+        HomeActivity home = start().get();
+        home.findViewById(R.id.tab_options).performClick();
+        idle();
+        assertTrue(sheetItems().contains("Now playing: Off"));
+        assertTrue(rows(home).get(0).startsWith("TV apps"));
+    }
+
+    @Test
     public void homeButtonServiceOnlyReactsToGoogleTv() {
         HomeButtonService service = Robolectric.setupService(HomeButtonService.class);
 
@@ -289,6 +400,31 @@ public class HomeActivityTest {
             Thread.sleep(20);
         }
         throw new AssertionError("the launcher never showed its apps");
+    }
+
+    private interface Check {
+        boolean ok();
+    }
+
+    /** Waits for background work (TVmaze, images) to show up on screen. */
+    private static void waitFor(Check check) throws Exception {
+        for (int i = 0; i < 150; i++) {
+            idle();
+            if (check.ok()) return;
+            Thread.sleep(20);
+        }
+        throw new AssertionError("timed out waiting");
+    }
+
+    private static PlaybackState state(int state) {
+        return new PlaybackState.Builder().setState(state, 60000, state == PlaybackState.STATE_PLAYING ? 1f : 0f).build();
+    }
+
+    private static RowsAdapter.NowPlayingHolder nowPlaying(HomeActivity home) {
+        RecyclerView rows = home.findViewById(R.id.rows);
+        RecyclerView.ViewHolder holder = rows.findViewHolderForAdapterPosition(0);
+        assertTrue("no player row", holder instanceof RowsAdapter.NowPlayingHolder);
+        return (RowsAdapter.NowPlayingHolder) holder;
     }
 
     private static void idle() {

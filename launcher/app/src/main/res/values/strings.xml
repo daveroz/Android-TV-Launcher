@@ -13,6 +13,22 @@
     <string name="row_favourites">Favourites</string>
     <string name="row_tv">TV apps</string>
     <string name="row_other">Other apps</string>
+    <string name="row_now_playing">Now playing</string>
+
+    <!-- Now playing -->
+    <string name="previous">Previous</string>
+    <string name="play_pause">Play or pause</string>
+    <string name="next">Next</string>
+    <string name="option_now_playing">Now playing: %1$s</string>
+    <string name="now_playing_title">Now playing</string>
+    <string name="now_playing_message">Shows what\'s playing in Spotify, YouTube Music and other apps as the first row on Home, with play, pause and skip.\n\nNotification access: %1$s\n\nAndroid only shows other apps\' media to apps with notification access, and Android TV has no screen to turn it on. Run this once from Termux:\n\nadb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService\n\nTo turn it off again, run the same with disallow_listener.</string>
+    <string name="open_notification_access">Try the notification access screen</string>
+
+    <!-- Show artwork -->
+    <string name="tvmaze_credit">Show info from TVmaze</string>
+    <string name="option_show_art">Show artwork: %1$s</string>
+    <string name="show_art_on">Show artwork on. Focus Netflix, Disney+ or another streaming app.</string>
+    <string name="show_art_off">Show artwork off</string>
 
     <!-- Cards and hero -->
     <string name="kind_tv">TV app</string>

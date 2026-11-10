@@ -15,4 +15,5 @@
     <dimen name="hero_scrim_width">660dp</dimen>
     <dimen name="hero_art_width">620dp</dimen>
     <dimen name="hero_art_height">349dp</dimen>
+    <dimen name="now_playing_width">600dp</dimen>
 </resources>

@@ -1,6 +1,8 @@
 package com.camdeco.launcher;
 
 import android.app.Activity;
+import android.app.ActivityOptions;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -9,6 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
@@ -31,40 +34,45 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 /**
  * The home screen. Layout after the Apple TV app: the focused app fills the screen as the hero,
- * a pill of tabs sits on top, and rows of cards run along the bottom. The Apps tab shows every
- * app in a grid, where the order can be changed.
+ * a pill of tabs sits on top, and rows of cards run along the bottom. Streaming apps fill the hero
+ * with their shows, and whatever is playing gets its own row. The Apps tab shows every app in a
+ * grid, where the order can be changed.
  */
-public class HomeActivity extends Activity implements CardAdapter.Listener {
+public class HomeActivity extends Activity implements CardAdapter.Listener, RowsAdapter.NowPlayingListener {
     static final int COLUMNS = 5;
     private static final int PAGE_HOME = 0;
     private static final int PAGE_APPS = 1;
     /** Wait for the remote to settle before swapping the big hero art. */
     private static final long HERO_DELAY_MS = 120;
 
+    /** Tests swap the network out; null means the real one. */
+    static ShowArt.Fetcher fetcherForTests;
+
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
+    private final ExecutorService network = Executors.newSingleThreadExecutor();
+    private final ExecutorService imageLoader = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final LruCache<String, Drawable> artCache = new LruCache<>(4);
+    private final Set<String> updatingChannels = new HashSet<>();
 
     private AppRepository repo;
+    private ShowArt showArt;
+    private ImageCache images;
+    private NowPlaying nowPlaying;
+    Hero hero;
     private RowsAdapter rowsAdapter;
     private CardAdapter appsAdapter;
     private VerticalGridView rows;
     private VerticalGridView appsGrid;
-    private View hero;
-    private View heroText;
-    private ImageView heroArt;
-    private ImageView heroAmbient;
-    private TextView heroTitle;
-    private TextView heroKind;
-    private TextView heroVersion;
-    private TextView heroDesc;
     private View appsPage;
     private View empty;
     private TextView hint;
@@ -79,12 +87,40 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private String movingPackage;
     AppEntry heroApp;
     private AppEntry pendingHero;
-    private float heroScrollFade = 1f;
+    private boolean heroShowsTrack;
 
     private final Runnable heroUpdate = () -> {
         if (pendingHero != null) showHero(pendingHero);
     };
     private final Runnable hideHint = () -> hint.animate().alpha(0f).setDuration(300).start();
+    private final Runnable progressTick = new Runnable() {
+        @Override
+        public void run() {
+            RecyclerView.ViewHolder holder = rows.findViewHolderForAdapterPosition(0);
+            if (holder instanceof RowsAdapter.NowPlayingHolder) {
+                ((RowsAdapter.NowPlayingHolder) holder).showProgress(NowPlaying.now());
+            }
+            main.postDelayed(this, 1000);
+        }
+    };
+
+    private final Hero.Images heroImages = new Hero.Images() {
+        @Override
+        public Bitmap cached(String url) {
+            return images.cached(url);
+        }
+
+        @Override
+        public void load(String url, Consumer<Bitmap> done) {
+            if (imageLoader.isShutdown()) return;
+            imageLoader.execute(() -> {
+                Bitmap bitmap = images.load(url);
+                main.post(() -> {
+                    if (bitmap != null && !isDestroyed()) done.accept(bitmap);
+                });
+            });
+        }
+    };
 
     private final BroadcastReceiver packageReceiver = new BroadcastReceiver() {
         @Override
@@ -98,15 +134,12 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         repo = new AppRepository(this);
+        ShowArt.Fetcher fetcher = fetcherForTests != null ? fetcherForTests : ImageCache::httpOpen;
+        showArt = new ShowArt(this, fetcher);
+        images = new ImageCache(this, fetcher);
+        nowPlaying = new NowPlaying(this, main, this::onNowPlayingChanged);
+        hero = new Hero(this, main);
 
-        hero = findViewById(R.id.hero);
-        heroText = findViewById(R.id.hero_text);
-        heroArt = findViewById(R.id.hero_art);
-        heroAmbient = findViewById(R.id.hero_ambient);
-        heroTitle = findViewById(R.id.hero_title);
-        heroKind = findViewById(R.id.hero_kind);
-        heroVersion = findViewById(R.id.hero_version);
-        heroDesc = findViewById(R.id.hero_desc);
         appsPage = findViewById(R.id.apps_page);
         empty = findViewById(R.id.empty);
         hint = findViewById(R.id.hint);
@@ -114,6 +147,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         tabHome = findViewById(R.id.tab_home);
         tabApps = findViewById(R.id.tab_apps);
 
+        ImageView heroAmbient = findViewById(R.id.hero_ambient);
         if (Build.VERSION.SDK_INT >= 31) {
             float blur = 48 * getResources().getDisplayMetrics().density;
             heroAmbient.setRenderEffect(RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP));
@@ -128,7 +162,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         rows.setWindowAlignmentOffsetPercent(BaseGridView.WINDOW_ALIGN_OFFSET_PERCENT_DISABLED);
         rows.setWindowAlignmentOffset(getResources().getDimensionPixelSize(R.dimen.rows_top));
         rows.setItemAlignmentOffsetPercent(0);
-        rowsAdapter = new RowsAdapter(this);
+        rowsAdapter = new RowsAdapter(this, this);
         rows.setAdapter(rowsAdapter);
         rows.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -174,29 +208,43 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     }
 
     @Override
-    protected void onDestroy() {
-        unregisterReceiver(packageReceiver);
-        loader.shutdownNow();
-        main.removeCallbacksAndMessages(null);
-        super.onDestroy();
+    protected void onResume() {
+        super.onResume();
+        nowPlaying.start(); // also picks up notification access granted while we were away
+        hero.resume();
+        main.removeCallbacks(progressTick);
+        main.post(progressTick);
     }
 
     @Override
     protected void onPause() {
         if (movingPackage != null) endMove();
+        nowPlaying.stop();
+        hero.pause();
+        main.removeCallbacks(progressTick);
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(packageReceiver);
+        loader.shutdownNow();
+        network.shutdownNow();
+        imageLoader.shutdownNow();
+        main.removeCallbacksAndMessages(null);
+        super.onDestroy();
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        // Home pressed while already on the home screen: back to the first app on Home.
+        // Home pressed while already on the home screen: back to the top of Home.
         boolean alreadyHome = hasWindowFocus()
                 && (intent.getFlags() & Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) == 0;
         if (alreadyHome) {
             if (movingPackage != null) endMove();
             showPage(PAGE_HOME);
-            focusRowCard(0, 0);
+            focusTop();
         }
     }
 
@@ -212,12 +260,13 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                 repo.sort(apps);
                 allApps = apps;
                 artCache.evictAll(); // an update may have brought new art
-                showApps();
+                showApps(true);
             });
         });
     }
 
-    private void showApps() {
+    /** Rebuilds the rows and the grid; refocus keeps focus on the same app. */
+    private void showApps(boolean refocus) {
         Set<String> hidden = repo.getHidden();
         Set<String> favourites = repo.getFavourites();
         List<AppEntry> visible = new ArrayList<>();
@@ -232,6 +281,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
             else otherApps.add(app);
         }
         List<RowsAdapter.Row> list = new ArrayList<>();
+        if (nowPlaying.track() != null) list.add(RowsAdapter.Row.nowPlaying(getString(R.string.row_now_playing)));
         if (!favouriteApps.isEmpty()) {
             list.add(new RowsAdapter.Row("favourites", getString(R.string.row_favourites), favouriteApps));
         }
@@ -239,17 +289,15 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         if (!otherApps.isEmpty()) list.add(new RowsAdapter.Row("other", getString(R.string.row_other), otherApps));
 
         String focusedPackage = focusedPackage();
+        rowsAdapter.setTrack(nowPlaying.track());
         rowsAdapter.submit(list, favourites);
         appsAdapter.submit(visible, favourites);
         empty.setVisibility(visible.isEmpty() ? View.VISIBLE : View.GONE);
 
         if (!loaded) {
             loaded = true;
-            if (!list.isEmpty()) {
-                showHero(list.get(0).apps.get(0));
-                focusRowCard(0, 0);
-            }
-        } else if (focusedPackage != null) {
+            focusTop();
+        } else if (refocus && focusedPackage != null) {
             focusApp(focusedPackage);
         }
     }
@@ -271,30 +319,41 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         tabs.setSelectedTab(home ? tabHome : tabApps);
         rows.setVisibility(home ? View.VISIBLE : View.GONE);
         appsPage.setVisibility(home ? View.GONE : View.VISIBLE);
-        hero.animate().alpha(home ? heroScrollFade : 0f).setDuration(200).start();
+        hero.setVisible(home);
     }
 
-    /** Fade and lift the hero away as the rows scroll up over it. */
+    /** Fades the hero away as the rows scroll up over it. */
     private void updateHeroFade() {
         RecyclerView.ViewHolder first = rows.findViewHolderForAdapterPosition(0);
         float top = getResources().getDimensionPixelSize(R.dimen.rows_top);
         float range = getResources().getDimensionPixelSize(R.dimen.hero_fade_range);
         float scrolled = first == null ? range : Math.max(0f, top - first.itemView.getTop());
-        float fraction = Math.min(1f, scrolled / range);
-        heroScrollFade = 1f - fraction;
-        // The text goes first, so it never sits under the row that scrolls up over it.
-        heroText.setAlpha(Math.max(0f, 1f - fraction * 2f));
-        heroText.setTranslationY(-fraction * 48 * getResources().getDisplayMetrics().density);
-        if (page == PAGE_HOME) {
-            hero.animate().cancel();
-            hero.setAlpha(heroScrollFade);
-        }
+        hero.setScrollFraction(Math.min(1f, scrolled / range));
     }
 
     /** Called by a tab's OK: move focus down into that page. */
     private void focusContent() {
         if (page == PAGE_HOME) rows.requestFocus();
         else appsGrid.requestFocus();
+    }
+
+    /** The top of Home: what's playing if anything is, else the first app. */
+    private void focusTop() {
+        NowPlaying.Track track = nowPlaying.track();
+        if (track != null) {
+            focusNowPlaying();
+            showTrackHero(track);
+        } else {
+            int row = firstCardRow();
+            if (row < rowsAdapter.getItemCount()) {
+                showHero(rowsAdapter.rows().get(row).apps.get(0));
+                focusRowCard(row, 0);
+            }
+        }
+    }
+
+    private int firstCardRow() {
+        return rowsAdapter.hasNowPlaying() ? 1 : 0;
     }
 
     private void focusApp(String packageName) {
@@ -310,15 +369,23 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         int rowCount = rowsAdapter.getItemCount();
         if (rowCount == 0) return;
         int r = Math.max(0, Math.min(row, rowCount - 1));
-        int c = Math.max(0, Math.min(column, rowsAdapter.rows().get(r).apps.size() - 1));
         rows.setSelectedPosition(r, holder -> {
+            if (holder instanceof RowsAdapter.NowPlayingHolder) {
+                retryFocus(() -> ((RowsAdapter.NowPlayingHolder) holder).open.requestFocus(), 10);
+                return;
+            }
             RowsAdapter.Holder rowHolder = (RowsAdapter.Holder) holder;
+            int c = Math.max(0, Math.min(column, rowHolder.cards.getItemCount() - 1));
             rowHolder.grid.setSelectedPosition(c);
             retryFocus(() -> {
                 RecyclerView.ViewHolder card = rowHolder.grid.findViewHolderForAdapterPosition(c);
                 return card != null && card.itemView.requestFocus();
             }, 10);
         });
+    }
+
+    private void focusNowPlaying() {
+        if (rowsAdapter.hasNowPlaying()) focusRowCard(0, 0);
     }
 
     private void focusGridCard(int position) {
@@ -336,7 +403,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         boolean tryNow();
     }
 
-    /** Lists lay out after a data change; try again shortly if the card isn't there yet. */
+    /** Lists lay out after a data change; try again shortly if the view isn't there yet. */
     private void retryFocus(Attempt attempt, int attemptsLeft) {
         main.post(() -> {
             if (!attempt.tryNow() && attemptsLeft > 0) {
@@ -356,7 +423,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                 break;
             }
         }
-        if (focused && page == PAGE_HOME && app != heroApp) {
+        if (focused && page == PAGE_HOME && (app != heroApp || heroShowsTrack)) {
             pendingHero = app;
             main.removeCallbacks(heroUpdate);
             main.postDelayed(heroUpdate, HERO_DELAY_MS);
@@ -366,49 +433,153 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private void showHero(AppEntry app) {
         heroApp = app;
         pendingHero = null;
-        heroTitle.setText(app.label);
-        heroKind.setText(app.leanback ? R.string.kind_tv : R.string.kind_phone);
-        boolean hasVersion = app.versionName != null && !app.versionName.isEmpty();
-        heroVersion.setVisibility(hasVersion ? View.VISIBLE : View.GONE);
-        if (hasVersion) heroVersion.setText(getString(R.string.version, app.versionName));
+        heroShowsTrack = false;
+        String kind = getString(app.leanback ? R.string.kind_tv : R.string.kind_phone);
+        String chip = app.versionName != null && !app.versionName.isEmpty()
+                ? getString(R.string.version, app.versionName) : null;
+        String desc = null;
         if (app.updated > 0) {
             String date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(app.updated));
             boolean favourite = repo.getFavourites().contains(app.packageName);
-            heroDesc.setText(getString(favourite ? R.string.favourite_updated : R.string.updated, date));
-            heroDesc.setVisibility(View.VISIBLE);
-        } else {
-            heroDesc.setVisibility(View.GONE);
+            desc = getString(favourite ? R.string.favourite_updated : R.string.updated, date);
         }
+        hero.showApp(app, kind, chip, desc);
 
         Drawable cached = artCache.get(app.packageName);
         if (cached != null) {
-            setHeroArt(app, cached);
+            hero.setAppArt(cached, app.banner != null);
         } else if (!loader.isShutdown()) {
             loader.execute(() -> {
                 Drawable art = repo.loadHeroArt(app);
                 main.post(() -> {
                     if (isDestroyed() || art == null) return;
                     artCache.put(app.packageName, art);
-                    if (heroApp == app) setHeroArt(app, art);
+                    // Shows may have taken over the hero meanwhile; they win.
+                    if (heroApp == app && hero.currentFeature() == null && !heroShowsTrack) {
+                        hero.setAppArt(art, app.banner != null);
+                    }
                 });
             });
         }
+
+        // Streaming apps: their shows take over the hero, like the Apple TV home screen.
+        String channel = repo.showArtEnabled() ? ShowArt.channelFor(app) : null;
+        if (channel != null) {
+            List<ShowArt.Feature> ready = showArt.ready(channel);
+            if (!ready.isEmpty()) hero.showFeatures(ready, heroImages);
+            updateShowArt(app, channel);
+        }
     }
 
-    private void setHeroArt(AppEntry app, Drawable art) {
-        // Separate copies: one drawable can't be shown by two views at once.
-        Drawable sharp = AppRepository.copy(art);
-        Drawable blurred = AppRepository.copy(art);
-        boolean banner = app.banner != null;
-        int pad = banner ? 0 : (int) (72 * getResources().getDisplayMetrics().density);
-        heroArt.animate().cancel();
-        heroArt.animate().alpha(0f).setDuration(90).withEndAction(() -> {
-            heroArt.setScaleType(banner ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
-            heroArt.setPadding(pad, pad, pad, pad);
-            heroArt.setImageDrawable(sharp);
-            heroAmbient.setImageDrawable(blurred);
-            heroArt.animate().alpha(1f).setDuration(200).start();
-        }).start();
+    /** Fetches or refreshes a service's shows in the background, then shows them if still relevant. */
+    private void updateShowArt(AppEntry app, String channel) {
+        if (network.isShutdown() || !updatingChannels.add(channel)) return;
+        network.execute(() -> {
+            showArt.update(channel, System.currentTimeMillis());
+            List<ShowArt.Feature> ready = showArt.ready(channel);
+            if (!ready.isEmpty()) images.load(ready.get(0).background); // first picture ready to go
+            main.post(() -> {
+                updatingChannels.remove(channel);
+                if (isDestroyed() || ready.isEmpty() || !repo.showArtEnabled()) return;
+                if (heroApp == app && !heroShowsTrack && page == PAGE_HOME) hero.showFeatures(ready, heroImages);
+            });
+        });
+    }
+
+    private void showTrackHero(NowPlaying.Track track) {
+        heroApp = null;
+        pendingHero = null;
+        main.removeCallbacks(heroUpdate);
+        heroShowsTrack = true;
+        hero.showTrack(track, appIcon(track.packageName));
+    }
+
+    // ---- Now playing ----
+
+    private void onNowPlayingChanged() {
+        NowPlaying.Track track = nowPlaying.track();
+        if (!loaded) return;
+        boolean want = track != null;
+        if (want != rowsAdapter.hasNowPlaying()) {
+            View focused = getWindow().getDecorView().findFocus();
+            boolean focusInNowPlaying = isInNowPlaying(focused);
+            boolean atTop = rows.getSelectedPosition() <= 0;
+            showApps(!(want && atTop));
+            if (want && atTop && page == PAGE_HOME) focusTop(); // it appears at the top: take focus there
+            else if (!want && focusInNowPlaying) focusTop();
+        } else {
+            rowsAdapter.setTrack(track);
+        }
+        if (want && heroShowsTrack) hero.showTrack(track, appIcon(track.packageName));
+    }
+
+    private boolean isInNowPlaying(View view) {
+        for (View v = view; v != null && v.getParent() instanceof View; v = (View) v.getParent()) {
+            if (v.getParent() == rows) return rows.getChildViewHolder(v) instanceof RowsAdapter.NowPlayingHolder;
+        }
+        return false;
+    }
+
+    @Override
+    public void onNowPlayingAction(int action) {
+        switch (action) {
+            case OPEN:
+                openPlayer();
+                break;
+            case PREVIOUS:
+                nowPlaying.previous();
+                break;
+            case PLAY_PAUSE:
+                nowPlaying.playPause();
+                break;
+            case NEXT:
+                nowPlaying.next();
+                break;
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void onNowPlayingFocused(View view, boolean focused) {
+        NowPlaying.Track track = rowsAdapter.track();
+        if (focused && page == PAGE_HOME && track != null && !heroShowsTrack) showTrackHero(track);
+    }
+
+    @Override
+    public Drawable appIcon(String packageName) {
+        try {
+            return getPackageManager().getApplicationIcon(packageName);
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
+    /** Opens the player's own screen for what's playing, or else just the app. */
+    private void openPlayer() {
+        PendingIntent session = nowPlaying.sessionActivity();
+        if (session != null) {
+            try {
+                if (Build.VERSION.SDK_INT >= 34) {
+                    // We're on screen, so let the player come to the front.
+                    ActivityOptions options = ActivityOptions.makeBasic();
+                    options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                    session.send(this, 0, null, null, null, null, options.toBundle());
+                } else {
+                    session.send();
+                }
+                return;
+            } catch (PendingIntent.CanceledException ignored) {
+                // Fall back to launching the app.
+            }
+        }
+        String packageName = nowPlaying.packageName();
+        if (packageName == null) return;
+        PackageManager pm = getPackageManager();
+        Intent launch = pm.getLeanbackLaunchIntentForPackage(packageName);
+        if (launch == null) launch = pm.getLaunchIntentForPackage(packageName);
+        if (launch != null) open(launch);
+        else showHint(R.string.cannot_open);
     }
 
     // ---- Cards ----
@@ -446,7 +617,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         boolean adding = favourites.add(app.packageName);
         if (!adding) favourites.remove(app.packageName);
         repo.setFavourites(favourites);
-        showApps();
+        showApps(false);
         focusApp(app.packageName); // follow the card into (or out of) the Favourites row
         if (heroApp == app) showHero(app);
         showHint(adding ? R.string.favourite_added : R.string.favourite_removed);
@@ -458,7 +629,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         Set<String> hidden = repo.getHidden();
         hidden.add(app.packageName);
         repo.setHidden(hidden);
-        showApps();
+        showApps(false);
         if (page == PAGE_HOME && at != null) focusRowCard(at[0], at[1]);
         else if (page == PAGE_APPS) focusGridCard(gridPosition);
         showHint(R.string.hidden_hint);
@@ -490,7 +661,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         appsAdapter.setMoving(null);
         repo.saveOrder(appsAdapter.items());
         repo.sort(allApps);
-        showApps(); // the Home rows follow the new order
+        showApps(true); // the Home rows follow the new order
     }
 
     // ---- Launcher menu ----
@@ -499,12 +670,46 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         List<AppEntry> hiddenApps = hiddenApps();
         List<String> items = new ArrayList<>();
         items.add(getString(R.string.option_hidden_apps, hiddenApps.size()));
+        items.add(getString(R.string.option_now_playing, getString(nowPlaying.hasAccess() ? R.string.on : R.string.off)));
+        items.add(getString(R.string.option_show_art, getString(repo.showArtEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_home_setup));
         items.add(getString(R.string.option_tv_settings));
         Sheet.pick(this, getString(R.string.app_name), null, items, which -> {
-            if (which == 0) showHiddenApps(hiddenApps);
-            else if (which == 1) showHomeSetup();
-            else open(new Intent(Settings.ACTION_SETTINGS));
+            switch (which) {
+                case 0:
+                    showHiddenApps(hiddenApps);
+                    break;
+                case 1:
+                    showNowPlayingSetup();
+                    break;
+                case 2:
+                    toggleShowArt();
+                    break;
+                case 3:
+                    showHomeSetup();
+                    break;
+                default:
+                    open(new Intent(Settings.ACTION_SETTINGS));
+                    break;
+            }
+        });
+    }
+
+    private void toggleShowArt() {
+        boolean on = !repo.showArtEnabled();
+        repo.setShowArtEnabled(on);
+        if (heroApp != null) showHero(heroApp); // swap between shows and the plain banner now
+        showHint(on ? R.string.show_art_on : R.string.show_art_off);
+    }
+
+    private void showNowPlayingSetup() {
+        String message = getString(R.string.now_playing_message,
+                getString(nowPlaying.hasAccess() ? R.string.on : R.string.off));
+        List<String> items = new ArrayList<>();
+        items.add(getString(R.string.open_notification_access));
+        items.add(getString(R.string.close));
+        Sheet.pick(this, getString(R.string.now_playing_title), message, items, which -> {
+            if (which == 0) open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
         });
     }
 
@@ -530,7 +735,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                 if (checked[i]) hidden.remove(hiddenApps.get(i).packageName);
             }
             repo.setHidden(hidden);
-            showApps();
+            showApps(true);
         });
     }
 
@@ -600,6 +805,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                 if (event.getAction() == KeyEvent.ACTION_UP) focused.performLongClick();
                 return true;
             }
+        }
+        if (code == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE && down && nowPlaying.track() != null) {
+            nowPlaying.playPause(); // the remote's play button controls what's playing
+            return true;
         }
         return super.dispatchKeyEvent(event);
     }

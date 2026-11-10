@@ -4,6 +4,7 @@
   a centred pill tab bar, and rows of cards along the bottom. Colours and type are Worldly's.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -53,7 +54,7 @@
             android:layout_width="440dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/overscan_h"
-            android:layout_marginTop="104dp"
+            android:layout_marginTop="92dp"
             android:orientation="vertical">
 
             <TextView
@@ -62,9 +63,9 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:includeFontPadding="false"
-                android:maxLines="2"
+                android:maxLines="1"
                 android:textColor="@color/text"
-                android:textSize="44sp"
+                android:textSize="42sp"
                 android:textStyle="bold" />
 
             <LinearLayout
@@ -87,7 +88,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
                     android:background="@drawable/chip_bg"
-                    android:maxWidth="160dp"
+                    android:maxWidth="200dp"
                     android:maxLines="1"
                     android:ellipsize="end"
                     android:paddingStart="7dp"
@@ -103,8 +104,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
+                android:ellipsize="end"
+                android:lineSpacingExtra="2dp"
                 android:maxLines="2"
-                android:textColor="@color/muted"
+                android:textColor="@color/text_soft"
                 android:textSize="14sp" />
 
             <LinearLayout
@@ -136,6 +139,7 @@
                     android:textSize="13sp" />
 
                 <TextView
+                    android:id="@+id/hero_hold_key"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
@@ -150,21 +154,44 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/hero_hold_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:text="@string/key_hold_action"
                     android:textColor="@color/text_soft"
                     android:textSize="13sp" />
+
+                <LinearLayout
+                    android:id="@+id/hero_dots"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="24dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone" />
             </LinearLayout>
+
+            <!-- TVmaze's data is CC BY-SA, so shows are credited. -->
+            <TextView
+                android:id="@+id/hero_credit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/tvmaze_credit"
+                android:textColor="@color/dim"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
     </FrameLayout>
 
-    <!-- ===== Home page: rows of cards ===== -->
+    <!-- ===== Home page: rows of cards =====
+         focusOutFront: let Up leave the top row for the tabs (the grid keeps focus by default). -->
     <androidx.leanback.widget.VerticalGridView
         android:id="@+id/rows"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        app:focusOutFront="true"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:paddingTop="@dimen/rows_top"
@@ -204,6 +231,7 @@
             android:id="@+id/apps_grid"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            app:focusOutFront="true"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:paddingStart="@dimen/overscan_h"

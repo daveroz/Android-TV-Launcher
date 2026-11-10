@@ -27,6 +27,7 @@ final class AppRepository {
     private static final String KEY_ORDER = "order";
     private static final String KEY_HIDDEN = "hidden";
     private static final String KEY_FAVOURITES = "favourites";
+    private static final String KEY_SHOW_ART = "show_art";
 
     private final Context context;
     private final PackageManager pm;
@@ -134,6 +135,15 @@ final class AppRepository {
 
     void setFavourites(Set<String> favourites) {
         putList(KEY_FAVOURITES, new ArrayList<>(favourites));
+    }
+
+    /** Whether streaming apps fill the hero with their shows (needs the internet). On by default. */
+    boolean showArtEnabled() {
+        return prefs.getBoolean(KEY_SHOW_ART, true);
+    }
+
+    void setShowArtEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_SHOW_ART, enabled).apply();
     }
 
     private List<String> getList(String key) {
