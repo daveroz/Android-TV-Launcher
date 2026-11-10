@@ -14,13 +14,27 @@ android {
         versionName '2.1'
     }
 
+    // Every build must be signed with the same key, or Android refuses to install it over the
+    // last one. GitHub Actions passes that key in DECO_KEYSTORE_FILE (from a repository secret);
+    // without it, builds fall back to the build machine's own debug key.
+    def keystore = System.getenv('DECO_KEYSTORE_FILE')
+    signingConfigs {
+        if (keystore) {
+            fixed {
+                storeFile file(keystore)
+                storePassword System.getenv('DECO_KEYSTORE_PASSWORD') ?: 'android'
+                keyAlias System.getenv('DECO_KEY_ALIAS') ?: 'androiddebugkey'
+                keyPassword System.getenv('DECO_KEY_PASSWORD') ?: 'android'
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Sideloaded personal build: signed with the build machine's debug key.
-            signingConfig signingConfigs.debug
+            signingConfig keystore ? signingConfigs.fixed : signingConfigs.debug
         }
     }
 

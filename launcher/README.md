@@ -58,10 +58,14 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 From Termux on your phone (see the main README for setting up `adb`):
 
 ```bash
-curl -LO https://raw.githubusercontent.com/daveroz/Cam-deco/ccr-beaea807-gbu79w/releases/deco-launcher.apk
+curl -LO https://github.com/daveroz/Cam-deco/releases/download/launcher-latest/DecoLauncher.apk
 adb connect 192.168.x.x:5555
-adb install -r deco-launcher.apk
+adb install -r DecoLauncher.apk
 ```
+
+That link always points to the latest build from GitHub Actions (see [Building](#building)).
+Until the first signed build has been published there, use the copy in the repo instead:
+`curl -LO https://raw.githubusercontent.com/daveroz/Cam-deco/ccr-beaea807-gbu79w/releases/deco-launcher.apk`
 
 Then open **Deco Launcher** from the Google TV apps list to try it out.
 
@@ -112,17 +116,40 @@ voice search are separate apps and should keep working.
 
 ## Updating
 
-Install a newer APK over the old one with `adb install -r deco-launcher.apk`.
+Download the latest APK again and install it over the old one with `adb install -r DecoLauncher.apk`.
+Favourites, hidden apps and the order are kept.
 
-Each build is signed on the machine that built it. If an update was built
-somewhere else, Android refuses it with a signature error. Uninstall first with
-`adb uninstall com.camdeco.launcher`, which resets the tile order and hidden apps.
+Android only installs an update that is signed with the same key as the version already on the TV.
+GitHub Actions signs every build with the key stored in the `DECO_KEYSTORE_BASE64` secret. That key
+is the one that signed the earlier builds, so the builds install over each other. If you ever see a
+signature error, run `adb uninstall com.camdeco.launcher` first; that resets favourites, hidden apps
+and the order.
 
 ## Building
 
-Needs JDK 17+ and the Android SDK with platform 36.
+### On GitHub
+
+[`.github/workflows/build.yml`](../.github/workflows/build.yml) runs on every push that changes
+`launcher/`, and from **Actions → Build APK → Run workflow**. It runs the tests, builds the release
+APK, uploads it as the **DecoLauncher** artifact and, on the default branch, publishes it to the
+[`launcher-latest`](https://github.com/daveroz/Cam-deco/releases/tag/launcher-latest) release. The
+run's summary shows the version and the signing key's SHA-256 fingerprint.
+
+The signing key lives in one repository secret: **Settings → Secrets and variables → Actions →
+New repository secret**, named `DECO_KEYSTORE_BASE64`, holding the keystore file encoded with
+`base64 -w0`. It's a standard debug-style keystore (password `android`, alias `androiddebugkey`);
+for a different keystore, also add `DECO_KEYSTORE_PASSWORD`, `DECO_KEY_ALIAS` and
+`DECO_KEY_PASSWORD`. Without the secret, builds still run but are signed with a throwaway key and
+aren't published to the release.
+
+### On your own computer
+
+Needs JDK 21 and the Android SDK with platform 36.
 
 ```bash
-./gradlew assembleRelease        # app/build/outputs/apk/release/app-release.apk
 ./gradlew testReleaseUnitTest    # Robolectric tests that drive the launcher with remote key presses
+./gradlew assembleRelease        # app/build/outputs/apk/release/app-release.apk
 ```
+
+To sign with the fixed key, point `DECO_KEYSTORE_FILE` at the keystore file first; otherwise the
+build uses your computer's debug key.
