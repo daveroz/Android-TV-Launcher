@@ -70,7 +70,7 @@ public class SoundWaveViewTest {
         view = new SoundWaveView(app, null);
         view.setSource(wave);
         float dp = app.getResources().getDisplayMetrics().density;
-        int w = Math.round(652 * dp), h = Math.round(62 * dp);
+        int w = Math.round(652 * dp), h = Math.round(152 * dp);
         view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, w, h);
@@ -88,14 +88,15 @@ public class SoundWaveViewTest {
 
     /** How many rows of cells are lit, at most, in the columns between these frequencies. */
     private int litRows(double fromHz, double toHz) {
-        float panel = view.panelWidth();
+        float pitch = view.pitch();
         int from = SoundWave.columnOf(fromHz * 1.01), to = SoundWave.columnOf(toHz * 0.99);
         int top = frame.getHeight();
         for (int c = from; c <= to; c++) {
-            int x = Math.round(panel * (c + 0.5f) / SoundWave.COLUMNS);
+            int x = Math.round(c * pitch + pitch * 0.42f); // the middle of the column's cells
             for (int y = 0; y < frame.getHeight(); y++) {
                 int p = frame.getPixel(x, y);
-                boolean lit = Color.alpha(p) > 200 && (Color.red(p) + Color.green(p) + Color.blue(p)) / 3 > 110;
+                // Lit cells are see-through but bright; the unlit grid and the glow are far fainter.
+                boolean lit = Color.alpha(p) > 60 && (Color.red(p) + Color.green(p) + Color.blue(p)) / 3 > 110;
                 if (lit) {
                     top = Math.min(top, y);
                     break;
@@ -103,9 +104,26 @@ public class SoundWaveViewTest {
             }
         }
         if (top == frame.getHeight()) return 0;
-        float pad = 5 * RuntimeEnvironment.getApplication().getResources().getDisplayMetrics().density;
-        float pitch = (frame.getHeight() - 2 * pad) / (SoundWaveView.ROWS - 0.16f);
-        return Math.round((frame.getHeight() - pad - top) / pitch);
+        return Math.round((frame.getHeight() - top) / pitch);
+    }
+
+    @Test
+    public void theCellsFillTheWidthAndAreSeeThrough() {
+        play(60, 30, 10, 45);
+        float dp = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics().density;
+        assertTrue("about 11 rows: " + view.rows(), view.rows() >= 10);
+        assertTrue("square cells of about 11dp: " + view.pitch() / dp, view.pitch() / dp > 13 && view.pitch() / dp < 14.5);
+        // The last column ends at the right edge.
+        int lastColumnX = Math.round(frame.getWidth() - view.pitch() * 0.42f);
+        boolean seen = false;
+        for (int y = 0; y < frame.getHeight(); y++) {
+            int a = Color.alpha(frame.getPixel(lastColumnX, y));
+            if (a > 60) {
+                seen = true;
+                assertTrue("see-through, not solid: " + a, a < 200);
+            }
+        }
+        assertTrue("the last column is drawn at the right edge", seen);
     }
 
     /** Music as the visualizer sees it, with this much bass (to 250 Hz), voice (to 4 kHz) and treble. */

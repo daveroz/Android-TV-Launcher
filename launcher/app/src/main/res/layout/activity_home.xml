@@ -57,7 +57,7 @@
             android:layout_height="120dp"
             android:background="@drawable/scrim_top" />
 
-        <!-- What's playing: the music's waveform under the song, ending before the cover card. -->
+        <!-- What's playing: the audio visualizer, behind the song's text and ending before the cover card. -->
         <com.camdeco.launcher.SoundWaveView
             android:id="@+id/hero_wave"
             android:layout_width="match_parent"

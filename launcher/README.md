@@ -99,12 +99,14 @@ off, run the same command with `disallow_listener`.
 
 ### Audio visualizer
 
-While the hero shows what's playing, a small light panel under the song shows the music, like a
-hi-fi spectrum display: 48 columns of glowing square cells on dark glass, from the bass on the left
-(40 Hz) through voices in the middle to the treble on the right (16 kHz). Each column rises with
-its part of the music and settles back gently, and the top cell of a column fades in and out, so
-the heights change smoothly. The cells take the album cover's colours, whiter at the bottom, and
-the panel goes dark on pause.
+While the hero shows what's playing, a grid of light cells shows the music, like a hi-fi spectrum
+display: 48 columns, from the bass on the left (40 Hz) through voices in the middle to the treble
+on the right (16 kHz). It spans the width under the song, from the screen margin to just before the
+cover, and rises behind the song's title and artist. The cells are see-through, so the cover's
+glow shows through them, and fade more toward the top so the text stays easy to read. Each column
+rises with its part of the music and settles back gently, and the top cell of a column fades in and
+out, so the heights change smoothly. The cells take the album cover's colours, whiter at the
+bottom, and go dark on pause.
 
 All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher columns get lifted to make up for music naturally carrying far more energy in
@@ -119,12 +121,12 @@ TV asks once), or from Termux:
 adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
 ```
 
-**⋮ → Audio visualizer** says what the panel is doing on your TV:
+**⋮ → Audio visualizer** says what the cells are doing on your TV:
 
 - **it follows the music**: Deco hears the TV's sound.
 - **it moves on its own**: Deco isn't allowed to listen, or the TV keeps its sound private (some
-  TVs give apps only silence). The panel still moves while music plays and goes dark on pause, but
-  it doesn't follow the song.
+  TVs give apps only silence). The cells still move while music plays and go dark on pause, but
+  they don't follow the song.
 
 The same menu turns the visualizer off. It only runs while it's on screen, so it costs nothing
 otherwise.

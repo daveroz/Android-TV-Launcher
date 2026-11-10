@@ -11,32 +11,40 @@ import android.view.View;
 import android.view.animation.AnimationUtils;
 
 /**
- * The music under the song in the hero, as a small light panel like a hi-fi spectrum display:
- * columns of glowing square cells on dark glass, bass on the left and treble on the right. Each
- * column rises with its part of the music and settles back gently; the top cell of a column fades
- * in and out, so heights change smoothly rather than a whole cell at a time. Cells take the album
- * cover's colours, whiter at the bottom, and the panel goes dark when the music stops.
+ * The music under the song in the hero, as a grid of light cells like a hi-fi spectrum display:
+ * one column per part of the music, bass on the left and treble on the right, spanning the width
+ * under the song and rising behind its text. The cells are see-through, so the cover's glow shows
+ * through them, and fade more toward the top so the song's text stays easy to read.
+ *
+ * Each column rises with its part of the music and settles back gently; the top cell of a column
+ * fades in and out, so heights change smoothly rather than a whole cell at a time. Cells take the
+ * album cover's colours, whiter at the bottom, and the grid goes dark when the music stops.
  */
 public class SoundWaveView extends View {
-    static final int ROWS = 7;
     private static final int COLUMNS = SoundWave.COLUMNS;
     /** Gap between cells, as a share of the cell pitch. */
     private static final float GAP = 0.16f;
+    /** How see-through the lit cells are: opacity at the bottom row and at the top row. */
+    private static final float BOTTOM_OPACITY = 0.62f, TOP_OPACITY = 0.3f;
 
     private final float density;
     private final Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
-    private final int[] rowColours = new int[ROWS];
     private final float[] target = new float[COLUMNS];
     private final float[] shown = new float[COLUMNS];
     private SoundWave source;
     private boolean running;
     private long lastFrame;
     private double time;
-    /** The glass panel with its unlit cells, drawn once per size. */
-    private Bitmap panel;
-    private float pad;
+    private int topColour;
+    private int bottomColour;
+    /** Per row, bottom first: the lit colour and its opacity. Sized when the view gets its size. */
+    private int[] rowColours = new int[0];
+    private float[] rowOpacity = new float[0];
+    /** The faint grid of unlit cells, drawn once per size. */
+    private Bitmap grid;
+    private int rows;
     private float pitch;
     private float cell;
     private float radius;
@@ -53,13 +61,13 @@ public class SoundWaveView extends View {
 
     /** The cells' colours, from the album cover: nearly white at the bottom, the cover's colour on top. */
     void setColours(AppColors cover) {
-        int top = atLeastBrightness(cover.vivid, 0.85f);
-        int bottom = mix(top, Color.WHITE, 0.6f);
-        for (int r = 0; r < ROWS; r++) rowColours[r] = mix(bottom, top, r / (float) (ROWS - 1));
+        topColour = atLeastBrightness(cover.vivid, 0.85f);
+        bottomColour = mix(topColour, Color.WHITE, 0.6f);
+        updateRows();
         invalidate();
     }
 
-    /** Starts or stops the animation (it only runs while the panel is on screen). */
+    /** Starts or stops the animation (it only runs while the grid is on screen). */
     void setRunning(boolean run) {
         if (running == run) return;
         running = run;
@@ -72,41 +80,47 @@ public class SoundWaveView extends View {
         return shown[column];
     }
 
-    /** The panel's width for this view's height: every column gets a square cell. */
-    float panelWidth() {
-        return COLUMNS * pitch + 2 * pad - (pitch - cell);
+    /** How many rows of cells fit (for tests). */
+    int rows() {
+        return rows;
+    }
+
+    /** The distance from one cell to the next, in pixels (for tests). */
+    float pitch() {
+        return pitch;
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        pad = 5 * density;
-        pitch = (h - 2 * pad) / (ROWS - GAP); // ROWS cells and ROWS - 1 gaps fill the height
+        // The columns fill the width; as many square rows as fit stack up from the bottom.
+        pitch = w / (COLUMNS - GAP); // COLUMNS cells and COLUMNS - 1 gaps
         cell = pitch * (1 - GAP);
         radius = cell * 0.22f;
-        buildPanel(w, h);
+        rows = pitch > 0 ? Math.max(1, (int) ((h + pitch * GAP) / pitch)) : 0;
+        rowColours = new int[rows];
+        rowOpacity = new float[rows];
+        updateRows();
+        buildGrid(w, h);
     }
 
-    private void buildPanel(int w, int h) {
-        if (panel != null) panel.recycle();
-        panel = null;
-        int pw = Math.min(w, Math.round(panelWidth()));
-        if (pw <= 0 || h <= 0) return;
-        panel = Bitmap.createBitmap(pw, h, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(panel);
+    private void updateRows() {
+        for (int r = 0; r < rows; r++) {
+            float f = rows > 1 ? r / (float) (rows - 1) : 0f;
+            rowColours[r] = mix(bottomColour, topColour, f);
+            rowOpacity[r] = BOTTOM_OPACITY + (TOP_OPACITY - BOTTOM_OPACITY) * f;
+        }
+    }
+
+    private void buildGrid(int w, int h) {
+        if (grid != null) grid.recycle();
+        grid = null;
+        if (w <= 0 || h <= 0 || rows == 0) return;
+        grid = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(grid);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        // Dark glass with a faint edge.
-        rect.set(0.5f * density, 0.5f * density, pw - 0.5f * density, h - 0.5f * density);
-        p.setColor(0xB805080F);
-        c.drawRoundRect(rect, 10 * density, 10 * density, p);
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(density);
-        p.setColor(0x14FFFFFF);
-        c.drawRoundRect(rect, 10 * density, 10 * density, p);
-        // Unlit cells, just visible, like the dark LEDs of a real panel.
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(0x0FFFFFFF);
+        p.setColor(0x09FFFFFF); // unlit cells: just a hint of the grid
         for (int col = 0; col < COLUMNS; col++) {
-            for (int row = 0; row < ROWS; row++) {
+            for (int row = 0; row < rows; row++) {
                 cellRect(col, row, 0);
                 c.drawRoundRect(rect, radius, radius, p);
             }
@@ -115,8 +129,8 @@ public class SoundWaveView extends View {
 
     /** The cell at this column and row (row 0 at the bottom), grown by {@code grow} px on each side. */
     private void cellRect(int col, int row, float grow) {
-        float x = pad + col * pitch;
-        float y = getHeight() - pad - cell - row * pitch;
+        float x = col * pitch;
+        float y = getHeight() - cell - row * pitch;
         rect.set(x - grow, y - grow, x + cell + grow, y + cell + grow);
     }
 
@@ -137,22 +151,23 @@ public class SoundWaveView extends View {
             shown[c] = goal > shown[c] ? shown[c] + (goal - shown[c]) * rise : goal + (shown[c] - goal) * settle;
         }
 
-        if (panel != null) canvas.drawBitmap(panel, 0, 0, null);
+        if (grid != null) canvas.drawBitmap(grid, 0, 0, null);
         float glow = 2 * density;
         for (int c = 0; c < COLUMNS; c++) {
-            float lit = shown[c] * ROWS;
+            float lit = shown[c] * rows;
             int full = (int) lit;
-            for (int r = 0; r < ROWS && r <= full; r++) {
+            for (int r = 0; r < rows && r <= full; r++) {
                 float strength = r < full ? 1f : lit - full; // the top cell fades in and out
                 if (strength < 0.03f) break;
+                float opacity = rowOpacity[r] * strength;
                 int colour = rowColours[r];
                 cellRect(c, r, glow);
                 glowPaint.setColor(colour);
-                glowPaint.setAlpha(Math.round(60 * strength));
+                glowPaint.setAlpha(Math.round(70 * opacity));
                 canvas.drawRoundRect(rect, radius + glow, radius + glow, glowPaint);
                 cellRect(c, r, 0);
                 cellPaint.setColor(colour);
-                cellPaint.setAlpha(Math.round(255 * strength));
+                cellPaint.setAlpha(Math.round(255 * opacity));
                 canvas.drawRoundRect(rect, radius, radius, cellPaint);
             }
         }
