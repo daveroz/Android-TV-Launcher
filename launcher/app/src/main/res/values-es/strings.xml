@@ -71,19 +71,19 @@
     <string name="home_service_description">Abre Deco Launcher cada vez que aparece la pantalla principal de Google TV, para que el botón Inicio te lleve a Deco Launcher. Solo detecta la pantalla principal de Google TV y no lee nada de lo que hay en tu pantalla.</string>
     <string name="play_store">Google Play Store</string>
 
-    <!-- Onda de sonido -->
-    <string name="option_sound_wave">Onda de sonido: %1$s</string>
-    <string name="sound_wave_title">Onda de sonido</string>
-    <string name="sound_wave_message">Una línea bajo la canción que se mueve con la música mientras algo suena.\n\nAhora mismo: %1$s\n\nPara seguir la canción de verdad, Deco necesita oír lo que suena en la TV. Android lo llama permiso de micrófono, pero Deco solo lee el sonido de la propia TV y nunca abre un micrófono. Sin él, o si la TV no comparte su sonido, la línea igual se mueve mientras suena música, aunque no al ritmo.\n\nTambién puedes permitirlo desde Termux:\nadb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO</string>
-    <string name="sound_wave_off">está desactivada.</string>
+    <!-- Visualizador de audio -->
+    <string name="option_sound_wave">Visualizador de audio: %1$s</string>
+    <string name="sound_wave_title">Visualizador de audio</string>
+    <string name="sound_wave_message">Un pequeño panel de luces bajo la canción muestra la música mientras algo suena: graves a la izquierda, voces en el centro, agudos a la derecha.\n\nAhora mismo: %1$s\n\nPara seguir la canción de verdad, Deco necesita oír lo que suena en la TV. Android lo llama permiso de micrófono, pero Deco solo lee el sonido de la propia TV y nunca abre un micrófono. Sin él, o si la TV no comparte su sonido, el panel igual se mueve mientras suena música, aunque no con la canción.\n\nTambién puedes permitirlo desde Termux:\nadb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO</string>
+    <string name="sound_wave_off">está desactivado.</string>
     <string name="sound_wave_following">sigue la música.</string>
-    <string name="sound_wave_waiting">está lista y empieza con la música.</string>
-    <string name="sound_wave_no_permission">se mueve sola: Deco no tiene permiso para oír el sonido de la TV.</string>
-    <string name="sound_wave_tv_silent">se mueve sola: esta TV no comparte su sonido, así que no puede seguir el ritmo.</string>
-    <string name="sound_wave_unavailable">se mueve sola: esta TV no comparte su sonido con las apps.</string>
+    <string name="sound_wave_waiting">está listo y empieza con la música.</string>
+    <string name="sound_wave_no_permission">se mueve solo: Deco no tiene permiso para oír el sonido de la TV.</string>
+    <string name="sound_wave_tv_silent">se mueve solo: esta TV no comparte su sonido, así que no puede seguir la canción.</string>
+    <string name="sound_wave_unavailable">se mueve solo: esta TV no comparte su sonido con las apps.</string>
     <string name="sound_wave_allow">Dejar que Deco oiga el sonido de la TV</string>
-    <string name="sound_wave_turn_off">Desactivar la onda de sonido</string>
-    <string name="sound_wave_turn_on">Activar la onda de sonido</string>
-    <string name="sound_wave_allowed">La onda de sonido ya sigue la música</string>
-    <string name="sound_wave_denied">Sin permiso, la onda de sonido se mueve sola</string>
+    <string name="sound_wave_turn_off">Desactivar el visualizador</string>
+    <string name="sound_wave_turn_on">Activar el visualizador</string>
+    <string name="sound_wave_allowed">El visualizador ya sigue la música</string>
+    <string name="sound_wave_denied">Sin permiso, el visualizador se mueve solo</string>
 </resources>

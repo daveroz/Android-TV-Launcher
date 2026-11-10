@@ -497,35 +497,35 @@ public class HomeActivityTest {
         idle();
         assertTrue(home.hero.showsWave());
 
-        // The TV shares its sound: the line follows it. A bassy song shows mostly bass...
+        // The TV shares its sound: the panel follows it. A bassy song lights the bass columns...
         android.media.audiofx.Visualizer visualizer = home.soundWave.visualizerForTests();
         assertNotNull(visualizer);
         ShadowVisualizer audio = org.robolectric.shadow.api.Shadow.extract(visualizer);
-        float[] levels = new float[SoundWave.BANDS];
+        float[] levels = new float[SoundWave.COLUMNS];
         audio.setSource(spectrum(60, 1, 1));
         audio.triggerDataCapture();
         assertEquals(SoundWave.Status.FOLLOWING, home.soundWave.status());
         home.soundWave.levels(1.0, levels);
-        assertTrue("bass fills its zone", levels[SoundWave.BASS] > 0.9f);
-        assertTrue("little voice or treble", levels[SoundWave.VOICE] < 0.4f && levels[SoundWave.TREBLE] < 0.4f);
+        assertTrue("bass lit", average(levels, 40, 250) > 0.7f);
+        assertTrue("little voice or treble", average(levels, 250, 4000) < 0.35f && average(levels, 4000, 16000) < 0.35f);
 
-        // ...a sung part mostly voice...
+        // ...a sung part the voice columns...
         audio.setSource(spectrum(2, 30, 1));
         audio.triggerDataCapture();
         home.soundWave.levels(1.0, levels);
-        assertTrue("the voice zone leads", levels[SoundWave.VOICE] > 0.9f);
-        assertTrue(levels[SoundWave.BASS] < 0.3f && levels[SoundWave.TREBLE] < 0.4f);
+        assertTrue("voice lit", average(levels, 250, 4000) > 0.5f);
+        assertTrue(average(levels, 40, 250) < 0.3f && average(levels, 4000, 16000) < 0.3f);
 
         // ...and cymbals the treble, even though they carry less raw energy than the kick under them.
         audio.setSource(spectrum(6, 3, 3));
         audio.triggerDataCapture();
         home.soundWave.levels(1.0, levels);
-        assertTrue("the treble zone leads", levels[SoundWave.TREBLE] > levels[SoundWave.BASS]
-                && levels[SoundWave.TREBLE] > levels[SoundWave.VOICE]);
+        float bass = average(levels, 40, 250), voice = average(levels, 250, 4000), treble = average(levels, 4000, 16000);
+        assertTrue("treble leads: " + bass + " " + voice + " " + treble, treble > bass && treble > voice);
 
         // The menu says so.
         home.findViewById(R.id.tab_options).performClick();
-        choose("Sound wave: On");
+        choose("Audio visualizer: On");
         assertTrue(sheetMessage().contains("it follows the music."));
         choose("Close");
 
@@ -551,7 +551,7 @@ public class HomeActivityTest {
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1));
         }
         assertEquals(SoundWave.Status.TV_SILENT, home.soundWave.status());
-        float[] levels = new float[SoundWave.BANDS];
+        float[] levels = new float[SoundWave.COLUMNS];
         home.soundWave.levels(1.3, levels);
         assertTrue("it moves on its own while playing", max(levels) > 0.2f);
 
@@ -574,19 +574,19 @@ public class HomeActivityTest {
         assertTrue(home.hero.showsWave());
         assertNull(home.soundWave.visualizerForTests()); // not allowed to listen
         assertEquals(SoundWave.Status.NO_PERMISSION, home.soundWave.status());
-        float[] levels = new float[SoundWave.BANDS];
+        float[] levels = new float[SoundWave.COLUMNS];
         home.soundWave.levels(2.0, levels);
         assertTrue(max(levels) > 0.2f);
 
         // The menu offers to allow it, and to turn the wave off.
         home.findViewById(R.id.tab_options).performClick();
-        choose("Sound wave: On");
+        choose("Audio visualizer: On");
         assertTrue(sheetMessage().contains("Deco isn't allowed to hear the TV's sound"));
-        assertEquals(List.of("Let Deco hear the TV's sound", "Turn off the sound wave", "Close"), sheetItems());
-        choose("Turn off the sound wave");
+        assertEquals(List.of("Let Deco hear the TV's sound", "Turn off the visualizer", "Close"), sheetItems());
+        choose("Turn off the visualizer");
         assertFalse(home.hero.showsWave());
         home.findViewById(R.id.tab_options).performClick();
-        assertTrue(sheetItems().contains("Sound wave: Off"));
+        assertTrue(sheetItems().contains("Audio visualizer: Off"));
     }
 
     private static void allowListening() {
@@ -629,6 +629,14 @@ public class HomeActivityTest {
                 return android.media.audiofx.Visualizer.SUCCESS;
             }
         };
+    }
+
+    /** The average level of the panel's columns between these frequencies. */
+    private static float average(float[] levels, double fromHz, double toHz) {
+        int from = SoundWave.columnOf(fromHz * 1.01), to = SoundWave.columnOf(toHz * 0.99);
+        float sum = 0;
+        for (int c = from; c <= to; c++) sum += levels[c];
+        return sum / (to - from + 1);
     }
 
     private static float max(float[] values) {

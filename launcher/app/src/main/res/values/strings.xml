@@ -72,19 +72,19 @@
     <string name="home_service_description">Opens Deco Launcher whenever the Google TV home screen appears, so the Home button takes you to Deco Launcher. It only watches for the Google TV home screen and doesn\'t read anything on your screen.</string>
     <string name="play_store">Google Play Store</string>
 
-    <!-- Sound wave -->
-    <string name="option_sound_wave">Sound wave: %1$s</string>
-    <string name="sound_wave_title">Sound wave</string>
-    <string name="sound_wave_message">A line under the song that moves with the music while something plays.\n\nRight now: %1$s\n\nTo follow the real song, Deco needs to hear what the TV plays. Android calls that the microphone permission, but Deco only reads the TV\'s own sound and never opens a microphone. Without it, or if the TV keeps its sound private, the line still moves while music plays, just not to the beat.\n\nYou can also allow it from Termux:\nadb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO</string>
+    <!-- Audio visualizer -->
+    <string name="option_sound_wave">Audio visualizer: %1$s</string>
+    <string name="sound_wave_title">Audio visualizer</string>
+    <string name="sound_wave_message">A small light panel under the song shows the music while something plays: bass on the left, voices in the middle, treble on the right.\n\nRight now: %1$s\n\nTo follow the real song, Deco needs to hear what the TV plays. Android calls that the microphone permission, but Deco only reads the TV\'s own sound and never opens a microphone. Without it, or if the TV keeps its sound private, the panel still moves while music plays, just not with the song.\n\nYou can also allow it from Termux:\nadb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO</string>
     <string name="sound_wave_off">it\'s off.</string>
     <string name="sound_wave_following">it follows the music.</string>
     <string name="sound_wave_waiting">it\'s ready and starts with the music.</string>
     <string name="sound_wave_no_permission">it moves on its own: Deco isn\'t allowed to hear the TV\'s sound.</string>
-    <string name="sound_wave_tv_silent">it moves on its own: this TV keeps its sound private, so it can\'t follow the beat.</string>
+    <string name="sound_wave_tv_silent">it moves on its own: this TV keeps its sound private, so it can\'t follow the song.</string>
     <string name="sound_wave_unavailable">it moves on its own: this TV doesn\'t share its sound with apps.</string>
     <string name="sound_wave_allow">Let Deco hear the TV\'s sound</string>
-    <string name="sound_wave_turn_off">Turn off the sound wave</string>
-    <string name="sound_wave_turn_on">Turn on the sound wave</string>
-    <string name="sound_wave_allowed">The sound wave follows the music now</string>
-    <string name="sound_wave_denied">Not allowed, so the sound wave moves on its own</string>
+    <string name="sound_wave_turn_off">Turn off the visualizer</string>
+    <string name="sound_wave_turn_on">Turn on the visualizer</string>
+    <string name="sound_wave_allowed">The visualizer follows the music now</string>
+    <string name="sound_wave_denied">Not allowed, so the visualizer moves on its own</string>
 </resources>

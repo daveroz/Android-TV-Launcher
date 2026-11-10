@@ -20,9 +20,11 @@
     <!-- Card height: from hero_top to 24dp above the rows (rows_top). Covers are square,
          banners 16:9 at this height. -->
     <dimen name="hero_card_height">176dp</dimen>
-    <!-- The sound wave: below the hero text (which ends by about 230dp), above the rows, and
-         ending 36dp before the cover card (overscan_h + hero_card_height + 36dp). -->
-    <dimen name="wave_top">236dp</dimen>
-    <dimen name="wave_height">56dp</dimen>
+    <!-- The audio visualizer's light panel: under the hero text and its "OK Open" hint (which end
+         by about 226dp), above the rows (296dp), and never reaching the cover card (overscan_h +
+         hero_card_height + 36dp from the right). Its height sets the cell size: 7 rows of about
+         6.4dp cells, 48 columns, about 370dp wide. -->
+    <dimen name="wave_top">230dp</dimen>
+    <dimen name="wave_height">62dp</dimen>
     <dimen name="wave_end">260dp</dimen>
 </resources>

@@ -1,59 +1,49 @@
 package com.camdeco.launcher;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.Shader;
+import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.AnimationUtils;
 
 /**
- * The music under the song in the hero: one line split by pitch, like a spectrum. The bass swells
- * the left part in slow, wide waves, voices ripple the middle, and the treble shimmers on the
- * right. The colour runs from the album cover's deep tone (bass) to its light tone (treble). Drum
- * hits and syllables give a short extra push, and the line goes flat when the music stops.
+ * The music under the song in the hero, as a small light panel like a hi-fi spectrum display:
+ * columns of glowing square cells on dark glass, bass on the left and treble on the right. Each
+ * column rises with its part of the music and settles back gently; the top cell of a column fades
+ * in and out, so heights change smoothly rather than a whole cell at a time. Cells take the album
+ * cover's colours, whiter at the bottom, and the panel goes dark when the music stops.
  */
 public class SoundWaveView extends View {
-    // Per zone (bass, voice, treble): where along the line it sits (0 to 1) and how wide it is,
-    // how far it moves at full level (dp), how many waves would fit across, and how fast they travel.
-    private static final float[] CENTRE = {0.17f, 0.5f, 0.83f};
-    private static final float[] SPREAD = {0.13f, 0.12f, 0.12f};
-    private static final float[] REACH = {24, 15, 8};
-    private static final float[] WAVES = {2.2f, 7f, 22f};
-    private static final float[] SPEED = {2.2f, -5.5f, 13f};
-    /** The line fades in and out over this much of each end. */
-    private static final float EDGE = 0.07f;
+    static final int ROWS = 7;
+    private static final int COLUMNS = SoundWave.COLUMNS;
+    /** Gap between cells, as a share of the cell pitch. */
+    private static final float GAP = 0.16f;
 
     private final float density;
-    private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Path path = new Path();
-    private final float[] target = new float[SoundWave.BANDS];
-    private final float[] average = new float[SoundWave.BANDS];
-    private final float[] shown = new float[SoundWave.BANDS];
+    private final Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF rect = new RectF();
+    private final int[] rowColours = new int[ROWS];
+    private final float[] target = new float[COLUMNS];
+    private final float[] shown = new float[COLUMNS];
     private SoundWave source;
     private boolean running;
     private long lastFrame;
     private double time;
-    private int deep;
-    private int vivid;
-    private int light;
+    /** The glass panel with its unlit cells, drawn once per size. */
+    private Bitmap panel;
+    private float pad;
+    private float pitch;
+    private float cell;
+    private float radius;
 
     public SoundWaveView(Context context, AttributeSet attrs) {
         super(context, attrs);
         density = context.getResources().getDisplayMetrics().density;
-        for (Paint p : new Paint[]{line, glow}) {
-            p.setStyle(Paint.Style.STROKE);
-            p.setStrokeCap(Paint.Cap.ROUND);
-            p.setStrokeJoin(Paint.Join.ROUND);
-        }
-        line.setStrokeWidth(3 * density);
-        glow.setStrokeWidth(9 * density);
-        glow.setAlpha(56);
         setColours(AppColors.worldly());
     }
 
@@ -61,16 +51,15 @@ public class SoundWaveView extends View {
         source = wave;
     }
 
-    /** The line's colours, from the album cover: deep on the bass side, light on the treble side. */
+    /** The cells' colours, from the album cover: nearly white at the bottom, the cover's colour on top. */
     void setColours(AppColors cover) {
-        deep = atLeastBrightness(mix(cover.vivid, cover.deep, 0.5f), 0.5f);
-        vivid = cover.vivid;
-        light = mix(cover.vivid, Color.WHITE, 0.5f);
-        updateShaders();
+        int top = atLeastBrightness(cover.vivid, 0.85f);
+        int bottom = mix(top, Color.WHITE, 0.6f);
+        for (int r = 0; r < ROWS; r++) rowColours[r] = mix(bottom, top, r / (float) (ROWS - 1));
         invalidate();
     }
 
-    /** Starts or stops the animation (it only runs while the line is on screen). */
+    /** Starts or stops the animation (it only runs while the panel is on screen). */
     void setRunning(boolean run) {
         if (running == run) return;
         running = run;
@@ -78,23 +67,57 @@ public class SoundWaveView extends View {
         if (run) postInvalidateOnAnimation();
     }
 
-    /** How far each zone moves right now, 0 when flat (for tests). */
-    float amplitude(int zone) {
-        return shown[zone];
+    /** How lit a column is right now, 0 to 1 (for tests). */
+    float level(int column) {
+        return shown[column];
+    }
+
+    /** The panel's width for this view's height: every column gets a square cell. */
+    float panelWidth() {
+        return COLUMNS * pitch + 2 * pad - (pitch - cell);
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        updateShaders();
+        pad = 5 * density;
+        pitch = (h - 2 * pad) / (ROWS - GAP); // ROWS cells and ROWS - 1 gaps fill the height
+        cell = pitch * (1 - GAP);
+        radius = cell * 0.22f;
+        buildPanel(w, h);
     }
 
-    private void updateShaders() {
-        int w = getWidth();
-        if (w == 0) return;
-        int[] colours = {deep & 0x00FFFFFF, deep, vivid, light, light & 0x00FFFFFF};
-        float[] stops = {0f, 0.08f, 0.5f, 0.86f, 1f};
-        line.setShader(new LinearGradient(0, 0, w, 0, colours, stops, Shader.TileMode.CLAMP));
-        glow.setShader(new LinearGradient(0, 0, w, 0, colours, stops, Shader.TileMode.CLAMP));
+    private void buildPanel(int w, int h) {
+        if (panel != null) panel.recycle();
+        panel = null;
+        int pw = Math.min(w, Math.round(panelWidth()));
+        if (pw <= 0 || h <= 0) return;
+        panel = Bitmap.createBitmap(pw, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(panel);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        // Dark glass with a faint edge.
+        rect.set(0.5f * density, 0.5f * density, pw - 0.5f * density, h - 0.5f * density);
+        p.setColor(0xB805080F);
+        c.drawRoundRect(rect, 10 * density, 10 * density, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(density);
+        p.setColor(0x14FFFFFF);
+        c.drawRoundRect(rect, 10 * density, 10 * density, p);
+        // Unlit cells, just visible, like the dark LEDs of a real panel.
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0x0FFFFFFF);
+        for (int col = 0; col < COLUMNS; col++) {
+            for (int row = 0; row < ROWS; row++) {
+                cellRect(col, row, 0);
+                c.drawRoundRect(rect, radius, radius, p);
+            }
+        }
+    }
+
+    /** The cell at this column and row (row 0 at the bottom), grown by {@code grow} px on each side. */
+    private void cellRect(int col, int row, float grow) {
+        float x = pad + col * pitch;
+        float y = getHeight() - pad - cell - row * pitch;
+        rect.set(x - grow, y - grow, x + cell + grow, y + cell + grow);
     }
 
     @Override
@@ -104,43 +127,36 @@ public class SoundWaveView extends View {
         lastFrame = now;
         time += dt;
         if (source != null) source.levels(time, target);
-        float settle = (float) Math.pow(0.012, dt); // falls back over about half a second
-        for (int z = 0; z < shown.length; z++) {
-            // A hit (a kick, a syllable, a cymbal) is a jump above the recent average: push it.
-            average[z] += (target[z] - average[z]) * Math.min(1f, dt * 2.5f);
-            float hit = Math.max(0f, target[z] - average[z]) * 1.4f;
-            float goal = Math.min(1f, 0.85f * target[z] + hit);
-            shown[z] = goal > shown[z] ? shown[z] + (goal - shown[z]) * Math.min(1f, dt * 30)
-                    : goal + (shown[z] - goal) * settle;
+        // Rise quickly but eased; settle back over about a second.
+        float rise = Math.min(1f, dt * 18);
+        float settle = (float) Math.pow(0.06, dt);
+        for (int c = 0; c < COLUMNS; c++) {
+            // A touch of the neighbours keeps the outline readable without hiding detail.
+            float left = target[Math.max(0, c - 1)], right = target[Math.min(COLUMNS - 1, c + 1)];
+            float goal = 0.2f * left + 0.6f * target[c] + 0.2f * right;
+            shown[c] = goal > shown[c] ? shown[c] + (goal - shown[c]) * rise : goal + (shown[c] - goal) * settle;
         }
 
-        float w = getWidth();
-        float cy = getHeight() / 2f;
-        trace(w, cy, cy - 4.5f * density);
-        canvas.drawPath(path, glow);
-        canvas.drawPath(path, line);
-        if (running) postInvalidateOnAnimation();
-    }
-
-    /** The line across the view: each zone's ripple where it belongs, fading only at the very ends. */
-    private void trace(float w, float cy, float limit) {
-        path.rewind();
-        float step = 2.5f * density;
-        for (float x = 0; x <= w; x += step) {
-            float u = x / w;
-            double y = 0;
-            for (int z = 0; z < shown.length; z++) {
-                double d = (u - CENTRE[z]) / SPREAD[z];
-                double weight = Math.exp(-0.5 * d * d);
-                y += weight * shown[z] * REACH[z] * density
-                        * Math.sin(u * WAVES[z] * Math.PI * 2 + time * SPEED[z]);
+        if (panel != null) canvas.drawBitmap(panel, 0, 0, null);
+        float glow = 2 * density;
+        for (int c = 0; c < COLUMNS; c++) {
+            float lit = shown[c] * ROWS;
+            int full = (int) lit;
+            for (int r = 0; r < ROWS && r <= full; r++) {
+                float strength = r < full ? 1f : lit - full; // the top cell fades in and out
+                if (strength < 0.03f) break;
+                int colour = rowColours[r];
+                cellRect(c, r, glow);
+                glowPaint.setColor(colour);
+                glowPaint.setAlpha(Math.round(60 * strength));
+                canvas.drawRoundRect(rect, radius + glow, radius + glow, glowPaint);
+                cellRect(c, r, 0);
+                cellPaint.setColor(colour);
+                cellPaint.setAlpha(Math.round(255 * strength));
+                canvas.drawRoundRect(rect, radius, radius, cellPaint);
             }
-            float e = Math.min(1f, Math.min(u, 1f - u) / EDGE);
-            y *= e * e * (3 - 2 * e);
-            float py = (float) Math.max(-limit, Math.min(limit, y));
-            if (x == 0) path.moveTo(x, cy + py);
-            else path.lineTo(x, cy + py);
         }
+        if (running) postInvalidateOnAnimation();
     }
 
     private static int mix(int from, int to, float f) {
@@ -150,7 +166,7 @@ public class SoundWaveView extends View {
         return Color.rgb(r, g, b);
     }
 
-    /** Lifts a colour's brightness to at least {@code min}, so a dark cover tone still shows on graphite. */
+    /** Lifts a colour's brightness to at least {@code min}, so dark cover tones still glow. */
     private static int atLeastBrightness(int colour, float min) {
         float[] hsv = new float[3];
         Color.colorToHSV(colour, hsv);

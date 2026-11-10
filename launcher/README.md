@@ -97,36 +97,37 @@ adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launc
 Go back to Home and start some music. **⋮ → Now playing** shows whether access is on. To turn it
 off, run the same command with `disallow_listener`.
 
-### Sound wave
+### Audio visualizer
 
-While the hero shows what's playing, a line under the song moves with the music. It's split by
-pitch, like a spectrum, and coloured from the album cover:
+While the hero shows what's playing, a small light panel under the song shows the music, like a
+hi-fi spectrum display: 48 columns of glowing square cells on dark glass, from the bass on the left
+(40 Hz) through voices in the middle to the treble on the right (16 kHz). Each column rises with
+its part of the music and settles back gently, and the top cell of a column fades in and out, so
+the heights change smoothly. The cells take the album cover's colours, whiter at the bottom, and
+the panel goes dark on pause.
 
-- the **left** part swells in slow, wide waves with the **bass** (up to 250 Hz), in the cover's deep tone,
-- the **middle** ripples with **voices** (250 Hz to 4 kHz), in its main colour,
-- the **right** shimmers with the **treble**, like cymbals and hi-hats (4 to 16 kHz), in its light tone.
-
-The three share one volume scale, so a bassy song moves mostly the left and a sung part mostly the
-middle. The higher ranges get lifted to make up for music naturally carrying far more energy in
-the bass. Drum hits and syllables give a short extra push, and the line goes flat on pause.
+All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly
+the middle. Higher columns get lifted to make up for music naturally carrying far more energy in
+the bass.
 
 To follow the real song, Deco listens to what the TV plays through Android's audio visualizer.
 Android files that under the microphone permission ("record audio"), but Deco only reads the TV's
-own sound, at low detail, and never opens a microphone. Allow it from **⋮ → Sound wave** (the TV
-asks once), or from Termux:
+own sound, at low detail, and never opens a microphone. Allow it from **⋮ → Audio visualizer** (the
+TV asks once), or from Termux:
 
 ```bash
 adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
 ```
 
-**⋮ → Sound wave** says what the line is doing on your TV:
+**⋮ → Audio visualizer** says what the panel is doing on your TV:
 
 - **it follows the music**: Deco hears the TV's sound.
 - **it moves on its own**: Deco isn't allowed to listen, or the TV keeps its sound private (some
-  TVs give apps only silence). The line still moves while music plays and rests on pause, but it
-  doesn't follow the song.
+  TVs give apps only silence). The panel still moves while music plays and goes dark on pause, but
+  it doesn't follow the song.
 
-The same menu turns the wave off. It only runs while it's on screen, so it costs nothing otherwise.
+The same menu turns the visualizer off. It only runs while it's on screen, so it costs nothing
+otherwise.
 
 ## Show artwork
 
