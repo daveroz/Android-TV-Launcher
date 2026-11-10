@@ -24,6 +24,22 @@ anything anywhere. The APK is about 250 KB.
 |---|---|
 | ![Apps page](docs/preview-apps.png) | ![App menu](docs/preview-menu.png) |
 
+### Icon
+
+<img src="docs/icon.png" width="128" alt="Deco Launcher icon">
+
+Part of the same icon family as Worldly and SAB Monitor: the graphite rounded square with the
+slanted slate street-map grid, vignette and thin border, and a dark disc with an amber ring.
+Deco's emblem is an amber TV showing a grid of app tiles. The focused tile is amber with the
+family's white ring, and the cyan, green and yellow dots are the family's accent dots.
+
+- It's an adaptive icon, so it works in any shape the system uses (circle, rounded square), and it
+  has a one-colour layer for Android's themed icons.
+- The TV banner (what Google TV shows in its apps row) uses the same art with "Deco" in Carbon+.
+- The sources are the SVGs in [`assets/`](assets). To redraw the PNG/WebP files after editing
+  them, run `node assets/render-icons.js && python3 assets/to-webp.py` (needs Playwright with
+  Chromium, and Pillow).
+
 ## What it does
 
 - **Home tab:** a **Favourites** row (once you add some), then **TV apps** and **Other apps** (phone apps)
