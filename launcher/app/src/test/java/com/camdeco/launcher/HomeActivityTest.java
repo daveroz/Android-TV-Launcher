@@ -176,6 +176,23 @@ public class HomeActivityTest {
     }
 
     @Test
+    @Config(qualifiers = "+es")
+    public void followsTheTvLanguage() throws Exception {
+        net.offline = false;
+        HomeActivity home = start().get(); // the TV is set to Spanish
+        assertEquals("Inicio", text(home, R.id.tab_home));
+        assertEquals(List.of("Apps de TV: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
+                "Otras apps: [" + VLC + "]"), rows(home));
+        // Shows from TVmaze: season and episode in Spanish (temporada, episodio).
+        waitFor(() -> "Black Doves".equals(text(home, R.id.hero_title)));
+        assertEquals("T9 E99", text(home, R.id.hero_version));
+        assertEquals("Información de series de TVmaze", text(home, R.id.hero_credit));
+
+        card(home, 0, 0).performLongClick();
+        assertEquals(List.of("Ocultar", "Información de la app", "Desinstalar"), sheetItems());
+    }
+
+    @Test
     public void playStoreSitsInTheTopBarBeforeSettings() throws Exception {
         HomeActivity home = start().get();
         View store = home.findViewById(R.id.tab_store);

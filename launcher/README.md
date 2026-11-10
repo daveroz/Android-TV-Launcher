@@ -69,6 +69,9 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 - **Home** while already home jumps back to the top.
 - **Play/pause** on the remote controls what's playing.
 - **Updates by itself** when apps are installed, removed, updated or disabled.
+- **English and Spanish:** it follows the TV's language (Settings → System → Language) and
+  switches by itself when you change it. Show titles and descriptions come from TVmaze, which only
+  has them in English.
 
 ## Now playing
 

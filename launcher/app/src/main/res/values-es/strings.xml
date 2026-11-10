@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spanish. Android uses these when the TV's language is Spanish; commands stay as they are. -->
+<resources>
+    <string name="launcher_options">Opciones del launcher</string>
+    <string name="no_apps">No hay apps para mostrar. Vuelve a mostrar alguna desde el menú ⋮.</string>
+    <string name="cannot_open">No se puede abrir</string>
+
+    <!-- Top bar -->
+    <string name="tab_home">Inicio</string>
+    <string name="tab_apps">Apps</string>
+
+    <!-- Home rows -->
+    <string name="row_tv">Apps de TV</string>
+    <string name="row_other">Otras apps</string>
+
+    <!-- Now playing -->
+    <string name="play_pause">Reproducir o pausar</string>
+    <string name="next">Siguiente</string>
+    <string name="option_now_playing">En reproducción: %1$s</string>
+    <string name="now_playing_title">En reproducción</string>
+    <string name="now_playing_message">Muestra lo que suena en Spotify, YouTube y otras apps como un reproductor pequeño en la barra superior, con reproducir, pausar y siguiente.\n\nAcceso a notificaciones: %1$s\n\nAndroid solo deja ver el contenido multimedia de otras apps a las apps con acceso a notificaciones, y Android TV no tiene una pantalla para activarlo. Ejecuta esto una vez desde Termux:\n\nadb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService\n\nPara desactivarlo, ejecuta lo mismo con disallow_listener.</string>
+    <string name="open_notification_access">Probar la pantalla de acceso a notificaciones</string>
+
+    <!-- Show artwork -->
+    <string name="tvmaze_credit">Información de series de TVmaze</string>
+    <!-- Temporada y episodio, como en "T2 E5". -->
+    <string name="episode_label">T%1$d E%2$d</string>
+    <string name="recently_played_on">Reproducido recientemente en %1$s</string>
+    <string name="option_show_art">Imágenes de series: %1$s</string>
+    <string name="show_art_on">Imágenes de series activadas. Selecciona Netflix, Disney+ u otra app de streaming.</string>
+    <string name="show_art_off">Imágenes de series desactivadas</string>
+
+    <!-- Cards and hero -->
+    <string name="kind_tv">App de TV</string>
+    <string name="kind_phone">App de teléfono</string>
+    <string name="moving">Moviendo · OK para soltar</string>
+    <string name="key_ok_action">Abrir</string>
+    <string name="key_hold">MANTÉN OK</string>
+    <string name="key_hold_action">Opciones</string>
+
+    <!-- Apps page -->
+    <string name="apps_title">Todas las apps</string>
+    <string name="apps_subtitle">Mantén presionado OK en una app para moverla, ocultarla o desinstalarla. Este orden se usa en todas partes.</string>
+
+    <!-- App menu -->
+    <string name="option_move">Mover</string>
+    <string name="option_hide">Ocultar</string>
+    <string name="option_app_info">Información de la app</string>
+    <string name="option_uninstall">Desinstalar</string>
+    <string name="move_hint">Usa las flechas para moverla y luego presiona OK</string>
+    <string name="hidden_hint">App oculta. Puedes volver a mostrarla desde ⋮ → Apps ocultas.</string>
+
+    <!-- Launcher menu -->
+    <string name="option_hidden_apps">Apps ocultas (%1$d)</string>
+    <string name="option_home_setup">Configurar el botón Inicio</string>
+    <string name="option_tv_settings">Configuración de la TV</string>
+    <string name="no_hidden_apps">No hay apps ocultas</string>
+    <string name="unhide_title">Marca las apps que quieres volver a mostrar</string>
+    <string name="unhide">Volver a mostrar</string>
+    <string name="cancel">Cancelar</string>
+
+    <string name="home_setup_message">Deco Launcher es tu app de inicio: %1$s\nRedirección del botón Inicio: %2$s\n\nPara que el botón Inicio abra Deco Launcher, haz una de estas dos cosas:\n\n1. Activa la redirección: Accesibilidad → Botón Inicio de Deco Launcher. Google TV sigue instalado y puede aparecer un momento.\n\n2. O desactiva Google TV con adb (más rápido y libera memoria):\nadb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx\nadb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith\nPara deshacerlo, ejecútalos con \"enable\" en lugar de \"disable-user\".</string>
+    <string name="open_accessibility">Abrir Accesibilidad</string>
+    <string name="close">Cerrar</string>
+    <string name="yes">Sí</string>
+    <string name="no">No</string>
+    <string name="on">Activado</string>
+    <string name="off">Desactivado</string>
+
+    <string name="home_service_label">Botón Inicio de Deco Launcher</string>
+    <string name="home_service_description">Abre Deco Launcher cada vez que aparece la pantalla principal de Google TV, para que el botón Inicio te lleve a Deco Launcher. Solo detecta la pantalla principal de Google TV y no lee nada de lo que hay en tu pantalla.</string>
+    <string name="play_store">Google Play Store</string>
+</resources>

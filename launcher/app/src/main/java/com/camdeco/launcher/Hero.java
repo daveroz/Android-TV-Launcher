@@ -31,6 +31,7 @@ final class Hero {
     }
 
     private static final long ROTATE_MS = 8000;
+    private static final java.util.regex.Pattern EPISODE = java.util.regex.Pattern.compile("S(\\d+) E(\\d+)");
 
     private final Activity activity;
     private final Handler main;
@@ -166,7 +167,7 @@ final class Hero {
     private void showFeature(int index) {
         featureIndex = index;
         ShowArt.Feature f = features.get(index);
-        setText(f.show, f.genres != null ? f.genres + " · " + f.channel : f.channel, f.episode, f.summary);
+        setText(f.show, f.genres != null ? f.genres + " · " + f.channel : f.channel, episodeLabel(f.episode), f.summary);
         // The current show's dot is a wider amber pill. (Plain views need real widths: a
         // wrap_content View would stretch to fill the row.)
         for (int i = 0; i < dots.getChildCount(); i++) {
@@ -185,6 +186,17 @@ final class Hero {
         }
         main.removeCallbacks(rotate);
         if (running && features.size() > 1) main.postDelayed(rotate, ROTATE_MS);
+    }
+
+    /**
+     * The episode in the TV's language: "S2 E5" in English, "T2 E5" in Spanish. Shows keep the
+     * English form in their cache, so a language change shows up straight away.
+     */
+    private String episodeLabel(String episode) {
+        if (episode == null) return null;
+        java.util.regex.Matcher m = EPISODE.matcher(episode);
+        if (!m.matches()) return episode;
+        return activity.getString(R.string.episode_label, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)));
     }
 
     private void nextFeature() {

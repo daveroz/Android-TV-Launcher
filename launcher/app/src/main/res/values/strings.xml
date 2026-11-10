@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Deco Launcher</string>
+    <string name="app_name" translatable="false">Deco Launcher</string>
     <string name="launcher_options">Launcher options</string>
     <string name="no_apps">No apps to show. Unhide some from the ⋮ menu.</string>
     <string name="cannot_open">Can\'t open that</string>
@@ -14,7 +14,6 @@
     <string name="row_other">Other apps</string>
 
     <!-- Now playing -->
-    <string name="previous">Previous</string>
     <string name="play_pause">Play or pause</string>
     <string name="next">Next</string>
     <string name="option_now_playing">Now playing: %1$s</string>
@@ -24,6 +23,8 @@
 
     <!-- Show artwork -->
     <string name="tvmaze_credit">Show info from TVmaze</string>
+    <!-- Season and episode, as in "S2 E5". -->
+    <string name="episode_label">S%1$d E%2$d</string>
     <string name="recently_played_on">Recently played on %1$s</string>
     <string name="option_show_art">Show artwork: %1$s</string>
     <string name="show_art_on">Show artwork on. Focus Netflix, Disney+ or another streaming app.</string>
@@ -33,7 +34,7 @@
     <string name="kind_tv">TV app</string>
     <string name="kind_phone">Phone app</string>
     <string name="moving">Moving · OK to drop</string>
-    <string name="key_ok">OK</string>
+    <string name="key_ok" translatable="false">OK</string>
     <string name="key_ok_action">Open</string>
     <string name="key_hold">HOLD OK</string>
     <string name="key_hold_action">Options</string>
