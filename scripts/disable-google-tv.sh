@@ -34,7 +34,13 @@ if [ $# -lt 1 ]; then
 fi
 TV=$1
 case "$TV" in *:*) ;; *) TV="$TV:5555" ;; esac
-MODE=${2:-}
+# Accept --undo, -undo or undo (and the same for --yes); refuse anything else.
+case "${2:-}" in
+  "") MODE="" ;;
+  --undo | -undo | undo) MODE="--undo" ;;
+  --yes | -yes | yes | -y) MODE="--yes" ;;
+  *) echo "Unknown option: $2 (use --undo to turn Google TV back on)"; exit 1 ;;
+esac
 
 say() { printf '\n== %s\n' "$*"; }
 ok() { printf '  OK  %s\n' "$*"; }
