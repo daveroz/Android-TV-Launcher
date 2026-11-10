@@ -130,10 +130,11 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
             holder.icon.setImageDrawable(app.icon);
             holder.icon.setVisibility(View.VISIBLE);
         }
+        // Home's rows show just the cards. The Apps page names each app, and says when one is moving.
+        holder.title.setVisibility(fillWidth ? View.VISIBLE : View.GONE);
         holder.title.setText(app.label);
-        int subtitle = moving ? R.string.moving
-                : app.leanback ? R.string.kind_tv : R.string.kind_phone;
-        holder.subtitle.setText(subtitle);
+        holder.subtitle.setVisibility(moving ? View.VISIBLE : View.GONE);
+        holder.subtitle.setText(R.string.moving);
         // A recycled view may still carry the focus lift of the app it showed before.
         boolean focused = view.isFocused();
         holder.card.setScaleX(focused ? FOCUS_SCALE : 1f);

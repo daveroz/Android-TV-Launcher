@@ -54,6 +54,15 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
             this.speed = speed;
         }
 
+        /**
+         * Which song this is, whatever its picture: app, title, artist and album. Players often send
+         * the same song's cover again as a new picture, or for a moment without one, so the picture
+         * can't tell one song from the next.
+         */
+        String song() {
+            return packageName + '\n' + title + '\n' + artist + '\n' + album;
+        }
+
         /** Where playback is now, moving on from the last reported position while playing. */
         long positionAt(long elapsedRealtime) {
             long now = playing && updatedAt > 0
@@ -126,8 +135,10 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
     @Override
     public void onActiveSessionsChanged(List<MediaController> controllers) {
         MediaController best = null;
+        MediaController sameAsCurrent = null;
         if (controllers != null) {
             for (MediaController c : controllers) {
+                if (current != null && c.getSessionToken().equals(current.getSessionToken())) sameAsCurrent = c;
                 if (!worthShowing(c)) continue;
                 if (isPlaying(c)) {
                     best = c;
@@ -136,7 +147,10 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
                 if (best == null) best = c;
             }
         }
-        setCurrent(best);
+        // Nothing worth showing right now, but the last player is still around (stopped for a
+        // moment between songs, say): keep following it so it's heard the moment it plays again.
+        // track() is null meanwhile.
+        setCurrent(best != null ? best : sameAsCurrent);
     }
 
     private void refresh() {

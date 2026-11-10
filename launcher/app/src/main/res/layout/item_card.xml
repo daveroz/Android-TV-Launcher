@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One app: a 16:9 card with its title and a short line under it. -->
+<!-- One app: a 16:9 card. On the Apps page its name sits under it, and "Moving" while it moves. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="@dimen/card_width"
     android:layout_height="wrap_content"

@@ -41,7 +41,7 @@ public class RecordViewTest {
     @Test
     public void whilePlayingTheRecordComesOutThenSpinsAt33Rpm() {
         RecordView record = record();
-        record.show(blueCover, true);
+        record.show(blueCover, true, "A");
         run(record, 0.3f);
         assertTrue("on its way out", record.slide() > 0.3f && record.slide() < 1f);
         assertEquals("doesn't spin until it's out", 0f, record.speed(), 0f);
@@ -57,7 +57,7 @@ public class RecordViewTest {
     @Test
     public void pausedItSlowsToAStopAndStaysOut() {
         RecordView record = record();
-        record.show(blueCover, true);
+        record.show(blueCover, true, "A");
         run(record, 2.5f);
         record.setPlaying(false);
         run(record, 0.2f);
@@ -70,9 +70,9 @@ public class RecordViewTest {
     @Test
     public void aNewSongStopsTheRecordPutsItBackAndChangesTheCover() {
         RecordView record = record();
-        record.show(blueCover, true);
+        record.show(blueCover, true, "A");
         run(record, 2.5f);
-        record.show(pinkCover, true);
+        record.show(pinkCover, true, "B");
         run(record, 0.1f);
         assertSame("the old cover until the record is back in", blueCover, record.shownCover());
         assertTrue("stopping first", record.speed() < 0.9f);
@@ -84,9 +84,38 @@ public class RecordViewTest {
     }
 
     @Test
+    public void theSameSongWithANewCopyOfItsCoverKeepsPlaying() {
+        RecordView record = record();
+        record.show(blueCover, true, "A");
+        run(record, 2.5f);
+        Drawable copy = cover(0xFF1E40AF); // players resend the cover as a new picture
+        record.show(copy, true, "A");
+        run(record, 0.2f);
+        assertTrue("not a new song", !record.songChanging());
+        assertSame("the copy is on the sleeve", copy, record.shownCover());
+        assertEquals("still out", 1f, record.slide(), 0f);
+        assertTrue("still spinning", record.speed() > 0.95f);
+    }
+
+    @Test
+    public void aSongThatComesBackRightAwayDoesNotChangeTheRecord() {
+        RecordView record = record();
+        record.show(blueCover, true, "A");
+        run(record, 2.5f);
+        record.show(pinkCover, true, "B"); // a blip: another song for a split second...
+        run(record, 0.05f);
+        record.show(blueCover, true, "A"); // ...then the same one again
+        run(record, 2f);
+        assertTrue(!record.songChanging());
+        assertSame(blueCover, record.shownCover());
+        assertEquals(1f, record.slide(), 0f);
+        assertTrue(record.speed() > 0.95f);
+    }
+
+    @Test
     public void recentlyPlayedStaysInItsSleeve() {
         RecordView record = record();
-        record.show(blueCover, false);
+        record.show(blueCover, false, "A");
         run(record, 2f);
         assertEquals(0f, record.slide(), 0f);
         assertEquals(0f, record.speed(), 0f);
@@ -95,7 +124,7 @@ public class RecordViewTest {
     @Test
     public void theRecordShowsLeftOfTheSleeveInTheCoversColour() {
         RecordView playing = record();
-        playing.show(blueCover, true);
+        playing.show(blueCover, true, "A");
         run(playing, 2.5f);
         Bitmap out = draw(playing);
         int sleeveLeft = out.getWidth() - Math.round(176 * dp);
@@ -106,7 +135,7 @@ public class RecordViewTest {
                 Color.alpha(px) > 200 && hsv[0] > 200 && hsv[0] < 250);
 
         RecordView paused = record();
-        paused.show(blueCover, false);
+        paused.show(blueCover, false, "A");
         run(paused, 1f);
         int empty = draw(paused).getPixel(sleeveLeft - Math.round(50 * dp), out.getHeight() / 2 + Math.round(20 * dp));
         assertTrue("nothing out of the sleeve", Color.alpha(empty) < 40);

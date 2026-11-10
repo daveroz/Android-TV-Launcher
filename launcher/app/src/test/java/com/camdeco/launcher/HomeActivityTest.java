@@ -383,7 +383,7 @@ public class HomeActivityTest {
         assertEquals(View.VISIBLE, home.findViewById(R.id.np_bar).getVisibility());
         shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_STOPPED));
         shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
-        idle();
+        afterTheGrace();
         assertEquals(View.GONE, home.findViewById(R.id.np_bar).getVisibility());
     }
 
@@ -421,6 +421,64 @@ public class HomeActivityTest {
         card(home, 0, 0).requestFocus(); // Netflix: its own card, no LP
         idle();
         assertFalse(home.hero.showsRecord());
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void aBlipFromThePlayerDoesNotLookLikeANewSong() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        MediaController spotify = play("com.spotify.tv.android", "Speed", "Bad Colours", cover());
+        card(home, 0, 2).requestFocus(); // Spotify
+        idle();
+        RecordView record = home.hero.recordForTests();
+        android.widget.ImageView miniCover = home.findViewById(R.id.np_art);
+        assertTrue(home.hero.showsRecord());
+
+        // The player resends the song for a moment without its cover, then with a new copy of it.
+        resend(spotify, "Speed", "Bad Colours", null);
+        assertFalse("not a new song", record.songChanging());
+        assertTrue("the mini player keeps the cover", miniCover.getDrawable() instanceof android.graphics.drawable.BitmapDrawable);
+        resend(spotify, "Speed", "Bad Colours", cover());
+        assertFalse("still not a new song", record.songChanging());
+
+        // It drops its session for half a second, then comes back.
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_STOPPED));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500));
+        assertEquals("nothing changes during the blip", View.VISIBLE, home.findViewById(R.id.np_bar).getVisibility());
+        assertTrue(home.hero.showsRecord());
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PLAYING));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        afterTheGrace();
+        assertEquals(View.VISIBLE, home.findViewById(R.id.np_bar).getVisibility());
+        assertTrue(home.hero.showsRecord());
+        assertFalse(record.songChanging());
+        assertTrue(record.isPlaying());
+
+        // A real next song does change the record.
+        android.graphics.Bitmap other = android.graphics.Bitmap.createBitmap(300, 300, android.graphics.Bitmap.Config.ARGB_8888);
+        other.eraseColor(0xFF1E40AF);
+        resend(spotify, "Promise", "Bad Colours", other);
+        assertTrue("a new song", record.songChanging());
+    }
+
+    /** The player sends the song's details again, as players do. */
+    private static void resend(MediaController controller, String title, String artist, android.graphics.Bitmap art) {
+        MediaMetadata.Builder metadata = new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
+                .putLong(MediaMetadata.METADATA_KEY_DURATION, 240000);
+        if (art != null) metadata.putBitmap(MediaMetadata.METADATA_KEY_ART, art);
+        shadowOf(controller).setMetadata(metadata.build());
+        shadowOf(controller).executeOnMetadataChanged(controller.getMetadata());
+        idle();
+    }
+
+    /** Past the moment the launcher waits before deciding a song has really stopped. */
+    private static void afterTheGrace() {
+        idle();
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(HomeActivity.TRACK_GONE_MS + 100));
     }
 
     @Test
@@ -487,7 +545,7 @@ public class HomeActivityTest {
 
         shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_STOPPED));
         shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
-        idle();
+        afterTheGrace();
         assertEquals(View.GONE, home.findViewById(R.id.np_bar).getVisibility());
 
         // Nothing playing: Spotify's card shows what was played, with its cover, instead of the logo.

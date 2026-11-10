@@ -31,8 +31,6 @@
     <string name="show_art_off">Imágenes de series desactivadas</string>
 
     <!-- Cards and hero -->
-    <string name="kind_tv">App de TV</string>
-    <string name="kind_phone">App de teléfono</string>
     <string name="moving">Moviendo · OK para soltar</string>
     <string name="key_ok_action">Abrir</string>
     <string name="key_hold">MANTÉN OK</string>

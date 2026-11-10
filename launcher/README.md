@@ -52,7 +52,8 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 
 ## What it does
 
-- **Home tab:** two rows, **TV apps** and **Other apps** (phone apps)
+- **Home tab:** two rows of cards, **TV apps** and **Other apps** (phone apps), with nothing
+  written under them. The Apps tab names each app.
 - **Mini player** in the top bar while something plays (see [Now playing](#now-playing))
 - **Streaming apps show their shows:** focus Netflix, Disney+, Prime Video, HBO Max, Hulu,
   Apple TV, Paramount+ or Peacock and the hero fills with that service's shows, changing every
@@ -105,14 +106,20 @@ record stops, slides back into the sleeve, the sleeve changes to the new cover, 
 slides out and spins. The record is tinted from the cover, with grooves and the cover art on its
 label. Recently played songs show their LP with the record in the sleeve.
 
+Players often resend the song they're playing, sometimes with a new copy of the cover or for a
+moment without one, and some drop out for a split second between songs. Deco goes by the song
+itself (app, title, artist and album), not the picture, and waits 1.5 seconds before deciding
+something has stopped, so none of that sends the record back into its sleeve or flickers the
+mini player.
+
 ### Audio visualizer
 
 While the hero shows what's playing, light cells show the music, like a hi-fi spectrum display: 48
 columns, from the bass on the left (40 Hz) through voices in the middle to the treble on the right
-(16 kHz). The grid is level with the album cover (same top and bottom), runs from the screen margin
-to just before the record, and sits behind the song's text. Only cells with sound light up; they're
-see-through, so the cover's glow shows through them, and fade more toward the top so the text stays
-easy to read. Each column rises with its part of the music and settles back gently, and the top
+(16 kHz). The grid is level with the album cover (same top and bottom), sits behind the song's text,
+and runs from the screen margin to the cover, trailing off as it passes behind the record. Only
+cells with sound light up; they're see-through, so the cover's glow shows through them, fade more
+toward the top so the text stays easy to read, and each bar's top cell is a little softer still. Each column rises with its part of the music and settles back gently, and the top
 cell of a column fades in and out, so the heights change smoothly. The cells take the album cover's
 colours, whiter at the bottom, and go dark on pause.
 

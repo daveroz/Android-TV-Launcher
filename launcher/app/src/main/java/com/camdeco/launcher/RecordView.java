@@ -47,6 +47,9 @@ public class RecordView extends View {
     private Drawable cover;
     private Drawable previous;
     private Drawable pending;
+    /** Which song is on the sleeve, and which one is waiting (see {@link NowPlaying.Track#song()}). */
+    private String song;
+    private String pendingSong;
     private boolean playing;
     private boolean running;
     private long lastFrame;
@@ -69,13 +72,25 @@ public class RecordView extends View {
         edgePaint.setColor(0x1AFFFFFF);
     }
 
-    /** Puts this cover on the sleeve (the record comes out while {@code nowPlaying}). */
-    void show(Drawable art, boolean nowPlaying) {
+    /**
+     * Shows this song's cover on the sleeve; the record comes out while {@code nowPlaying}. Only a
+     * different song puts the record back and changes the sleeve. The same song with a new copy of
+     * its cover (players resend it) just updates the sleeve in place.
+     */
+    void show(Drawable art, boolean nowPlaying, String songKey) {
         playing = nowPlaying;
         if (cover == null) {
+            song = songKey;
             setCoverNow(art);
-        } else if (!sameArt(art, pending != null ? pending : cover)) {
-            pending = sameArt(art, cover) ? null : art; // a new song: change once the record is back in
+        } else if (songKey.equals(pendingSong)) {
+            pending = art; // a newer picture for the song that's on its way in
+        } else if (songKey.equals(song)) {
+            pending = null; // the same song (back from a blip, or a new copy of its cover)
+            pendingSong = null;
+            if (!sameArt(art, cover)) replaceCover(art);
+        } else {
+            pending = art; // a new song: change once the record is back in
+            pendingSong = songKey;
         }
         start();
     }
@@ -109,6 +124,10 @@ public class RecordView extends View {
         return cover;
     }
 
+    boolean songChanging() {
+        return pending != null;
+    }
+
     // ---- Animation ----
 
     /** Moves the record on by {@code dt} seconds. */
@@ -120,8 +139,10 @@ public class RecordView extends View {
                 speed = 0f;
                 slide = Math.max(0f, slide - dt / SLIDE_SECONDS);
                 if (slide == 0f) {
+                    song = pendingSong;
                     setCoverNow(pending);
                     pending = null;
+                    pendingSong = null;
                 }
             }
         } else if (playing) {
@@ -156,6 +177,13 @@ public class RecordView extends View {
         previous = cover;
         cover = art;
         fade = previous == null ? 1f : 0f;
+        buildDisc();
+        invalidate();
+    }
+
+    /** The same song with a new copy of its cover: swap it in place, without any animation. */
+    private void replaceCover(Drawable art) {
+        cover = art;
         buildDisc();
         invalidate();
     }

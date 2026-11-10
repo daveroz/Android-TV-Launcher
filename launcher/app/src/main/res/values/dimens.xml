@@ -24,6 +24,7 @@
          reaching 0.47 of the sleeve to the left of it (83dp), plus a little for the edge. -->
     <dimen name="record_width">260dp</dimen>
     <!-- The audio visualizer: level with the cover (hero_top, hero_card_height), from the screen
-         margin to 12dp before the record when it's out (overscan_h + record_width + 12dp). -->
-    <dimen name="wave_end">320dp</dimen>
+         margin to the cover's left edge (overscan_h + hero_card_height), passing behind the record
+         and fading out as it gets there. -->
+    <dimen name="wave_end">224dp</dimen>
 </resources>

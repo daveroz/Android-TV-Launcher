@@ -12,8 +12,9 @@ import android.view.animation.AnimationUtils;
 /**
  * The music under the song in the hero, as light cells like a hi-fi spectrum display: one column
  * per part of the music, bass on the left and treble on the right, level with the album cover
- * (same top and bottom) and behind the song's text. Only cells with sound light up, see-through so
- * the cover's glow shows through, fading more toward the top so the text stays easy to read.
+ * (same top and bottom) and behind the song's text, trailing off as it reaches the cover. Only
+ * cells with sound light up, see-through so the cover's glow shows through, fading more toward the
+ * top so the text stays easy to read, and each bar's top is a little softer still.
  *
  * Each column rises with its part of the music and settles back gently; the top cell of a column
  * fades in and out, so heights change smoothly rather than a whole cell at a time. Cells take the
@@ -21,6 +22,15 @@ import android.view.animation.AnimationUtils;
  */
 public class SoundWaveView extends View {
     private static final int COLUMNS = SoundWave.COLUMNS;
+    /**
+     * Extra columns after the music's own, reaching to the cover: they echo the treble columns
+     * and fade out as they get there, so the grid trails off into the cover (mostly behind the
+     * record) without the treble itself fading.
+     */
+    private static final int TAIL = 8;
+    private static final int ALL = COLUMNS + TAIL;
+    /** The top cell of each bar, and the one under it, are a little more see-through. */
+    private static final float[] TIP = {0.6f, 0.85f};
     /** Gap between cells, as a share of the cell pitch. */
     private static final float GAP = 0.16f;
     /** How see-through the lit cells are: opacity at the bottom row and at the top row. */
@@ -41,6 +51,8 @@ public class SoundWaveView extends View {
     /** Per row, bottom first: the lit colour and its opacity. Sized when the view gets its size. */
     private int[] rowColours = new int[0];
     private float[] rowOpacity = new float[0];
+    /** Per column: 1, then fading to nothing across the tail. */
+    private final float[] columnFade = new float[ALL];
     private int rows;
     private float pitch;
     private float cell;
@@ -77,6 +89,11 @@ public class SoundWaveView extends View {
         return shown[column];
     }
 
+    /** Sets a column's level straight away, without the rise and settle (for tests). */
+    void showForTests(int column, float level) {
+        shown[column] = level;
+    }
+
     /** How many rows of cells fit (for tests). */
     int rows() {
         return rows;
@@ -90,7 +107,11 @@ public class SoundWaveView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         // The columns fill the width; as many square rows as fit stack up from the bottom.
-        pitch = w / (COLUMNS - GAP); // COLUMNS cells and COLUMNS - 1 gaps
+        pitch = w / (ALL - GAP); // ALL cells and ALL - 1 gaps fill the width
+        for (int c = 0; c < ALL; c++) {
+            float t = c < COLUMNS ? 0f : (c - COLUMNS + 1) / (float) (TAIL + 1);
+            columnFade[c] = 1f - t * t * (3 - 2 * t);
+        }
         cell = pitch * (1 - GAP);
         radius = cell * 0.22f;
         rows = pitch > 0 ? Math.max(1, (int) ((h + pitch * GAP) / pitch)) : 0;
@@ -132,13 +153,19 @@ public class SoundWaveView extends View {
         }
 
         float glow = 2 * density;
-        for (int c = 0; c < COLUMNS; c++) {
-            float lit = shown[c] * rows;
+        for (int c = 0; c < ALL; c++) {
+            // The tail echoes the treble columns, last first.
+            float level = c < COLUMNS ? shown[c] : shown[Math.max(0, COLUMNS - 2 - (c - COLUMNS))];
+            float lit = level * rows;
             int full = (int) lit;
+            int top = full < rows && lit - full >= 0.03f ? full : full - 1; // the bar's top cell
             for (int r = 0; r < rows && r <= full; r++) {
                 float strength = r < full ? 1f : lit - full; // the top cell fades in and out
                 if (strength < 0.03f) break;
-                float opacity = rowOpacity[r] * strength;
+                int fromTop = top - r;
+                float tip = fromTop < TIP.length ? TIP[fromTop] : 1f;
+                float opacity = rowOpacity[r] * strength * tip * columnFade[c];
+                if (opacity < 0.01f) continue;
                 int colour = rowColours[r];
                 cellRect(c, r, glow);
                 glowPaint.setColor(colour);

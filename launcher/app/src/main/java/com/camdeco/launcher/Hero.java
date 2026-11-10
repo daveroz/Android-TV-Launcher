@@ -68,7 +68,8 @@ final class Hero {
     private Images images;
     private final Runnable rotate = this::nextFeature;
     /** The cover on screen, so play/pause updates don't fade the same picture again. */
-    private Object shownCover;
+    private String shownSong;
+    private Bitmap shownArt;
 
     Hero(Activity activity, Handler main) {
         this.activity = activity;
@@ -110,7 +111,7 @@ final class Hero {
      * and the icons' street-map grid.
      */
     void setAppArt(Drawable drawable, boolean isBanner, AppColors colours) {
-        shownCover = null;
+        shownSong = null;
         field.setColours(colours);
         if (isBanner) {
             showCard(AppRepository.copy(drawable), cardHeight * 16 / 9, ImageView.ScaleType.CENTER_CROP, 0, null);
@@ -140,17 +141,38 @@ final class Hero {
         String detail = track.album != null ? track.album + " · " + track.app : track.app;
         setText(track.title, track.artist, null, detail);
         showHoldHint(false);
-        Object picture = track.art != null ? track.art : track.packageName;
-        if (picture.equals(shownCover)) {
-            record.setPlaying(track.playing); // same song: play or pause
+        String song = track.song();
+        if (song.equals(shownSong)) {
+            // The same song. Players resend its cover as a new picture, or drop it for a moment:
+            // a new copy just replaces the picture in place, and a missing one changes nothing.
+            if (track.art != null && track.art != shownArt) {
+                shownArt = track.art;
+                refreshPicture(track.art, track.playing, song);
+            }
+            record.setPlaying(track.playing); // play or pause
             return;
         }
+        shownSong = song;
+        shownArt = track.art;
         if (track.art != null) {
-            showPicture(track.art, track.playing);
+            showPicture(track.art, track.playing, song);
         } else if (fallbackIcon != null) {
-            swapCover(AppRepository.copy(fallbackIcon), AppRepository.copy(fallbackIcon), track.playing);
+            swapCover(AppRepository.copy(fallbackIcon), AppRepository.copy(fallbackIcon), track.playing, song);
         }
-        shownCover = picture;
+    }
+
+    /** The same song's picture again, as a new copy: swap it in without any animation. */
+    private void refreshPicture(Bitmap bitmap, boolean playing, String song) {
+        if (isWide(bitmap)) {
+            art.setImageDrawable(new BitmapDrawable(activity.getResources(), bitmap));
+        } else {
+            record.show(new BitmapDrawable(activity.getResources(), bitmap), playing, song);
+            ambient.setImageDrawable(new BitmapDrawable(activity.getResources(), bitmap));
+        }
+    }
+
+    private static boolean isWide(Bitmap bitmap) {
+        return bitmap.getWidth() > bitmap.getHeight() * 1.4f;
     }
 
     /**
@@ -158,12 +180,12 @@ final class Hero {
      * cover) becomes an LP on the right, with a soft blur of itself across the screen; its record
      * comes out and spins while {@code playing}.
      */
-    private void showPicture(Bitmap bitmap, boolean playing) {
-        if (bitmap.getWidth() > bitmap.getHeight() * 1.4f) {
+    private void showPicture(Bitmap bitmap, boolean playing, String song) {
+        if (isWide(bitmap)) {
             swapArt(true, new BitmapDrawable(activity.getResources(), bitmap), null, ImageView.ScaleType.CENTER_CROP, 0);
         } else {
             swapCover(new BitmapDrawable(activity.getResources(), bitmap),
-                    new BitmapDrawable(activity.getResources(), bitmap), playing);
+                    new BitmapDrawable(activity.getResources(), bitmap), playing, song);
         }
     }
 
@@ -214,8 +236,9 @@ final class Hero {
     }
 
     private void setFeatureArt(Bitmap bitmap) {
-        shownCover = null;
-        showPicture(bitmap, false); // recently played: the record stays in its sleeve
+        shownSong = null;
+        // Recently played: the record stays in its sleeve.
+        showPicture(bitmap, false, "feature\n" + features.get(featureIndex).showId);
     }
 
     private void stopFeatures() {
@@ -326,7 +349,7 @@ final class Hero {
     }
 
     /** Shows an album cover as an LP, with the cover blurred across the whole screen behind it. */
-    private void swapCover(Drawable picture, Drawable blurred, boolean playing) {
+    private void swapCover(Drawable picture, Drawable blurred, boolean playing, String song) {
         art.animate().cancel();
         art.animate().alpha(0f).setDuration(160).start();
         cover.animate().cancel();
@@ -334,7 +357,7 @@ final class Hero {
         record.animate().cancel();
         record.setVisibility(View.VISIBLE);
         record.animate().alpha(1f).setDuration(280).start();
-        record.show(picture, playing);
+        record.show(picture, playing, song);
         ambient.setImageDrawable(blurred);
         ambient.animate().alpha(0.85f).setDuration(300).start();
         field.animate().alpha(0f).setDuration(300).start();

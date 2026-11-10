@@ -70,7 +70,7 @@ public class SoundWaveViewTest {
         view = new SoundWaveView(app, null);
         view.setSource(wave);
         float dp = app.getResources().getDisplayMetrics().density;
-        int w = Math.round(592 * dp), h = Math.round(176 * dp);
+        int w = Math.round(688 * dp), h = Math.round(176 * dp);
         view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, w, h);
@@ -111,22 +111,47 @@ public class SoundWaveViewTest {
     }
 
     @Test
-    public void theCellsFillTheWidthAndAreSeeThrough() {
-        play(60, 30, 10, 45);
+    public void theGridTrailsOffAsItReachesTheCover() {
+        play(60, 30, 30, 45);
         float dp = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics().density;
         assertTrue("about 14 rows, as tall as the cover: " + view.rows(), view.rows() >= 13);
         assertTrue("square cells of about 10dp: " + view.pitch() / dp, view.pitch() / dp > 11.5 && view.pitch() / dp < 13);
-        // The last column ends at the right edge.
-        int lastColumnX = Math.round(frame.getWidth() - view.pitch() * 0.42f);
-        boolean seen = false;
-        for (int y = 0; y < frame.getHeight(); y++) {
-            int a = Color.alpha(frame.getPixel(lastColumnX, y));
-            if (a > 60) {
-                seen = true;
-                assertTrue("see-through, not solid: " + a, a < 200);
-            }
-        }
-        assertTrue("the last column is drawn at the right edge", seen);
+        int lastMusic = brightest(SoundWave.COLUMNS - 1);
+        int tailMiddle = brightest(SoundWave.COLUMNS + 3);
+        int tailEnd = brightest(SoundWave.COLUMNS + 7);
+        assertTrue("the music's own columns are see-through, not solid: " + lastMusic, lastMusic > 60 && lastMusic < 200);
+        assertTrue("then fading: " + lastMusic + " > " + tailMiddle + " > " + tailEnd, tailMiddle < lastMusic && tailEnd < tailMiddle);
+        assertTrue("almost gone at the cover: " + tailEnd, tailEnd < 25);
+    }
+
+    @Test
+    public void eachBarsTopIsALittleSofter() {
+        Context app = RuntimeEnvironment.getApplication();
+        view = new SoundWaveView(app, null);
+        float dp = app.getResources().getDisplayMetrics().density;
+        int w = Math.round(688 * dp), h = Math.round(176 * dp);
+        view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
+        view.layout(0, 0, w, h);
+        // Two bars: one exactly 5 cells tall, one 10. Row 4 is the top of the first, the middle of the second.
+        view.showForTests(5, 5f / view.rows());
+        view.showForTests(20, 10f / view.rows());
+        frame = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        view.draw(new Canvas(frame));
+        float pitch = view.pitch();
+        int y = Math.round(h - pitch * 4 - pitch * 0.42f);
+        int tip = Color.alpha(frame.getPixel(Math.round(5 * pitch + pitch * 0.42f), y));
+        int middle = Color.alpha(frame.getPixel(Math.round(20 * pitch + pitch * 0.42f), y));
+        assertTrue("the same cell is softer at the top of a bar: " + tip + " vs " + middle,
+                middle > 60 && tip > 0.5f * middle && tip < 0.7f * middle);
+    }
+
+    /** The strongest opacity anywhere in this column. */
+    private int brightest(int column) {
+        int x = Math.round(column * view.pitch() + view.pitch() * 0.42f);
+        int best = 0;
+        for (int y = 0; y < frame.getHeight(); y++) best = Math.max(best, Color.alpha(frame.getPixel(x, y)));
+        return best;
     }
 
     /** Music as the visualizer sees it, with this much bass (to 250 Hz), voice (to 4 kHz) and treble. */

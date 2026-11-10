@@ -55,6 +55,11 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     /** Google Play Store, opened from the top bar. */
     static final String PLAY_STORE = "com.android.vending";
     private static final int REQUEST_SOUND = 1;
+    /**
+     * Players drop their session for a moment between songs or while buffering. Wait this long
+     * before hiding the player and leaving the song, so a blip doesn't look like the song ended.
+     */
+    static final long TRACK_GONE_MS = 1500;
     private static final int PAGE_HOME = 0;
     private static final int PAGE_APPS = 1;
     /** Wait for the remote to settle before swapping the big hero art. */
@@ -106,6 +111,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     SoundWave soundWave;
     private Bitmap waveArt;
     private boolean resumed;
+    /** The song in the mini player, so a moment without its cover doesn't swap in the app icon. */
+    private String playerSong;
+    private boolean trackGoneSoon;
+    private final Runnable trackGone = this::onTrackGone;
 
     private List<AppEntry> allApps = new ArrayList<>();
     private int page = PAGE_HOME;
@@ -621,17 +630,18 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
 
     private void onNowPlayingChanged() {
         NowPlaying.Track track = nowPlaying.track();
-        bindPlayer(track);
-        MediaHistory.record(this, track); // for "Recently played" on the app's card later
         if (track == null) {
-            if (isInPlayer(getWindow().getDecorView().findFocus())) tabHome.requestFocus();
-            if (heroShowsTrack) {
-                AppEntry app = heroApp != null ? heroApp : focusedApp();
-                if (app != null) showHero(app);
+            // Maybe just a blip: tidy up only if nothing comes back for a moment.
+            if (!trackGoneSoon) {
+                trackGoneSoon = true;
+                main.postDelayed(trackGone, TRACK_GONE_MS);
             }
-            syncWave(); // nothing playing: no wave
             return;
         }
+        main.removeCallbacks(trackGone);
+        trackGoneSoon = false;
+        bindPlayer(track);
+        MediaHistory.record(this, track); // for "Recently played" on the app's card later
         if (heroApp == null) {
             if (heroShowsTrack) hero.showTrack(track, appIcon(track.packageName)); // mini player focused
         } else if (heroShowsTrack || heroApp.packageName.equals(track.packageName)) {
@@ -640,16 +650,34 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         syncWave(); // play and pause
     }
 
+    /** Nothing has played for a moment: hide the player and show the focused app again. */
+    private void onTrackGone() {
+        trackGoneSoon = false;
+        if (nowPlaying.track() != null) return;
+        bindPlayer(null);
+        if (isInPlayer(getWindow().getDecorView().findFocus())) tabHome.requestFocus();
+        if (heroShowsTrack) {
+            AppEntry app = heroApp != null ? heroApp : focusedApp();
+            if (app != null) showHero(app);
+        }
+        syncWave(); // nothing playing: no wave
+    }
+
     /** The mini player in the top bar: cover, "title · artist", play/pause and next. */
     private void bindPlayer(NowPlaying.Track track) {
         if (track == null) {
             npBar.setVisibility(View.GONE);
+            playerSong = null;
             return;
         }
         npBar.setVisibility(View.VISIBLE);
         npTitle.setText(track.artist != null ? track.title + " · " + track.artist : track.title);
-        if (track.art != null) npArt.setImageBitmap(track.art);
-        else npArt.setImageDrawable(appIcon(track.packageName));
+        if (track.art != null) {
+            npArt.setImageBitmap(track.art);
+        } else if (!track.song().equals(playerSong)) {
+            npArt.setImageDrawable(appIcon(track.packageName)); // a song without a cover
+        }
+        playerSong = track.song();
         npPlay.setImageResource(track.playing ? R.drawable.ic_pause : R.drawable.ic_play);
     }
 

@@ -31,8 +31,6 @@
     <string name="show_art_off">Show artwork off</string>
 
     <!-- Cards and hero -->
-    <string name="kind_tv">TV app</string>
-    <string name="kind_phone">Phone app</string>
     <string name="moving">Moving · OK to drop</string>
     <string name="key_ok" translatable="false">OK</string>
     <string name="key_ok_action">Open</string>
