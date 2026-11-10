@@ -141,20 +141,27 @@ curl -LO https://raw.githubusercontent.com/daveroz/Cam-deco/ccr-beaea807-gbu79w/
 bash disable-google-tv.sh 192.168.x.x
 ```
 
-By hand, the same thing is:
+By hand, in the TV's own command line (or with `adb shell "..."` in front), this one line does
+the same and was confirmed on a Chromecast HD. It stops if Deco Launcher isn't installed, and puts
+Google TV back if Home doesn't open Deco Launcher:
 
-```bash
-adb shell cmd package set-home-activity --user 0 com.camdeco.launcher/com.camdeco.launcher.HomeActivity
-adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+```
+[ -n "$(pm path com.camdeco.launcher)" ] && { cmd package set-home-activity --user 0 com.camdeco.launcher/com.camdeco.launcher.HomeActivity; pm disable-user --user 0 com.google.android.apps.tv.launcherx; pm disable-user --user 0 com.google.android.tungsten.setupwraith; input keyevent KEYCODE_HOME; sleep 5; if dumpsys window | grep mCurrentFocus | grep -q com.camdeco.launcher; then echo "OK: Home opens Deco Launcher"; else echo "Home opened: $(dumpsys window | grep mCurrentFocus)"; pm enable com.google.android.apps.tv.launcherx; pm enable com.google.android.tungsten.setupwraith; echo "Google TV is back on"; fi; } || echo "STOP: Deco Launcher is not installed, nothing was changed"
 ```
 
-Only if Home then still goes to Google TV's setup screen, also turn off
-`com.google.android.tungsten.setupwraith` the same way. To undo:
+Why the setup app goes too: on a Chromecast with Google TV, four apps can be Home, in this order:
+Google TV's home screen (priority 2), Google TV setup's **recovery screen** (`setupwraith`,
+priority 1), Deco Launcher (0) and Android's fallback (−1000). With only the home screen off, the
+Home button lands on the recovery screen instead of Deco Launcher. (Android doesn't let the
+command line turn off just that one screen, only the whole setup app.) To see the list:
+`cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME`
+
+To undo:
 
 ```bash
 bash disable-google-tv.sh 192.168.x.x --undo
-# or: adb shell pm enable com.google.android.apps.tv.launcherx
-#     adb shell pm enable com.google.android.tungsten.setupwraith
+# or in the TV's command line:
+#   pm enable com.google.android.apps.tv.launcherx; pm enable com.google.android.tungsten.setupwraith
 ```
 
 **Keep the undo command.** If Deco Launcher is ever uninstalled while Google TV is off, the Home

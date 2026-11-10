@@ -178,7 +178,8 @@ else
   bad "Home doesn't open Deco Launcher (it goes to: $(home_target))."
   setup_off=0
   if installed "$GOOGLE_SETUP" && ! is_disabled "$GOOGLE_SETUP" && home_target | grep -q "$GOOGLE_SETUP"; then
-    echo "  Google TV's setup app is claiming the Home button. Turning it off as well usually fixes this"
+    echo "  Google TV setup's recovery screen is taking the Home button (it ranks above Deco Launcher)."
+    echo "  Turning off the setup app as well fixes this; it's needed on the Chromecast with Google TV"
     echo "  (also undone by --undo)."
     if confirm "  Turn off the Google TV setup app too?"; then
       tv pm disable-user --user 0 "$GOOGLE_SETUP" >/dev/null
