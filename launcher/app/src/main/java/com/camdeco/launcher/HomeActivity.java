@@ -455,11 +455,31 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
 
         // Streaming apps: their shows take over the hero, like the Apple TV home screen.
         String channel = repo.showArtEnabled() ? ShowArt.channelFor(app) : null;
-        if (channel != null) {
-            List<ShowArt.Feature> ready = showArt.ready(channel);
-            if (!ready.isEmpty()) hero.showFeatures(ready, heroImages);
-            updateShowArt(app, channel);
+        List<ShowArt.Feature> shows = channel != null ? showArt.ready(channel) : new ArrayList<>();
+        if (!shows.isEmpty()) {
+            hero.showFeatures(shows, heroImages, getString(R.string.tvmaze_credit));
+        } else {
+            // Media apps (Spotify, YouTube...) when nothing of theirs is playing: what you played last.
+            List<ShowArt.Feature> recent = recentlyPlayed(app);
+            if (!recent.isEmpty()) hero.showFeatures(recent, heroImages, null);
         }
+        if (channel != null) updateShowArt(app, channel);
+    }
+
+    /** What was played in this app, newest first, as items that take turns in the hero. */
+    private List<ShowArt.Feature> recentlyPlayed(AppEntry app) {
+        List<ShowArt.Feature> list = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        for (MediaHistory.Item item : MediaHistory.withCovers(this, app.packageName)) {
+            String detail = item.subtitle != null && item.album != null ? item.subtitle + " · " + item.album
+                    : item.subtitle != null ? item.subtitle : item.album;
+            String when = android.text.format.DateUtils.getRelativeTimeSpanString(
+                    item.time, now, android.text.format.DateUtils.MINUTE_IN_MILLIS).toString();
+            list.add(new ShowArt.Feature(item.key().hashCode(), item.title,
+                    getString(R.string.recently_played_on, app.label), null, detail, when, 0,
+                    "file:" + MediaHistory.coverFile(this, item).getPath()));
+        }
+        return list;
     }
 
     /** Fetches or refreshes a service's shows in the background, then shows them if still relevant. */
@@ -472,7 +492,9 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
             main.post(() -> {
                 updatingChannels.remove(channel);
                 if (isDestroyed() || ready.isEmpty() || !repo.showArtEnabled()) return;
-                if (heroApp == app && !heroShowsTrack && page == PAGE_HOME) hero.showFeatures(ready, heroImages);
+                if (heroApp == app && !heroShowsTrack && page == PAGE_HOME) {
+                    hero.showFeatures(ready, heroImages, getString(R.string.tvmaze_credit));
+                }
             });
         });
     }
@@ -489,6 +511,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private void onNowPlayingChanged() {
         NowPlaying.Track track = nowPlaying.track();
         bindPlayer(track);
+        MediaHistory.record(this, track); // for "Recently played" on the app's card later
         if (track == null) {
             if (isInPlayer(getWindow().getDecorView().findFocus())) tabHome.requestFocus();
             if (heroShowsTrack) {

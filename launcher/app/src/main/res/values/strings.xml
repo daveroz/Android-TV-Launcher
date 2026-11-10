@@ -25,6 +25,7 @@
 
     <!-- Show artwork -->
     <string name="tvmaze_credit">Show info from TVmaze</string>
+    <string name="recently_played_on">Recently played on %1$s</string>
     <string name="option_show_art">Show artwork: %1$s</string>
     <string name="show_art_on">Show artwork on. Focus Netflix, Disney+ or another streaming app.</string>
     <string name="show_art_off">Show artwork off</string>

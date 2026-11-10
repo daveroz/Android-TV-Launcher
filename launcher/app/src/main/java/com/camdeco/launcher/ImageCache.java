@@ -48,6 +48,13 @@ final class ImageCache {
     Bitmap load(String url) {
         Bitmap bitmap = memory.get(url);
         if (bitmap != null) return bitmap;
+        if (url.startsWith("file:")) { // a cover saved on the TV (Recently played)
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            bitmap = BitmapFactory.decodeFile(url.substring("file:".length()), options);
+            if (bitmap != null) memory.put(url, bitmap);
+            return bitmap;
+        }
         File file = new File(dir, fileName(url));
         try {
             if (file.exists()) {

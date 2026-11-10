@@ -13,8 +13,9 @@ turn off. The APK is about 390 KB.
 
 - **Layout after the Apple TV app.** The focused app fills the screen as the hero: its banner on
   the right fading into the background, with a blurred copy tinting the whole screen in the app's
-  colours. Streaming apps show their shows full-screen with a big title on the left, and the app
-  that's playing music or video shows the cover or the video's thumbnail. A pill of tabs sits at the top with the clock on the right.
+  colours. Streaming apps show their shows full-screen with a big title on the left. Music shows
+  its album cover as a large rounded card on the right with the cover's blur across the whole
+  screen; videos show their thumbnail full-screen. A pill of tabs sits at the top with the clock on the right.
   Rows of cards run along the bottom, and the next row peeks in. Moving down scrolls the rows up
   and fades the hero away.
 - **Look from Worldly.** Graphite surfaces (`#0B1322`, `#11141E`, `#1C2230`), thin slate borders
@@ -68,7 +69,14 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 While Spotify, YouTube (or any app with standard media controls) is playing or paused, a small
 player appears in the top bar, after Home / Apps / ⚙ / ⋮: the cover, "title · artist", play/pause
 and next. OK on the cover opens the player. On the player, and on the playing app's own card, the
-hero shows what's playing: Spotify's cover, or a YouTube video's thumbnail full-screen.
+hero shows what's playing: Spotify's cover as a large card with its blur filling the screen, or a
+YouTube video's thumbnail full-screen.
+
+**Recently played.** When nothing is playing, Spotify's, YouTube's (and any media app's) card shows
+what you last played in it, taking turns like the streaming apps' shows: cover, title, artist and
+when. The launcher notes each track or video as it plays, even while you're in another app, and
+keeps the last 8 per app with their covers on the TV only (nothing is sent anywhere). It needs the
+same notification access as the mini player, and fills up as you play things.
 
 Android only shows other apps' media to apps with notification access, and Android TV has no
 screen to turn that on, so do it once from Termux:

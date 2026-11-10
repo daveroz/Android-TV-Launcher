@@ -37,13 +37,15 @@ final class Hero {
     private final View root;
     private final View text;
     private final ImageView art;
+    /** A sharp, rounded cover card on the right, for square covers (music). */
+    private final ImageView cover;
     private final ImageView ambient;
     private final TextView title;
     private final TextView kind;
     private final TextView chip;
     private final TextView desc;
     private final LinearLayout dots;
-    private final View credit;
+    private final TextView credit;
     private final View holdKey;
     private final View holdLabel;
     private final int artWidth;
@@ -66,6 +68,8 @@ final class Hero {
         root = activity.findViewById(R.id.hero);
         text = activity.findViewById(R.id.hero_text);
         art = activity.findViewById(R.id.hero_art);
+        cover = activity.findViewById(R.id.hero_cover);
+        cover.setClipToOutline(true); // round the picture's corners to the card
         ambient = activity.findViewById(R.id.hero_ambient);
         title = activity.findViewById(R.id.hero_title);
         kind = activity.findViewById(R.id.hero_kind);
@@ -96,13 +100,18 @@ final class Hero {
                 isBanner ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER, pad);
     }
 
-    /** A streaming app's shows; the first one shows now and the rest take turns. */
-    void showFeatures(List<ShowArt.Feature> list, Images source) {
+    /**
+     * Items that take turns in the hero: a streaming app's shows, or what was recently played in a
+     * media app. creditText credits the source (TVmaze), or null for none.
+     */
+    void showFeatures(List<ShowArt.Feature> list, Images source, String creditText) {
         if (list.isEmpty()) return;
         if (sameShows(list)) return; // already showing these, don't restart the turns
         features = new ArrayList<>(list);
         images = source;
-        credit.setVisibility(View.VISIBLE);
+        credit.setText(creditText);
+        credit.setVisibility(creditText == null ? View.GONE : View.VISIBLE);
+        showHoldHint(true);
         buildDots();
         showFeature(0);
     }
@@ -114,17 +123,24 @@ final class Hero {
         showHoldHint(false);
         Object picture = track.art != null ? track.art : track.packageName;
         if (picture.equals(shownCover)) return; // same picture: only the text changed
-        shownCover = picture;
-        if (track.art != null && track.art.getWidth() > track.art.getHeight() * 1.4f) {
-            // Wide art (a YouTube video's thumbnail) fills the screen, like a show.
-            swapArt(true, new BitmapDrawable(activity.getResources(), track.art), null, ImageView.ScaleType.CENTER_CROP, 0);
-            return;
+        if (track.art != null) {
+            showPicture(track.art);
+        } else if (fallbackIcon != null) {
+            swapCover(AppRepository.copy(fallbackIcon), AppRepository.copy(fallbackIcon));
         }
-        // A square cover (Spotify) sits on the right, its colours tinting the whole screen.
-        Drawable cover = track.art != null ? new BitmapDrawable(activity.getResources(), track.art) : fallbackIcon;
-        if (cover != null) {
-            swapArt(false, AppRepository.copy(cover), AppRepository.copy(cover),
-                    ImageView.ScaleType.FIT_CENTER, (int) (24 * density));
+        shownCover = picture;
+    }
+
+    /**
+     * A wide picture (a show, a YouTube thumbnail) fills the screen. A square one (an album
+     * cover) becomes a sharp card on the right with a soft blur of itself across the screen.
+     */
+    private void showPicture(Bitmap bitmap) {
+        if (bitmap.getWidth() > bitmap.getHeight() * 1.4f) {
+            swapArt(true, new BitmapDrawable(activity.getResources(), bitmap), null, ImageView.ScaleType.CENTER_CROP, 0);
+        } else {
+            swapCover(new BitmapDrawable(activity.getResources(), bitmap),
+                    new BitmapDrawable(activity.getResources(), bitmap));
         }
     }
 
@@ -165,7 +181,7 @@ final class Hero {
 
     private void setFeatureArt(Bitmap bitmap) {
         shownCover = null;
-        swapArt(true, new BitmapDrawable(activity.getResources(), bitmap), null, ImageView.ScaleType.CENTER_CROP, 0);
+        showPicture(bitmap);
     }
 
     private void stopFeatures() {
@@ -251,6 +267,8 @@ final class Hero {
      * sits in the box on the right with a blurred copy tinting the screen.
      */
     private void swapArt(boolean fullScreen, Drawable sharp, Drawable blurred, ImageView.ScaleType scale, int pad) {
+        cover.animate().cancel();
+        cover.animate().alpha(0f).setDuration(120).start();
         art.animate().cancel();
         art.animate().alpha(0f).setDuration(120).withEndAction(() -> {
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) art.getLayoutParams();
@@ -268,5 +286,23 @@ final class Hero {
             ambient.animate().alpha(fullScreen ? 0f : 0.4f).setDuration(250).start();
             art.animate().alpha(1f).setDuration(260).start();
         }).start();
+    }
+
+    /** Cross-fades to a cover card, with the cover blurred across the whole screen behind it. */
+    private void swapCover(Drawable picture, Drawable blurred) {
+        art.animate().cancel();
+        art.animate().alpha(0f).setDuration(160).start();
+        cover.animate().cancel();
+        cover.animate().alpha(0f).setDuration(120).withEndAction(() -> {
+            cover.setImageDrawable(picture);
+            ambient.setImageDrawable(blurred);
+            ambient.animate().alpha(0.85f).setDuration(300).start();
+            cover.animate().alpha(1f).setDuration(280).start();
+        }).start();
+    }
+
+    /** Whether a cover card is on screen (for tests). */
+    boolean showsCover() {
+        return cover.getAlpha() > 0.5f && cover.getDrawable() != null;
     }
 }

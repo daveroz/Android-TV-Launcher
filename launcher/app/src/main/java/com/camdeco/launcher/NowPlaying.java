@@ -162,9 +162,15 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
     Track track() {
         MediaController c = current;
         if (c == null || !worthShowing(c)) return null;
+        return snapshot(context, c);
+    }
+
+    /** A session's current track whatever its state (for the history), or null without a title. */
+    static Track snapshot(Context context, MediaController c) {
         MediaMetadata m = c.getMetadata();
         PlaybackState s = c.getPlaybackState();
         String title = text(m, MediaMetadata.METADATA_KEY_TITLE, MediaMetadata.METADATA_KEY_DISPLAY_TITLE);
+        if (title == null) return null;
         String artist = text(m, MediaMetadata.METADATA_KEY_ARTIST, MediaMetadata.METADATA_KEY_ALBUM_ARTIST,
                 MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE);
         String album = text(m, MediaMetadata.METADATA_KEY_ALBUM);
@@ -172,9 +178,10 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
         if (art == null) art = m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
         if (art == null) art = m.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
         long duration = m.getLong(MediaMetadata.METADATA_KEY_DURATION);
-        float speed = s.getPlaybackSpeed() == 0 ? 1f : s.getPlaybackSpeed();
-        return new Track(c.getPackageName(), appLabel(c.getPackageName()), title, artist, album, art,
-                isPlaying(c), s.getPosition(), duration, s.getLastPositionUpdateTime(), speed);
+        float speed = s == null || s.getPlaybackSpeed() == 0 ? 1f : s.getPlaybackSpeed();
+        return new Track(c.getPackageName(), appLabel(context, c.getPackageName()), title, artist, album, art,
+                isPlaying(c), s == null ? 0 : s.getPosition(), duration,
+                s == null ? 0 : s.getLastPositionUpdateTime(), speed);
     }
 
     void playPause() {
@@ -242,7 +249,7 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
         return null;
     }
 
-    private String appLabel(String packageName) {
+    private static String appLabel(Context context, String packageName) {
         PackageManager pm = context.getPackageManager();
         try {
             return pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString();

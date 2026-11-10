@@ -67,6 +67,7 @@ public class HomeActivityTest {
         net.offline = true;
         HomeActivity.fetcherForTests = net;
         ShowArt.requestGapMs = 0;
+        MediaHistory.resetCache();
         packages = shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
         installApp(NETFLIX, "Netflix", Intent.CATEGORY_LEANBACK_LAUNCHER);
         installApp(YOUTUBE, "YouTube", Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -375,6 +376,52 @@ public class HomeActivityTest {
         shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
         idle();
         assertEquals(View.GONE, home.findViewById(R.id.np_bar).getVisibility());
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void squareCoversBecomeACardWithTheirBlurBehind() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        play("com.spotify.tv.android", "Midnight City", "M83", cover());
+        card(home, 0, 2).requestFocus(); // Spotify
+        idle();
+        assertTrue(home.hero.showsCover());
+        assertEquals(0f, home.findViewById(R.id.hero_art).getAlpha(), 0.01f);
+        assertTrue(home.findViewById(R.id.hero_ambient).getAlpha() > 0.8f);
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void mediaAppsShowWhatWasRecentlyPlayedWhenIdle() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        Context app = RuntimeEnvironment.getApplication();
+        MediaController spotify = play("com.spotify.tv.android", "Midnight City", "M83", cover());
+        waitFor(() -> !MediaHistory.withCovers(app, "com.spotify.tv.android").isEmpty()); // saved in the background
+
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_STOPPED));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        idle();
+        assertEquals(View.GONE, home.findViewById(R.id.np_bar).getVisibility());
+
+        // Nothing playing: Spotify's card shows what was played, with its cover, instead of the logo.
+        card(home, 0, 2).requestFocus();
+        waitFor(() -> "Midnight City".equals(text(home, R.id.hero_title)) && home.hero.showsCover());
+        assertEquals("Recently played on Spotify", text(home, R.id.hero_kind));
+        assertEquals("M83", text(home, R.id.hero_desc));
+        assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
+
+        // Apps with no history keep their banner.
+        card(home, 0, 0).requestFocus(); // Netflix
+        idle();
+        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
+    }
+
+    private static android.graphics.Bitmap cover() {
+        android.graphics.Bitmap cover = android.graphics.Bitmap.createBitmap(300, 300, android.graphics.Bitmap.Config.ARGB_8888);
+        cover.eraseColor(0xFFDB2777);
+        return cover;
     }
 
     @Test
