@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Deco Launcher</string>
+    <string name="launcher_options">Launcher options</string>
+    <string name="no_apps">No apps to show. Unhide some from the ⋮ menu.</string>
+    <string name="cannot_open">Can\'t open that</string>
+
+    <string name="option_move">Move</string>
+    <string name="option_hide">Hide</string>
+    <string name="option_app_info">App info</string>
+    <string name="option_uninstall">Uninstall</string>
+    <string name="move_hint">Use the arrows to move it, then press OK</string>
+    <string name="hidden_hint">Hidden. Bring it back from ⋮ → Hidden apps.</string>
+
+    <string name="option_hidden_apps">Hidden apps (%1$d)</string>
+    <string name="option_home_setup">Home button setup</string>
+    <string name="option_tv_settings">TV settings</string>
+    <string name="no_hidden_apps">No hidden apps</string>
+    <string name="unhide_title">Tick the apps to show again</string>
+    <string name="unhide">Show again</string>
+
+    <string name="home_setup_message">Deco Launcher is your Home app: %1$s\nHome button override: %2$s\n\nTo make the Home button open Deco Launcher, do one of these:\n\n1. Turn on the override: Accessibility → Deco Launcher Home button. Google TV stays installed and may flash for a moment.\n\n2. Or disable Google TV over adb (faster, frees memory):\nadb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx\nadb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith\nTo undo, run them with \"enable\" instead of \"disable-user\".</string>
+    <string name="open_accessibility">Open Accessibility</string>
+    <string name="close">Close</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+
+    <string name="home_service_label">Deco Launcher Home button</string>
+    <string name="home_service_description">Opens Deco Launcher whenever the Google TV home screen appears, so the Home button takes you to Deco Launcher. It only watches for the Google TV home screen and doesn\'t read anything on your screen.</string>
+</resources>

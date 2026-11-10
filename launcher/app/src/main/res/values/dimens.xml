@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android TV overscan-safe margins (5% of 960x540dp). -->
+    <dimen name="overscan_h">48dp</dimen>
+    <dimen name="overscan_v">27dp</dimen>
+    <dimen name="tile_gap">8dp</dimen>
+    <dimen name="tile_radius">10dp</dimen>
+</resources>

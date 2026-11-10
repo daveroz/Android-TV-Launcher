@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark icon on the white focus circle, light icon otherwise. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/bg_start" android:state_focused="true" />
+    <item android:color="@color/text" />
+</selector>

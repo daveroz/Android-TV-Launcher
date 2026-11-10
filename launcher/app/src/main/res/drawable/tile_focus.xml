@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Accent border while a tile is being moved, white border when focused. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_activated="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/tile_radius" />
+            <stroke android:width="4dp" android:color="@color/accent" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/tile_radius" />
+            <stroke android:width="3dp" android:color="@color/text" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>
