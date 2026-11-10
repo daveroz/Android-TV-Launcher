@@ -7,7 +7,7 @@ import android.media.audiofx.Visualizer;
 import android.os.SystemClock;
 
 /**
- * How loud the music is right now in three ranges, for the three strands of the wave in the hero:
+ * How loud the music is right now in three ranges, for the three zones of the wave line in the hero:
  * bass (20 to 250 Hz), voices (250 Hz to 4 kHz) and treble (4 to 16 kHz). The ranges share one
  * volume scale, so a bassy song shows mostly bass and a sung part mostly voice.
  *
@@ -48,7 +48,7 @@ final class SoundWave implements Visualizer.OnDataCaptureListener {
     private boolean unavailable;
     private final float[] heard = new float[BANDS];
     private final float[] lifted = new float[BANDS];
-    /** The loudest recent range, falling slowly, so quiet and loud songs both fill the strands. */
+    /** The loudest recent range, falling slowly, so quiet and loud songs both fill the line. */
     private float peak;
     private boolean everHeard;
     /** What the last listening session found out, kept while not listening (for the menu). */
@@ -181,7 +181,7 @@ final class SoundWave implements Visualizer.OnDataCaptureListener {
             lifted[b] = magnitude * LIFT[b];
             loudest = Math.max(loudest, lifted[b]);
         }
-        // One shared scale: the loudest recent range fills the strands, the others in proportion.
+        // One shared scale: the loudest recent range moves the line fully, the others in proportion.
         peak = Math.max(Math.max(loudest, 3f), peak * 0.995f);
         for (int b = 0; b < BANDS; b++) {
             heard[b] = (float) Math.pow(Math.min(1f, lifted[b] / peak), 0.8);

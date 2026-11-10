@@ -20,7 +20,7 @@
     <!-- Card height: from hero_top to 24dp above the rows (rows_top). Covers are square,
          banners 16:9 at this height. -->
     <dimen name="hero_card_height">176dp</dimen>
-    <!-- The sound wave's strands: below the hero text (which ends by about 230dp), above the rows, and
+    <!-- The sound wave: below the hero text (which ends by about 230dp), above the rows, and
          ending 36dp before the cover card (overscan_h + hero_card_height + 36dp). -->
     <dimen name="wave_top">236dp</dimen>
     <dimen name="wave_height">56dp</dimen>

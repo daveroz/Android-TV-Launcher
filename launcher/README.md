@@ -99,16 +99,16 @@ off, run the same command with `disallow_listener`.
 
 ### Sound wave
 
-While the hero shows what's playing, three strands under the song move with the music, in the
-album cover's colours:
+While the hero shows what's playing, a line under the song moves with the music. It's split by
+pitch, like a spectrum, and coloured from the album cover:
 
-- a **thick, slow** strand for the **bass** (up to 250 Hz),
-- a **medium** strand for **voices** (250 Hz to 4 kHz),
-- a **thin, fast** strand for the **treble**, like cymbals and hi-hats (4 to 16 kHz).
+- the **left** part swells in slow, wide waves with the **bass** (up to 250 Hz), in the cover's deep tone,
+- the **middle** ripples with **voices** (250 Hz to 4 kHz), in its main colour,
+- the **right** shimmers with the **treble**, like cymbals and hi-hats (4 to 16 kHz), in its light tone.
 
-The three share one volume scale, so a bassy song swells the thick strand and a sung part the
-middle one. The higher ranges get lifted to make up for music naturally carrying far more energy in
-the bass. Drum hits and syllables give a short extra push, and everything goes flat on pause.
+The three share one volume scale, so a bassy song moves mostly the left and a sung part mostly the
+middle. The higher ranges get lifted to make up for music naturally carrying far more energy in
+the bass. Drum hits and syllables give a short extra push, and the line goes flat on pause.
 
 To follow the real song, Deco listens to what the TV plays through Android's audio visualizer.
 Android files that under the microphone permission ("record audio"), but Deco only reads the TV's
@@ -123,8 +123,8 @@ adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
 
 - **it follows the music**: Deco hears the TV's sound.
 - **it moves on its own**: Deco isn't allowed to listen, or the TV keeps its sound private (some
-  TVs give apps only silence). The strands still move while music plays and rest on pause, but they
-  don't follow the song.
+  TVs give apps only silence). The line still moves while music plays and rests on pause, but it
+  doesn't follow the song.
 
 The same menu turns the wave off. It only runs while it's on screen, so it costs nothing otherwise.
 
