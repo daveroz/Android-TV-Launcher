@@ -1,23 +1,41 @@
 # Deco Launcher
 
 A lightweight home screen for the Chromecast with Google TV and other Android TV
-devices. No ads, no recommendations rows, and no internet permission, so it
-can't send anything anywhere. The APK is about 180 KB.
+devices. No ads, no sponsored rows, and no internet permission, so it can't send
+anything anywhere. The APK is about 250 KB.
 
-![Deco Launcher home screen](docs/preview.png)
+![Deco Launcher home screen](docs/preview-home.png)
 
-*Preview rendered with placeholder icons. Real TV apps show their own banner.*
+*Previews rendered with made-up apps. On your TV, each card and the hero show the app's own banner.*
+
+## Design
+
+- **Layout after the Apple TV app.** The focused app fills the screen as the hero: its art on
+  the right fading into the background, a big title on the left, and a blurred copy tinting the
+  whole screen in the app's colours. A pill of tabs sits at the top with the clock on the right.
+  Rows of cards run along the bottom, and the next row peeks in. Moving down scrolls the rows up
+  and fades the hero away.
+- **Look from Worldly.** Graphite surfaces (`#0B1322`, `#11141E`, `#1C2230`), thin slate borders
+  (`#252C3C`), and one amber accent (`#DF8B35`) for focus rings, the focused tab and menu rows
+  (as Worldly's amber gradient) and the active row title. The type is Worldly's Carbon+:
+  regular for text, bold for titles and the clock. Corner radii are 12 for cards and 28 for menus.
+
+| Apps page | App menu |
+|---|---|
+| ![Apps page](docs/preview-apps.png) | ![App menu](docs/preview-menu.png) |
 
 ## What it does
 
-- **Clock and date** at the top
-- **Every app in one grid.** TV apps show their banner, and phone apps show their icon and name.
-- **Hold OK on a tile** (or press Menu on remotes that have one) to **Move**, **Hide**, open **App info** or **Uninstall** it
-  - **Move:** use the arrows to slide the tile, then press OK. The order is remembered.
-- **⚙ button:** Android TV settings
-- **⋮ button:** hidden apps, Home button setup, TV settings
-- **Updates by itself** when apps are installed, removed, updated or disabled
-- **Back** does nothing on the home screen. **Home** while already home jumps back to the first tile.
+- **Home tab:** a **Favourites** row (once you add some), then **TV apps** and **Other apps** (phone apps)
+- **Apps tab:** every app in a 5-column grid. The order you set here is used everywhere.
+- **Hold OK on a card** (or press Menu on remotes that have one):
+  - **Add to / Remove from Favourites**
+  - **Move** (Apps tab): use the arrows to slide the card, then press OK
+  - **Hide**, **App info**, **Uninstall**
+- **⚙** opens Android TV settings. **⋮** has hidden apps and Home button setup.
+- **Back** goes up to the tabs, then from Apps to Home. Focus coming up from the cards always lands on the current tab.
+- **Home** while already home jumps back to the first card.
+- **Updates by itself** when apps are installed, removed, updated or disabled.
 
 ## Install
 

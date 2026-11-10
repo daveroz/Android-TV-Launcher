@@ -2,7 +2,7 @@
 
 Tools for a Chromecast with Google TV (HD, codename `boreal`, Android TV OS 14).
 
-- **[Deco Launcher](launcher/README.md):** a lightweight, ad-free home screen app. The ready-to-install APK is [`releases/deco-launcher.apk`](releases/deco-launcher.apk).
+- **[Deco Launcher](launcher/README.md):** a lightweight, ad-free home screen with an Apple TV-style layout and Worldly's look. The ready-to-install APK is [`releases/deco-launcher.apk`](releases/deco-launcher.apk).
 - **[`scripts/chromecast-dump.sh`](#copy-the-firmware-files-off-the-chromecast):** copies the readable firmware files off the device.
 
 ## Copy the firmware files off the Chromecast

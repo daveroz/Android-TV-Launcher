@@ -5,19 +5,52 @@
     <string name="no_apps">No apps to show. Unhide some from the ⋮ menu.</string>
     <string name="cannot_open">Can\'t open that</string>
 
+    <!-- Top bar -->
+    <string name="tab_home">Home</string>
+    <string name="tab_apps">Apps</string>
+
+    <!-- Home rows -->
+    <string name="row_favourites">Favourites</string>
+    <string name="row_tv">TV apps</string>
+    <string name="row_other">Other apps</string>
+
+    <!-- Cards and hero -->
+    <string name="kind_tv">TV app</string>
+    <string name="kind_phone">Phone app</string>
+    <string name="kind_favourite">Favourite</string>
+    <string name="moving">Moving · OK to drop</string>
+    <string name="version">v%1$s</string>
+    <string name="updated">Updated %1$s</string>
+    <string name="favourite_updated">In your Favourites · updated %1$s</string>
+    <string name="key_ok">OK</string>
+    <string name="key_ok_action">Open</string>
+    <string name="key_hold">HOLD OK</string>
+    <string name="key_hold_action">Options</string>
+
+    <!-- Apps page -->
+    <string name="apps_title">All apps</string>
+    <string name="apps_subtitle">Hold OK on an app to move, hide or uninstall it. The order here is used everywhere.</string>
+
+    <!-- App menu -->
+    <string name="option_add_favourite">Add to Favourites</string>
+    <string name="option_remove_favourite">Remove from Favourites</string>
     <string name="option_move">Move</string>
     <string name="option_hide">Hide</string>
     <string name="option_app_info">App info</string>
     <string name="option_uninstall">Uninstall</string>
     <string name="move_hint">Use the arrows to move it, then press OK</string>
     <string name="hidden_hint">Hidden. Bring it back from ⋮ → Hidden apps.</string>
+    <string name="favourite_added">Added to Favourites</string>
+    <string name="favourite_removed">Removed from Favourites</string>
 
+    <!-- Launcher menu -->
     <string name="option_hidden_apps">Hidden apps (%1$d)</string>
     <string name="option_home_setup">Home button setup</string>
     <string name="option_tv_settings">TV settings</string>
     <string name="no_hidden_apps">No hidden apps</string>
     <string name="unhide_title">Tick the apps to show again</string>
     <string name="unhide">Show again</string>
+    <string name="cancel">Cancel</string>
 
     <string name="home_setup_message">Deco Launcher is your Home app: %1$s\nHome button override: %2$s\n\nTo make the Home button open Deco Launcher, do one of these:\n\n1. Turn on the override: Accessibility → Deco Launcher Home button. Google TV stays installed and may flash for a moment.\n\n2. Or disable Google TV over adb (faster, frees memory):\nadb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx\nadb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith\nTo undo, run them with \"enable\" instead of \"disable-user\".</string>
     <string name="open_accessibility">Open Accessibility</string>

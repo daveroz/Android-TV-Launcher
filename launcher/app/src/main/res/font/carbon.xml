@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carbon+, the type used across Worldly: regular for text, bold for titles and clock digits. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:font="@font/carbon_regular" android:fontStyle="normal" android:fontWeight="400" />
+    <font android:font="@font/carbon_bold" android:fontStyle="normal" android:fontWeight="700" />
+</font-family>

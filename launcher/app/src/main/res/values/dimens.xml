@@ -2,7 +2,17 @@
 <resources>
     <!-- Android TV overscan-safe margins (5% of 960x540dp). -->
     <dimen name="overscan_h">48dp</dimen>
-    <dimen name="overscan_v">27dp</dimen>
-    <dimen name="tile_gap">8dp</dimen>
-    <dimen name="tile_radius">10dp</dimen>
+    <dimen name="overscan_v">24dp</dimen>
+    <!-- Worldly radii: 12 for small cards, 14 for buttons, 28 for big panels. -->
+    <dimen name="card_radius">12dp</dimen>
+    <dimen name="sheet_radius">28dp</dimen>
+    <dimen name="card_width">176dp</dimen>
+    <dimen name="card_gap">16dp</dimen>
+    <!-- Where the first row of cards starts, under the hero. -->
+    <dimen name="rows_top">296dp</dimen>
+    <!-- How far the rows scroll before the hero has fully faded. -->
+    <dimen name="hero_fade_range">160dp</dimen>
+    <dimen name="hero_scrim_width">660dp</dimen>
+    <dimen name="hero_art_width">620dp</dimen>
+    <dimen name="hero_art_height">349dp</dimen>
 </resources>

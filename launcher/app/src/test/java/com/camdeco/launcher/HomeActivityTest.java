@@ -7,7 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -18,6 +18,8 @@ import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -29,9 +31,11 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowAlertDialog;
+import org.robolectric.shadows.ShadowDialog;
+import org.robolectric.shadows.ShadowInstrumentation;
 import org.robolectric.shadows.ShadowPackageManager;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,18 +43,22 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35, qualifiers = "w960dp-h540dp-land-television-xhdpi")
 public class HomeActivityTest {
+    private static final String NETFLIX = "com.netflix.ninja";
+    private static final String YOUTUBE = "com.google.android.youtube.tv";
+    private static final String PRIME = "com.amazon.amazonvideo.livingroom";
+    private static final String VLC = "org.videolan.vlc";
 
     private ShadowPackageManager packages;
 
     @Before
     public void installApps() throws Exception {
         // A TV driven by a remote is never in touch mode, so D-pad focus is visible.
-        org.robolectric.shadows.ShadowInstrumentation.getInstrumentation().setInTouchMode(false);
+        ShadowInstrumentation.getInstrumentation().setInTouchMode(false);
         packages = shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
-        installApp("com.netflix.ninja", "Netflix", Intent.CATEGORY_LEANBACK_LAUNCHER);
-        installApp("com.google.android.youtube.tv", "YouTube", Intent.CATEGORY_LEANBACK_LAUNCHER);
-        installApp("com.amazon.amazonvideo.livingroom", "Prime Video", Intent.CATEGORY_LEANBACK_LAUNCHER);
-        installApp("org.videolan.vlc", "VLC", Intent.CATEGORY_LAUNCHER); // phone-style app
+        installApp(NETFLIX, "Netflix", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        installApp(YOUTUBE, "YouTube", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        installApp(PRIME, "Prime Video", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        installApp(VLC, "VLC", Intent.CATEGORY_LAUNCHER); // phone-style app
     }
 
     private void installApp(String pkg, String label, String category) throws Exception {
@@ -64,100 +72,168 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void showsEveryAppExceptItselfInAlphabeticalOrder() throws Exception {
+    public void homeGroupsAppsIntoTvAndOtherRows() throws Exception {
         HomeActivity home = start().get();
-        assertEquals(List.of("com.netflix.ninja", "com.amazon.amazonvideo.livingroom",
-                "org.videolan.vlc", "com.google.android.youtube.tv"), shownPackages(home));
-        // Every tile is laid out, 16:9, and the first one has focus.
-        RecyclerView grid = home.findViewById(R.id.grid);
-        View first = grid.findViewHolderForAdapterPosition(0).itemView;
-        assertEquals(first, home.getWindow().getDecorView().findFocus());
-        assertEquals(first.getWidth() * 9 / 16, first.getHeight());
-        assertTrue(first.getWidth() > 0);
+        assertEquals(List.of("TV apps: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
+                "Other apps: [" + VLC + "]"), rows(home));
+        // The first card has focus and fills the hero.
+        assertEquals(card(home, 0, 0), focus(home));
+        assertEquals("Netflix", text(home, R.id.hero_title));
+        assertEquals("TV app", text(home, R.id.hero_kind));
+        // Cards keep the 16:9 banner shape.
+        View banner = card(home, 0, 0).findViewById(R.id.card);
+        assertTrue(banner.getWidth() > 0);
+        assertEquals(banner.getWidth() * 9 / 16, banner.getHeight());
     }
 
     @Test
-    public void phoneAppsShowTheirIconAndLabel() throws Exception {
+    public void heroFollowsTheFocusedCard() throws Exception {
         HomeActivity home = start().get();
-        RecyclerView grid = home.findViewById(R.id.grid);
-        View vlc = grid.findViewHolderForAdapterPosition(2).itemView;
-        assertEquals(View.VISIBLE, vlc.findViewById(R.id.icon_group).getVisibility());
-        assertEquals("VLC", ((android.widget.TextView) vlc.findViewById(R.id.label)).getText().toString());
+        card(home, 0, 2).requestFocus();
+        idle();
+        assertEquals("YouTube", text(home, R.id.hero_title));
+        card(home, 1, 0).requestFocus();
+        idle();
+        assertEquals("VLC", text(home, R.id.hero_title));
+        assertEquals("Phone app", text(home, R.id.hero_kind));
     }
 
     @Test
-    public void moveModeReordersWithTheRemoteAndRemembersIt() throws Exception {
+    public void favouritesGetTheirOwnFirstRow() throws Exception {
+        HomeActivity home = start().get();
+        card(home, 0, 2).performLongClick(); // YouTube
+        choose("Add to Favourites");
+        assertEquals(List.of("Favourites: [" + YOUTUBE + "]", "TV apps: [" + NETFLIX + ", " + PRIME + "]",
+                "Other apps: [" + VLC + "]"), rows(home));
+        assertEquals(card(home, 0, 0), focus(home)); // focus followed the card
+
+        card(home, 0, 0).performLongClick();
+        choose("Remove from Favourites");
+        assertEquals(List.of("TV apps: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
+                "Other apps: [" + VLC + "]"), rows(home));
+    }
+
+    @Test
+    public void appsTabMovesCardsAndTheOrderIsUsedEverywhere() throws Exception {
         ActivityController<HomeActivity> controller = start();
         HomeActivity home = controller.get();
-        openTileMenu(home, 0);
-        shadowOf(ShadowAlertDialog.getLatestAlertDialog()).clickOnItem(0); // Move
+        home.findViewById(R.id.tab_apps).requestFocus();
         idle();
+        assertEquals(View.VISIBLE, home.findViewById(R.id.apps_page).getVisibility());
+        assertEquals(View.GONE, home.findViewById(R.id.rows).getVisibility());
+        assertEquals(0f, home.findViewById(R.id.hero).getAlpha(), 0.01f);
+        assertEquals(List.of(NETFLIX, PRIME, VLC, YOUTUBE), grid(home));
 
+        gridCard(home, 0).requestFocus();
+        idle();
+        gridCard(home, 0).performLongClick();
+        choose("Move");
         press(home, KeyEvent.KEYCODE_DPAD_RIGHT);
         press(home, KeyEvent.KEYCODE_DPAD_RIGHT);
-        assertEquals("com.netflix.ninja", shownPackages(home).get(2));
+        assertEquals(NETFLIX, grid(home).get(2));
         press(home, KeyEvent.KEYCODE_DPAD_LEFT);
-        assertEquals("com.netflix.ninja", shownPackages(home).get(1));
         press(home, KeyEvent.KEYCODE_DPAD_CENTER); // drop it
-        assertFalse(home.isFinishing());
+        assertEquals(List.of(PRIME, NETFLIX, VLC, YOUTUBE), grid(home));
+        assertEquals("TV apps: [" + PRIME + ", " + NETFLIX + ", " + YOUTUBE + "]", rows(home).get(0));
 
-        // After the drop, arrows move focus again instead of the tile.
+        // After the drop, arrows move focus again instead of the card.
         press(home, KeyEvent.KEYCODE_DPAD_RIGHT);
-        assertEquals("com.netflix.ninja", shownPackages(home).get(1));
+        assertEquals(List.of(PRIME, NETFLIX, VLC, YOUTUBE), grid(home));
 
-        // The new order survives the launcher being restarted.
+        // The order survives the launcher being restarted.
         controller.pause().stop().destroy();
-        HomeActivity again = start().get();
-        assertEquals(List.of("com.amazon.amazonvideo.livingroom", "com.netflix.ninja",
-                "org.videolan.vlc", "com.google.android.youtube.tv"), shownPackages(again));
+        assertEquals(List.of(PRIME, NETFLIX, VLC, YOUTUBE), grid(start().get()));
+    }
+
+    @Test
+    public void sheetsOpenWithTheFirstChoiceHighlighted() throws Exception {
+        HomeActivity home = start().get();
+        card(home, 0, 0).performLongClick();
+        idle();
+        Dialog sheet = ShadowDialog.getLatestDialog();
+        LinearLayout items = sheet.findViewById(R.id.sheet_rows);
+        assertEquals(items.getChildAt(0), sheet.getWindow().getDecorView().findFocus());
+    }
+
+    @Test
+    public void moveIsOnlyOfferedOnTheAppsPage() throws Exception {
+        HomeActivity home = start().get();
+        card(home, 0, 0).performLongClick();
+        assertFalse(sheetItems().contains("Move"));
     }
 
     @Test
     public void hiddenAppsDisappearAndCanBeShownAgain() throws Exception {
         HomeActivity home = start().get();
-        openTileMenu(home, 0);
-        shadowOf(ShadowAlertDialog.getLatestAlertDialog()).clickOnItem(1); // Hide
-        idle();
-        assertFalse(shownPackages(home).contains("com.netflix.ninja"));
-        assertEquals(3, shownPackages(home).size());
+        card(home, 0, 0).performLongClick();
+        choose("Hide");
+        assertEquals("TV apps: [" + PRIME + ", " + YOUTUBE + "]", rows(home).get(0));
+        assertFalse(grid(home).contains(NETFLIX));
 
-        home.findViewById(R.id.options).performClick();
-        AlertDialog menu = ShadowAlertDialog.getLatestAlertDialog();
-        assertEquals("Hidden apps (1)", menu.getListView().getAdapter().getItem(0).toString());
-        shadowOf(menu).clickOnItem(0);
+        home.findViewById(R.id.tab_options).performClick();
         idle();
-        AlertDialog unhide = ShadowAlertDialog.getLatestAlertDialog();
-        unhide.getListView().performItemClick(null, 0, 0); // tick Netflix
-        unhide.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-        idle();
-        assertTrue(shownPackages(home).contains("com.netflix.ninja"));
+        choose("Hidden apps (1)");
+        choose("Netflix"); // tick it
+        choose("Show again");
+        assertEquals("TV apps: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]", rows(home).get(0));
     }
 
     @Test
-    public void menuButtonOpensTheFocusedTilesMenu() throws Exception {
+    public void backGoesUpToTheTabsThenFromAppsToHome() throws Exception {
         HomeActivity home = start().get();
-        press(home, KeyEvent.KEYCODE_MENU);
-        AlertDialog menu = ShadowAlertDialog.getLatestAlertDialog();
-        assertNotNull(menu);
-        assertTrue(menu.isShowing());
-    }
+        View tabHome = home.findViewById(R.id.tab_home);
+        View tabApps = home.findViewById(R.id.tab_apps);
 
-    @Test
-    public void backButtonStaysOnTheHomeScreen() throws Exception {
-        HomeActivity home = start().get();
         press(home, KeyEvent.KEYCODE_BACK);
+        assertEquals(tabHome, focus(home));
+        press(home, KeyEvent.KEYCODE_BACK);
+        assertEquals(tabHome, focus(home));
         assertFalse(home.isFinishing());
+
+        tabApps.requestFocus();
+        idle();
+        gridCard(home, 1).requestFocus();
+        idle();
+        press(home, KeyEvent.KEYCODE_BACK);
+        assertEquals(tabApps, focus(home));
+        press(home, KeyEvent.KEYCODE_BACK);
+        assertEquals(tabHome, focus(home));
+        assertEquals(View.VISIBLE, home.findViewById(R.id.rows).getVisibility());
     }
 
     @Test
-    public void openingATileLaunchesTheTvActivity() throws Exception {
+    public void focusComingUpFromTheCardsLandsOnTheCurrentTab() throws Exception {
         HomeActivity home = start().get();
-        RecyclerView grid = home.findViewById(R.id.grid);
-        grid.findViewHolderForAdapterPosition(0).itemView.performClick();
+        TabBar tabs = home.findViewById(R.id.tabs);
+        ArrayList<View> targets = new ArrayList<>();
+        tabs.addFocusables(targets, View.FOCUS_UP);
+        assertEquals(List.of(home.findViewById(R.id.tab_home)), targets);
+
+        // Once inside the bar, every tab and button can be reached.
+        home.findViewById(R.id.tab_home).requestFocus();
+        targets.clear();
+        tabs.addFocusables(targets, View.FOCUS_RIGHT);
+        assertEquals(4, targets.size());
+    }
+
+    @Test
+    public void openingACardLaunchesTheTvActivity() throws Exception {
+        HomeActivity home = start().get();
+        card(home, 0, 0).performClick();
         Intent started = shadowOf(home).getNextStartedActivity();
-        assertEquals(new ComponentName("com.netflix.ninja", "com.netflix.ninja.Main"), started.getComponent());
+        assertEquals(new ComponentName(NETFLIX, NETFLIX + ".Main"), started.getComponent());
         assertTrue(started.hasCategory(Intent.CATEGORY_LEANBACK_LAUNCHER));
         assertTrue((started.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0);
+    }
+
+    @Test
+    public void menuButtonOpensTheFocusedCardsMenu() throws Exception {
+        HomeActivity home = start().get();
+        press(home, KeyEvent.KEYCODE_MENU);
+        Dialog sheet = ShadowDialog.getLatestDialog();
+        assertNotNull(sheet);
+        assertTrue(sheet.isShowing());
+        assertEquals("Netflix", ((TextView) sheet.findViewById(R.id.sheet_title)).getText().toString());
     }
 
     @Test
@@ -166,8 +242,11 @@ public class HomeActivityTest {
         installApp("com.plexapp.android", "Plex", Intent.CATEGORY_LEANBACK_LAUNCHER);
         home.sendBroadcast(new Intent(Intent.ACTION_PACKAGE_ADDED,
                 Uri.fromParts("package", "com.plexapp.android", null)));
-        waitForApps(home, 5);
-        assertTrue(shownPackages(home).contains("com.plexapp.android"));
+        for (int i = 0; i < 100 && !grid(home).contains("com.plexapp.android"); i++) {
+            idle();
+            Thread.sleep(20);
+        }
+        assertTrue(rows(home).get(0).contains("com.plexapp.android"));
     }
 
     @Test
@@ -175,7 +254,7 @@ public class HomeActivityTest {
         HomeButtonService service = Robolectric.setupService(HomeButtonService.class);
 
         AccessibilityEvent other = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
-        other.setPackageName("com.google.android.youtube.tv");
+        other.setPackageName(YOUTUBE);
         service.onAccessibilityEvent(other);
         assertNull(shadowOf(service).getNextStartedActivity());
 
@@ -188,7 +267,7 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void manifestDeclaresHomeAndTvLauncherEntries() {
+    public void manifestDeclaresTheHomeEntry() {
         PackageManager pm = RuntimeEnvironment.getApplication().getPackageManager();
         Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
         boolean found = false;
@@ -202,35 +281,27 @@ public class HomeActivityTest {
 
     private ActivityController<HomeActivity> start() throws Exception {
         ActivityController<HomeActivity> controller = Robolectric.buildActivity(HomeActivity.class).setup();
-        waitForApps(controller.get(), 1);
-        return controller;
-    }
-
-    /** The app list loads on a background thread; wait for it to reach the grid. */
-    private void waitForApps(HomeActivity home, int atLeast) throws Exception {
-        RecyclerView grid = home.findViewById(R.id.grid);
+        HomeActivity home = controller.get();
         for (int i = 0; i < 250; i++) {
             idle();
-            if (grid.getAdapter().getItemCount() >= atLeast
-                    && grid.findViewHolderForAdapterPosition(0) != null) {
-                idle();
-                return;
-            }
+            View focused = focus(home);
+            if (focused != null && focused.getTag(R.id.tag_app) != null) return controller;
             Thread.sleep(20);
         }
-        throw new AssertionError("apps never appeared");
+        throw new AssertionError("the launcher never showed its apps");
     }
 
     private static void idle() {
         shadowOf(Looper.getMainLooper()).idle();
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500));
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500));
     }
 
-    private static void openTileMenu(HomeActivity home, int position) {
-        RecyclerView grid = home.findViewById(R.id.grid);
-        grid.findViewHolderForAdapterPosition(position).itemView.performLongClick();
-        idle();
-        assertNotNull(ShadowAlertDialog.getLatestAlertDialog());
+    private static View focus(HomeActivity home) {
+        return home.getWindow().getDecorView().findFocus();
+    }
+
+    private static String text(HomeActivity home, int id) {
+        return ((TextView) home.findViewById(id)).getText().toString();
     }
 
     private static void press(HomeActivity home, int keyCode) {
@@ -239,10 +310,67 @@ public class HomeActivityTest {
         idle();
     }
 
-    private static List<String> shownPackages(HomeActivity home) {
-        RecyclerView grid = home.findViewById(R.id.grid);
+    /** Each Home row as "Title: [packages]". */
+    private static List<String> rows(HomeActivity home) {
+        RecyclerView rows = home.findViewById(R.id.rows);
         List<String> result = new ArrayList<>();
-        for (AppEntry app : ((AppAdapter) grid.getAdapter()).items()) result.add(app.packageName);
+        for (RowsAdapter.Row row : ((RowsAdapter) rows.getAdapter()).rows()) {
+            List<String> packages = new ArrayList<>();
+            for (AppEntry app : row.apps) packages.add(app.packageName);
+            result.add(row.title + ": " + packages);
+        }
         return result;
+    }
+
+    private static List<String> grid(HomeActivity home) {
+        RecyclerView grid = home.findViewById(R.id.apps_grid);
+        List<String> result = new ArrayList<>();
+        for (AppEntry app : ((CardAdapter) grid.getAdapter()).items()) result.add(app.packageName);
+        return result;
+    }
+
+    private static View card(HomeActivity home, int row, int column) {
+        RecyclerView rows = home.findViewById(R.id.rows);
+        RowsAdapter.Holder holder = (RowsAdapter.Holder) rows.findViewHolderForAdapterPosition(row);
+        assertNotNull("row " + row + " not laid out", holder);
+        RecyclerView.ViewHolder card = holder.grid.findViewHolderForAdapterPosition(column);
+        assertNotNull("card " + column + " not laid out", card);
+        return card.itemView;
+    }
+
+    private static View gridCard(HomeActivity home, int position) {
+        RecyclerView grid = home.findViewById(R.id.apps_grid);
+        RecyclerView.ViewHolder card = grid.findViewHolderForAdapterPosition(position);
+        assertNotNull("grid card " + position + " not laid out", card);
+        return card.itemView;
+    }
+
+    private static List<String> sheetItems() {
+        idle();
+        Dialog sheet = ShadowDialog.getLatestDialog();
+        assertNotNull("no sheet open", sheet);
+        LinearLayout items = sheet.findViewById(R.id.sheet_rows);
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < items.getChildCount(); i++) {
+            if (items.getChildAt(i) instanceof TextView) {
+                labels.add(((TextView) items.getChildAt(i)).getText().toString());
+            }
+        }
+        return labels;
+    }
+
+    /** Presses OK on the sheet row with this label. */
+    private static void choose(String label) {
+        List<String> labels = sheetItems();
+        LinearLayout items = ShadowDialog.getLatestDialog().findViewById(R.id.sheet_rows);
+        for (int i = 0; i < items.getChildCount(); i++) {
+            View row = items.getChildAt(i);
+            if (row instanceof TextView && ((TextView) row).getText().toString().equals(label)) {
+                row.performClick();
+                idle();
+                return;
+            }
+        }
+        throw new AssertionError("no \"" + label + "\" in " + labels);
     }
 }
