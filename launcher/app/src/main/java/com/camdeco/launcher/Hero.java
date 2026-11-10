@@ -37,8 +37,11 @@ final class Hero {
     private final View root;
     private final View text;
     private final ImageView art;
-    /** A sharp, rounded cover card on the right, for square covers (music). */
+    /** The rounded card on the right: an album cover, or an app's banner. */
     private final ImageView cover;
+    /** The app's colours, behind its banner card. */
+    private final ColorFieldView field;
+    private final int cardHeight;
     private final ImageView ambient;
     private final TextView title;
     private final TextView kind;
@@ -70,6 +73,8 @@ final class Hero {
         art = activity.findViewById(R.id.hero_art);
         cover = activity.findViewById(R.id.hero_cover);
         cover.setClipToOutline(true); // round the picture's corners to the card
+        field = activity.findViewById(R.id.hero_field);
+        cardHeight = activity.getResources().getDimensionPixelSize(R.dimen.hero_card_height);
         ambient = activity.findViewById(R.id.hero_ambient);
         title = activity.findViewById(R.id.hero_title);
         kind = activity.findViewById(R.id.hero_kind);
@@ -93,11 +98,18 @@ final class Hero {
         showHoldHint(true);
     }
 
-    void setAppArt(Drawable drawable, boolean isBanner) {
+    /**
+     * A plain app: its banner (or icon) as a card on the right, over soft glows of its own colours
+     * and the icons' street-map grid.
+     */
+    void setAppArt(Drawable drawable, boolean isBanner, AppColors colours) {
         shownCover = null;
-        int pad = isBanner ? 0 : (int) (72 * density);
-        swapArt(false, AppRepository.copy(drawable), AppRepository.copy(drawable),
-                isBanner ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER, pad);
+        field.setColours(colours);
+        if (isBanner) {
+            showCard(AppRepository.copy(drawable), cardHeight * 16 / 9, ImageView.ScaleType.CENTER_CROP, 0, null);
+        } else {
+            showCard(AppRepository.copy(drawable), cardHeight, ImageView.ScaleType.FIT_CENTER, (int) (40 * density), null);
+        }
     }
 
     /**
@@ -269,6 +281,8 @@ final class Hero {
     private void swapArt(boolean fullScreen, Drawable sharp, Drawable blurred, ImageView.ScaleType scale, int pad) {
         cover.animate().cancel();
         cover.animate().alpha(0f).setDuration(120).start();
+        field.animate().cancel();
+        field.animate().alpha(0f).setDuration(250).start();
         art.animate().cancel();
         art.animate().alpha(0f).setDuration(120).withEndAction(() -> {
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) art.getLayoutParams();
@@ -288,17 +302,44 @@ final class Hero {
         }).start();
     }
 
-    /** Cross-fades to a cover card, with the cover blurred across the whole screen behind it. */
+    /** Cross-fades to an album cover card, with the cover blurred across the whole screen behind it. */
     private void swapCover(Drawable picture, Drawable blurred) {
+        showCard(picture, cardHeight, ImageView.ScaleType.CENTER_CROP, 0, blurred);
+    }
+
+    /**
+     * Cross-fades the card on the right to a new picture. With a blurred copy, that blur fills the
+     * screen (album covers); without one, the app's colour field does (app banners).
+     */
+    private void showCard(Drawable picture, int width, ImageView.ScaleType scale, int pad, Drawable blurred) {
         art.animate().cancel();
         art.animate().alpha(0f).setDuration(160).start();
         cover.animate().cancel();
         cover.animate().alpha(0f).setDuration(120).withEndAction(() -> {
+            ViewGroup.LayoutParams lp = cover.getLayoutParams();
+            if (lp.width != width || lp.height != cardHeight) {
+                lp.width = width;
+                lp.height = cardHeight;
+                cover.setLayoutParams(lp);
+            }
+            cover.setScaleType(scale);
+            cover.setPadding(pad, pad, pad, pad);
             cover.setImageDrawable(picture);
-            ambient.setImageDrawable(blurred);
-            ambient.animate().alpha(0.85f).setDuration(300).start();
+            if (blurred != null) ambient.setImageDrawable(blurred);
+            ambient.animate().alpha(blurred != null ? 0.85f : 0f).setDuration(300).start();
+            field.animate().alpha(blurred != null ? 0f : 1f).setDuration(300).start();
             cover.animate().alpha(1f).setDuration(280).start();
         }).start();
+    }
+
+    /** Whether the app's colour field is on screen (for tests). */
+    boolean showsColourField() {
+        return field.getAlpha() > 0.5f;
+    }
+
+    /** The colour the field is glowing with (for tests). */
+    int fieldColour() {
+        return field.vividColour();
     }
 
     /** Whether a cover card is on screen (for tests). */

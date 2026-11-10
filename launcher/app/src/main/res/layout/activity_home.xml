@@ -17,6 +17,14 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <!-- Apps with nothing else to show: glows of the app's own colours and the icons' grid. -->
+        <com.camdeco.launcher.ColorFieldView
+            android:id="@+id/hero_field"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:importantForAccessibility="no" />
+
         <!-- Blurred, full-screen copy of the art: gives the whole screen the app's colours. -->
         <ImageView
             android:id="@+id/hero_ambient"
@@ -49,14 +57,16 @@
             android:layout_height="120dp"
             android:background="@drawable/scrim_top" />
 
-        <!-- Album covers: a sharp rounded card on the right; the cover's blur fills the screen. -->
+        <!-- The card on the right: an album cover, or an app's banner. Its top lines up with the
+             title on the left, its right edge with the screen margin (like the clock and rows), and
+             it ends well above the rows. -->
         <ImageView
             android:id="@+id/hero_cover"
-            android:layout_width="@dimen/hero_cover_size"
-            android:layout_height="@dimen/hero_cover_size"
+            android:layout_width="@dimen/hero_card_height"
+            android:layout_height="@dimen/hero_card_height"
             android:layout_gravity="end|top"
-            android:layout_marginTop="76dp"
-            android:layout_marginEnd="80dp"
+            android:layout_marginTop="@dimen/hero_top"
+            android:layout_marginEnd="@dimen/overscan_h"
             android:alpha="0"
             android:background="@drawable/cover_bg"
             android:elevation="18dp"
@@ -68,7 +78,7 @@
             android:layout_width="440dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/overscan_h"
-            android:layout_marginTop="92dp"
+            android:layout_marginTop="@dimen/hero_top"
             android:orientation="vertical">
 
             <TextView

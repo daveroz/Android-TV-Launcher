@@ -3,7 +3,7 @@
 A lightweight home screen for the Chromecast with Google TV and other Android TV
 devices. No ads, no sponsored rows, no accounts. The only thing it fetches from the internet
 is public show info and artwork from TVmaze (see [Show artwork](#show-artwork)), which you can
-turn off. The APK is about 390 KB.
+turn off. The APK is about 400 KB.
 
 ![Deco Launcher home screen](docs/preview-home.png)
 
@@ -11,13 +11,20 @@ turn off. The APK is about 390 KB.
 
 ## Design
 
-- **Layout after the Apple TV app.** The focused app fills the screen as the hero: its banner on
-  the right fading into the background, with a blurred copy tinting the whole screen in the app's
-  colours. Streaming apps show their shows full-screen with a big title on the left. Music shows
-  its album cover as a large rounded card on the right with the cover's blur across the whole
-  screen; videos show their thumbnail full-screen. A pill of tabs sits at the top with the clock on the right.
-  Rows of cards run along the bottom, and the next row peeks in. Moving down scrolls the rows up
-  and fades the hero away.
+- **Layout after the Apple TV app.** The focused app fills the screen as the hero. Streaming apps
+  show their shows full-screen with a big title on the left. Music shows its album cover as a
+  rounded card on the right with the cover's blur across the whole screen; videos show their
+  thumbnail full-screen. A pill of tabs sits at the top with the clock on the right. Rows of cards
+  run along the bottom, and the next row peeks in. Moving down scrolls the rows up and fades the
+  hero away.
+- **Apps with nothing else to show glow in their own colours.** The launcher picks the app's
+  two most characteristic colours from its banner or icon: a bright one glows behind the card on
+  the right, a deep one washes in from the top, and the slanted street-map grid of the icon
+  family (Worldly, SAB Monitor, Deco) is drawn faintly over them. Moving between apps blends one
+  app's colours into the next. Grey or white logos get Worldly's amber and slate instead.
+- **The card on the right** (a banner, an icon or an album cover) lines up with the title on the
+  left, keeps clear of the top bar, ends at the same screen margin as the clock, and stops above
+  the first row.
 - **Look from Worldly.** Graphite surfaces (`#0B1322`, `#11141E`, `#1C2230`), thin slate borders
   (`#252C3C`), and one amber accent (`#DF8B35`) for focus rings, the focused tab and menu rows
   (as Worldly's amber gradient) and the active row title. The type is Worldly's Carbon+:

@@ -62,7 +62,18 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private final ExecutorService imageLoader = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final LruCache<String, Drawable> artCache = new LruCache<>(4);
+    /** An app's sharp banner (or icon) for the hero, with its colours. */
+    private static final class AppArt {
+        final Drawable art;
+        final AppColors colours;
+
+        AppArt(Drawable art, AppColors colours) {
+            this.art = art;
+            this.colours = colours;
+        }
+    }
+
+    private final LruCache<String, AppArt> artCache = new LruCache<>(8);
     private final Set<String> updatingChannels = new HashSet<>();
 
     private AppRepository repo;
@@ -436,18 +447,19 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         heroShowsTrack = false;
         hero.showApp();
 
-        Drawable cached = artCache.get(app.packageName);
+        AppArt cached = artCache.get(app.packageName);
         if (cached != null) {
-            hero.setAppArt(cached, app.banner != null);
+            hero.setAppArt(cached.art, app.banner != null, cached.colours);
         } else if (!loader.isShutdown()) {
             loader.execute(() -> {
                 Drawable art = repo.loadHeroArt(app);
+                AppColors colours = AppColors.from(art != null ? art : app.banner != null ? app.banner : app.icon);
                 main.post(() -> {
                     if (isDestroyed() || art == null) return;
-                    artCache.put(app.packageName, art);
+                    artCache.put(app.packageName, new AppArt(art, colours));
                     // Shows may have taken over the hero meanwhile; they win.
                     if (heroApp == app && hero.currentFeature() == null && !heroShowsTrack) {
-                        hero.setAppArt(art, app.banner != null);
+                        hero.setAppArt(art, app.banner != null, colours);
                     }
                 });
             });

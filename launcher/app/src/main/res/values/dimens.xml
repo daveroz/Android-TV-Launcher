@@ -15,6 +15,9 @@
     <dimen name="hero_scrim_width">660dp</dimen>
     <dimen name="hero_art_width">620dp</dimen>
     <dimen name="hero_art_height">349dp</dimen>
-    <dimen name="now_playing_width">600dp</dimen>
-    <dimen name="hero_cover_size">210dp</dimen>
+    <!-- The hero's top line (title and card), clear of the top bar, which ends at about 72dp. -->
+    <dimen name="hero_top">96dp</dimen>
+    <!-- Card height: from hero_top to 24dp above the rows (rows_top). Covers are square,
+         banners 16:9 at this height. -->
+    <dimen name="hero_card_height">176dp</dimen>
 </resources>

@@ -393,6 +393,59 @@ public class HomeActivityTest {
 
     @Test
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void appsWithNothingToShowGlowWithTheirOwnColours() throws Exception {
+        android.graphics.Bitmap orange = android.graphics.Bitmap.createBitmap(96, 96, android.graphics.Bitmap.Config.ARGB_8888);
+        orange.eraseColor(0xFFFF8800); // VLC's cone
+        packages.setUnbadgedApplicationIcon(VLC, new android.graphics.drawable.BitmapDrawable(
+                RuntimeEnvironment.getApplication().getResources(), orange));
+        HomeActivity home = start().get();
+
+        card(home, 1, 0).requestFocus(); // VLC: no shows, nothing playing
+        waitFor(() -> VLC.equals(home.heroApp.packageName) && home.hero.showsColourField());
+        assertTrue(home.hero.showsCover()); // its icon as a card on top
+        assertEquals(0f, home.findViewById(R.id.hero_ambient).getAlpha(), 0.01f);
+        float[] hsv = new float[3];
+        android.graphics.Color.colorToHSV(home.hero.fieldColour(), hsv);
+        assertTrue("glows orange, not " + hsv[0], hsv[0] > 20 && hsv[0] < 45 && hsv[1] > 0.5f);
+
+        // Something playing in it: the cover's blur replaces the colours.
+        play(VLC, "Midnight City", "M83", cover());
+        idle();
+        assertFalse(home.hero.showsColourField());
+        assertTrue(home.findViewById(R.id.hero_ambient).getAlpha() > 0.8f);
+    }
+
+    @Test
+    public void theCardSitsBetweenTheTopBarAndTheRowsAtTheScreenMargin() throws Exception {
+        HomeActivity home = start().get(); // Netflix: an icon card, the first row in place
+        waitFor(() -> home.hero.showsCover());
+        float dp = home.getResources().getDisplayMetrics().density;
+        View cover = home.findViewById(R.id.hero_cover);
+        View topBar = (View) home.findViewById(R.id.tabs).getParent();
+        View title = home.findViewById(R.id.hero_text);
+        RecyclerView rows = home.findViewById(R.id.rows);
+        int screenWidth = home.findViewById(R.id.root).getWidth();
+
+        int[] at = new int[2];
+        cover.getLocationInWindow(at);
+        int coverTop = at[1];
+        int coverBottom = at[1] + cover.getHeight();
+        int coverRight = at[0] + cover.getWidth();
+        topBar.getLocationInWindow(at);
+        int barBottom = at[1] + topBar.getHeight();
+        title.getLocationInWindow(at);
+        int titleTop = at[1];
+        rows.getChildAt(0).getLocationInWindow(at);
+        int rowsTop = at[1];
+
+        assertTrue("clear of the top bar", coverTop - barBottom >= 16 * dp);
+        assertEquals("lines up with the title", titleTop, coverTop);
+        assertEquals("ends at the screen margin", screenWidth - Math.round(48 * dp), coverRight);
+        assertTrue("ends above the rows", rowsTop - coverBottom >= 16 * dp);
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
     public void mediaAppsShowWhatWasRecentlyPlayedWhenIdle() throws Exception {
         installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
         HomeActivity home = start().get();
