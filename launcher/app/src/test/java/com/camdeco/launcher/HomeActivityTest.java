@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Dialog;
+import android.app.Notification;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -67,6 +68,8 @@ public class HomeActivityTest {
         net.offline = true;
         HomeActivity.fetcherForTests = net;
         ShowArt.requestGapMs = 0;
+        MediaTokens.clear();
+        NowPlaying.controllerFactory = MediaController::new;
         packages = shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
         installApp(NETFLIX, "Netflix", Intent.CATEGORY_LEANBACK_LAUNCHER);
         installApp(YOUTUBE, "YouTube", Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -352,6 +355,52 @@ public class HomeActivityTest {
     }
 
     @Test
+    public void lowMemoryTvsGetThePlayerFromItsNotification() throws Exception {
+        // Like the Chromecast HD: no notification access, but the Now playing switch is on.
+        Context app = RuntimeEnvironment.getApplication();
+        Settings.Secure.putString(app.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                new ComponentName(app, NowPlayingService.class).flattenToString());
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        assertTrue(rows(home).get(0).startsWith("TV apps"));
+
+        MediaSession session = new MediaSession(app, "spotify");
+        MediaController spotify = session.getController();
+        shadowOf(spotify).setPackageName("com.spotify.tv.android");
+        shadowOf(spotify).setMetadata(new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, "Midnight City")
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, "M83")
+                .build());
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PLAYING));
+        // On a TV, a controller made from the notification's session talks to Spotify itself.
+        NowPlaying.controllerFactory = (context, token) -> spotify;
+
+        NowPlayingService service = Robolectric.setupService(NowPlayingService.class);
+        // Other notifications are ignored.
+        service.onAccessibilityEvent(notificationEvent("com.example.mail", new Notification.Builder(app, "mail")
+                .setSmallIcon(android.R.drawable.ic_dialog_email).setContentTitle("New mail").build()));
+        idle();
+        assertTrue(rows(home).get(0).startsWith("TV apps"));
+
+        // Spotify starts playing and posts its media notification.
+        service.onAccessibilityEvent(notificationEvent("com.spotify.tv.android", new Notification.Builder(app, "playback")
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()))
+                .build()));
+        idle();
+        assertEquals("Now playing: []", rows(home).get(0));
+        assertEquals("Midnight City", nowPlaying(home).title.getText().toString());
+
+        home.findViewById(R.id.tab_options).performClick();
+        idle();
+        assertTrue(sheetItems().contains("Now playing: On"));
+        choose("Now playing: On");
+        String message = ((TextView) ShadowDialog.getLatestDialog().findViewById(R.id.sheet_message)).getText().toString();
+        assertTrue(message, message.contains("Now playing switch (Accessibility): On"));
+        assertTrue(message, message.contains("Notification access: Off"));
+    }
+
+    @Test
     public void withoutNotificationAccessThereIsNoPlayerRow() throws Exception {
         HomeActivity home = start().get();
         home.findViewById(R.id.tab_options).performClick();
@@ -414,6 +463,13 @@ public class HomeActivityTest {
             Thread.sleep(20);
         }
         throw new AssertionError("timed out waiting");
+    }
+
+    private static AccessibilityEvent notificationEvent(String pkg, Notification notification) {
+        AccessibilityEvent event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
+        event.setPackageName(pkg);
+        event.setParcelableData(notification);
+        return event;
     }
 
     private static PlaybackState state(int state) {

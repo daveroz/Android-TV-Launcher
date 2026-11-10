@@ -21,8 +21,11 @@
     <string name="next">Next</string>
     <string name="option_now_playing">Now playing: %1$s</string>
     <string name="now_playing_title">Now playing</string>
-    <string name="now_playing_message">Shows what\'s playing in Spotify, YouTube Music and other apps as the first row on Home, with play, pause and skip.\n\nNotification access: %1$s\n\nAndroid only shows other apps\' media to apps with notification access, and Android TV has no screen to turn it on. Run this once from Termux:\n\nadb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService\n\nTo turn it off again, run the same with disallow_listener.</string>
-    <string name="open_notification_access">Try the notification access screen</string>
+    <string name="now_playing_message">Shows what\'s playing in Spotify, YouTube Music and other apps as the first row on Home.\n\nOn this TV:\n• Now playing switch (Accessibility): %1$s\n• Notification access: %2$s%3$s\n\nTurn on the switch: Settings → System → Accessibility → Deco Launcher Now playing. Then start a song; it appears when the player starts playing.\n\nOr from Termux (add the Home button service after a colon if you use it):\nadb shell settings put secure enabled_accessibility_services com.camdeco.launcher/com.camdeco.launcher.NowPlayingService\nadb shell settings put secure accessibility_enabled 1</string>
+    <string name="low_memory_note"> (this TV counts as low-memory, and Android doesn\'t allow it there)</string>
+    <string name="now_playing_service_label">Deco Launcher Now playing</string>
+    <string name="now_playing_service_description">Shows what\'s playing in Spotify and other apps on the Deco Launcher home screen, with play, pause and skip. It only picks up a music player\'s media controls from its notification, ignores every other notification and doesn\'t read anything on your screen.</string>
+    <string name="open_accessibility_settings">Open Accessibility settings</string>
 
     <!-- Show artwork -->
     <string name="tvmaze_credit">Show info from TVmaze</string>

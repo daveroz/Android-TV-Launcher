@@ -67,15 +67,32 @@ While Spotify (or YouTube Music, a podcast app, any app with standard media cont
 or paused, Home starts with a **Now playing** row: cover, track, artist, previous / play-pause /
 next and a progress bar. OK on the track opens the player; the hero shows the cover.
 
-Android only shows other apps' media to apps with notification access, and Android TV has no
-screen to turn that on, so do it once from Termux:
+Android only shows other apps' media to apps that are allowed to see it. There are two ways, and
+**⋮ → Now playing** shows which are on:
 
-```bash
-adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService
-```
+1. **Now playing switch (works on every TV, including the Chromecast HD).** Go to
+   **Settings → System → Accessibility → Deco Launcher Now playing** and turn it on. It picks up
+   the player's media controls from its notification when the player starts, and ignores every
+   other notification. After turning it on, start (or restart) a song. From Termux instead:
 
-Go back to Home and start some music. **⋮ → Now playing** shows whether access is on. To turn it
-off, run the same command with `disallow_listener`.
+   ```bash
+   adb shell settings put secure enabled_accessibility_services com.camdeco.launcher/com.camdeco.launcher.NowPlayingService
+   adb shell settings put secure accessibility_enabled 1
+   ```
+
+   This replaces the list of enabled accessibility services. If you also use the Home button
+   override, list both, separated by a colon:
+   `com.camdeco.launcher/com.camdeco.launcher.NowPlayingService:com.camdeco.launcher/com.camdeco.launcher.HomeButtonService`
+
+2. **Notification access (TVs that aren't low-memory).** It also sees players that were already
+   playing before the launcher started:
+
+   ```bash
+   adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService
+   ```
+
+   Low-memory TVs (`adb shell getprop ro.config.low_ram` says `true`, like the 1.5 GB Chromecast
+   HD) refuse this: the switch flips back off. Use the Now playing switch there.
 
 ## Show artwork
 

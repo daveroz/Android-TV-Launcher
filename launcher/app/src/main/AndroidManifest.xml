@@ -66,6 +66,20 @@
             </intent-filter>
         </service>
 
+        <!-- Low-memory TVs refuse notification access; this picks up players' media sessions instead. -->
+        <service
+            android:name=".NowPlayingService"
+            android:exported="true"
+            android:label="@string/now_playing_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/now_playing_service" />
+        </service>
+
         <!-- Optional: sends the Home button here while Google TV stays installed. -->
         <service
             android:name=".HomeButtonService"

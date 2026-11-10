@@ -670,7 +670,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         List<AppEntry> hiddenApps = hiddenApps();
         List<String> items = new ArrayList<>();
         items.add(getString(R.string.option_hidden_apps, hiddenApps.size()));
-        items.add(getString(R.string.option_now_playing, getString(nowPlaying.hasAccess() ? R.string.on : R.string.off)));
+        items.add(getString(R.string.option_now_playing, getString(nowPlaying.available() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_show_art, getString(repo.showArtEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_home_setup));
         items.add(getString(R.string.option_tv_settings));
@@ -702,14 +702,17 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         showHint(on ? R.string.show_art_on : R.string.show_art_off);
     }
 
+    /** What's on and off for Now playing on this TV, and how to turn it on. */
     private void showNowPlayingSetup() {
         String message = getString(R.string.now_playing_message,
-                getString(nowPlaying.hasAccess() ? R.string.on : R.string.off));
+                getString(nowPlaying.helperOn() ? R.string.on : R.string.off),
+                getString(nowPlaying.hasAccess() ? R.string.on : R.string.off),
+                nowPlaying.lowMemoryTv() && !nowPlaying.hasAccess() ? getString(R.string.low_memory_note) : "");
         List<String> items = new ArrayList<>();
-        items.add(getString(R.string.open_notification_access));
+        items.add(getString(R.string.open_accessibility_settings));
         items.add(getString(R.string.close));
         Sheet.pick(this, getString(R.string.now_playing_title), message, items, which -> {
-            if (which == 0) open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+            if (which == 0) open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
         });
     }
 
