@@ -24,6 +24,7 @@ import android.provider.Settings;
 import android.util.LruCache;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -47,7 +48,7 @@ import java.util.function.Consumer;
  * with their shows, and whatever is playing gets its own row. The Apps tab shows every app in a
  * grid, where the order can be changed.
  */
-public class HomeActivity extends Activity implements CardAdapter.Listener, RowsAdapter.NowPlayingListener {
+public class HomeActivity extends Activity implements CardAdapter.Listener {
     static final int COLUMNS = 5;
     private static final int PAGE_HOME = 0;
     private static final int PAGE_APPS = 1;
@@ -79,6 +80,11 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
     private TabBar tabs;
     private View tabHome;
     private View tabApps;
+    private View npBar;
+    private View npOpen;
+    private ImageView npArt;
+    private TextView npTitle;
+    private ImageButton npPlay;
 
     private List<AppEntry> allApps = new ArrayList<>();
     private int page = PAGE_HOME;
@@ -86,23 +92,16 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
     /** Package of the card being moved, or null when not moving. */
     private String movingPackage;
     AppEntry heroApp;
-    private AppEntry pendingHero;
+    /** Whether the hero is showing what's playing (for the mini player, or the player app's card). */
     private boolean heroShowsTrack;
 
     private final Runnable heroUpdate = () -> {
-        if (pendingHero != null) showHero(pendingHero);
+        // Follow whichever card has focus now, not the one that asked: the rows can refresh in
+        // between (adding a favourite), and the hero must always match the highlighted card.
+        AppEntry focused = focusedApp();
+        if (focused != null && focused != heroApp && page == PAGE_HOME) showHero(focused);
     };
     private final Runnable hideHint = () -> hint.animate().alpha(0f).setDuration(300).start();
-    private final Runnable progressTick = new Runnable() {
-        @Override
-        public void run() {
-            RecyclerView.ViewHolder holder = rows.findViewHolderForAdapterPosition(0);
-            if (holder instanceof RowsAdapter.NowPlayingHolder) {
-                ((RowsAdapter.NowPlayingHolder) holder).showProgress(NowPlaying.now());
-            }
-            main.postDelayed(this, 1000);
-        }
-    };
 
     private final Hero.Images heroImages = new Hero.Images() {
         @Override
@@ -147,6 +146,21 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         tabHome = findViewById(R.id.tab_home);
         tabApps = findViewById(R.id.tab_apps);
 
+        // Mini player in the top bar.
+        npBar = findViewById(R.id.np_bar);
+        npOpen = findViewById(R.id.np_open);
+        npArt = findViewById(R.id.np_art);
+        npArt.setClipToOutline(true);
+        npTitle = findViewById(R.id.np_title);
+        npPlay = findViewById(R.id.np_play);
+        npOpen.setOnClickListener(v -> openPlayer());
+        npPlay.setOnClickListener(v -> nowPlaying.playPause());
+        findViewById(R.id.np_next).setOnClickListener(v -> nowPlaying.next());
+        npOpen.setOnFocusChangeListener((v, focused) -> {
+            NowPlaying.Track track = nowPlaying.track();
+            if (focused && track != null && page == PAGE_HOME) showTrackHero(track);
+        });
+
         ImageView heroAmbient = findViewById(R.id.hero_ambient);
         if (Build.VERSION.SDK_INT >= 31) {
             float blur = 48 * getResources().getDisplayMetrics().density;
@@ -162,7 +176,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         rows.setWindowAlignmentOffsetPercent(BaseGridView.WINDOW_ALIGN_OFFSET_PERCENT_DISABLED);
         rows.setWindowAlignmentOffset(getResources().getDimensionPixelSize(R.dimen.rows_top));
         rows.setItemAlignmentOffsetPercent(0);
-        rowsAdapter = new RowsAdapter(this, this);
+        rowsAdapter = new RowsAdapter(this);
         rows.setAdapter(rowsAdapter);
         rows.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -212,8 +226,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         super.onResume();
         nowPlaying.start(); // also picks up notification access granted while we were away
         hero.resume();
-        main.removeCallbacks(progressTick);
-        main.post(progressTick);
     }
 
     @Override
@@ -221,7 +233,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         if (movingPackage != null) endMove();
         nowPlaying.stop();
         hero.pause();
-        main.removeCallbacks(progressTick);
         super.onPause();
     }
 
@@ -281,7 +292,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
             else otherApps.add(app);
         }
         List<RowsAdapter.Row> list = new ArrayList<>();
-        if (nowPlaying.track() != null) list.add(RowsAdapter.Row.nowPlaying(getString(R.string.row_now_playing)));
         if (!favouriteApps.isEmpty()) {
             list.add(new RowsAdapter.Row("favourites", getString(R.string.row_favourites), favouriteApps));
         }
@@ -289,7 +299,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         if (!otherApps.isEmpty()) list.add(new RowsAdapter.Row("other", getString(R.string.row_other), otherApps));
 
         String focusedPackage = focusedPackage();
-        rowsAdapter.setTrack(nowPlaying.track());
         rowsAdapter.submit(list, favourites);
         appsAdapter.submit(visible, favourites);
         empty.setVisibility(visible.isEmpty() ? View.VISIBLE : View.GONE);
@@ -303,10 +312,15 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
     }
 
     /** The app whose card has focus, or null when focus is elsewhere. */
-    private String focusedPackage() {
+    private AppEntry focusedApp() {
         View focused = getWindow().getDecorView().findFocus();
         Object app = focused == null ? null : focused.getTag(R.id.tag_app);
-        return app instanceof AppEntry ? ((AppEntry) app).packageName : null;
+        return app instanceof AppEntry ? (AppEntry) app : null;
+    }
+
+    private String focusedPackage() {
+        AppEntry app = focusedApp();
+        return app == null ? null : app.packageName;
     }
 
     // ---- Pages and focus ----
@@ -337,23 +351,12 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         else appsGrid.requestFocus();
     }
 
-    /** The top of Home: what's playing if anything is, else the first app. */
+    /** The top of Home: the first app. */
     private void focusTop() {
-        NowPlaying.Track track = nowPlaying.track();
-        if (track != null) {
-            focusNowPlaying();
-            showTrackHero(track);
-        } else {
-            int row = firstCardRow();
-            if (row < rowsAdapter.getItemCount()) {
-                showHero(rowsAdapter.rows().get(row).apps.get(0));
-                focusRowCard(row, 0);
-            }
+        if (rowsAdapter.getItemCount() > 0) {
+            showHero(rowsAdapter.rows().get(0).apps.get(0));
+            focusRowCard(0, 0);
         }
-    }
-
-    private int firstCardRow() {
-        return rowsAdapter.hasNowPlaying() ? 1 : 0;
     }
 
     private void focusApp(String packageName) {
@@ -370,10 +373,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         if (rowCount == 0) return;
         int r = Math.max(0, Math.min(row, rowCount - 1));
         rows.setSelectedPosition(r, holder -> {
-            if (holder instanceof RowsAdapter.NowPlayingHolder) {
-                retryFocus(() -> ((RowsAdapter.NowPlayingHolder) holder).open.requestFocus(), 10);
-                return;
-            }
             RowsAdapter.Holder rowHolder = (RowsAdapter.Holder) holder;
             int c = Math.max(0, Math.min(column, rowHolder.cards.getItemCount() - 1));
             rowHolder.grid.setSelectedPosition(c);
@@ -382,10 +381,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
                 return card != null && card.itemView.requestFocus();
             }, 10);
         });
-    }
-
-    private void focusNowPlaying() {
-        if (rowsAdapter.hasNowPlaying()) focusRowCard(0, 0);
     }
 
     private void focusGridCard(int position) {
@@ -423,8 +418,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
                 break;
             }
         }
-        if (focused && page == PAGE_HOME && (app != heroApp || heroShowsTrack)) {
-            pendingHero = app;
+        if (focused && page == PAGE_HOME) {
             main.removeCallbacks(heroUpdate);
             main.postDelayed(heroUpdate, HERO_DELAY_MS);
         }
@@ -432,18 +426,15 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
 
     private void showHero(AppEntry app) {
         heroApp = app;
-        pendingHero = null;
-        heroShowsTrack = false;
-        String kind = getString(app.leanback ? R.string.kind_tv : R.string.kind_phone);
-        String chip = app.versionName != null && !app.versionName.isEmpty()
-                ? getString(R.string.version, app.versionName) : null;
-        String desc = null;
-        if (app.updated > 0) {
-            String date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(app.updated));
-            boolean favourite = repo.getFavourites().contains(app.packageName);
-            desc = getString(favourite ? R.string.favourite_updated : R.string.updated, date);
+        NowPlaying.Track track = nowPlaying.track();
+        if (track != null && app.packageName.equals(track.packageName)) {
+            // Spotify, YouTube...: while they play, their card shows what's playing.
+            heroShowsTrack = true;
+            hero.showTrack(track, appIcon(track.packageName));
+            return;
         }
-        hero.showApp(app, kind, chip, desc);
+        heroShowsTrack = false;
+        hero.showApp();
 
         Drawable cached = artCache.get(app.packageName);
         if (cached != null) {
@@ -488,7 +479,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
 
     private void showTrackHero(NowPlaying.Track track) {
         heroApp = null;
-        pendingHero = null;
         main.removeCallbacks(heroUpdate);
         heroShowsTrack = true;
         hero.showTrack(track, appIcon(track.packageName));
@@ -498,56 +488,43 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
 
     private void onNowPlayingChanged() {
         NowPlaying.Track track = nowPlaying.track();
-        if (!loaded) return;
-        boolean want = track != null;
-        if (want != rowsAdapter.hasNowPlaying()) {
-            View focused = getWindow().getDecorView().findFocus();
-            boolean focusInNowPlaying = isInNowPlaying(focused);
-            boolean atTop = rows.getSelectedPosition() <= 0;
-            showApps(!(want && atTop));
-            if (want && atTop && page == PAGE_HOME) focusTop(); // it appears at the top: take focus there
-            else if (!want && focusInNowPlaying) focusTop();
-        } else {
-            rowsAdapter.setTrack(track);
+        bindPlayer(track);
+        if (track == null) {
+            if (isInPlayer(getWindow().getDecorView().findFocus())) tabHome.requestFocus();
+            if (heroShowsTrack) {
+                AppEntry app = heroApp != null ? heroApp : focusedApp();
+                if (app != null) showHero(app);
+            }
+            return;
         }
-        if (want && heroShowsTrack) hero.showTrack(track, appIcon(track.packageName));
+        if (heroApp == null) {
+            if (heroShowsTrack) hero.showTrack(track, appIcon(track.packageName)); // mini player focused
+        } else if (heroShowsTrack || heroApp.packageName.equals(track.packageName)) {
+            showHero(heroApp); // the player's card has focus: show (or stop showing) the cover
+        }
     }
 
-    private boolean isInNowPlaying(View view) {
-        for (View v = view; v != null && v.getParent() instanceof View; v = (View) v.getParent()) {
-            if (v.getParent() == rows) return rows.getChildViewHolder(v) instanceof RowsAdapter.NowPlayingHolder;
+    /** The mini player in the top bar: cover, "title · artist", play/pause and next. */
+    private void bindPlayer(NowPlaying.Track track) {
+        if (track == null) {
+            npBar.setVisibility(View.GONE);
+            return;
+        }
+        npBar.setVisibility(View.VISIBLE);
+        npTitle.setText(track.artist != null ? track.title + " · " + track.artist : track.title);
+        if (track.art != null) npArt.setImageBitmap(track.art);
+        else npArt.setImageDrawable(appIcon(track.packageName));
+        npPlay.setImageResource(track.playing ? R.drawable.ic_pause : R.drawable.ic_play);
+    }
+
+    private boolean isInPlayer(View view) {
+        for (View v = view; v != null; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
+            if (v == npBar) return true;
         }
         return false;
     }
 
-    @Override
-    public void onNowPlayingAction(int action) {
-        switch (action) {
-            case OPEN:
-                openPlayer();
-                break;
-            case PREVIOUS:
-                nowPlaying.previous();
-                break;
-            case PLAY_PAUSE:
-                nowPlaying.playPause();
-                break;
-            case NEXT:
-                nowPlaying.next();
-                break;
-            default:
-                break;
-        }
-    }
-
-    @Override
-    public void onNowPlayingFocused(View view, boolean focused) {
-        NowPlaying.Track track = rowsAdapter.track();
-        if (focused && page == PAGE_HOME && track != null && !heroShowsTrack) showTrackHero(track);
-    }
-
-    @Override
-    public Drawable appIcon(String packageName) {
+    private Drawable appIcon(String packageName) {
         try {
             return getPackageManager().getApplicationIcon(packageName);
         } catch (PackageManager.NameNotFoundException e) {
@@ -670,7 +647,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         List<AppEntry> hiddenApps = hiddenApps();
         List<String> items = new ArrayList<>();
         items.add(getString(R.string.option_hidden_apps, hiddenApps.size()));
-        items.add(getString(R.string.option_now_playing, getString(nowPlaying.available() ? R.string.on : R.string.off)));
+        items.add(getString(R.string.option_now_playing, getString(nowPlaying.hasAccess() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_show_art, getString(repo.showArtEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_home_setup));
         items.add(getString(R.string.option_tv_settings));
@@ -702,17 +679,14 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Rows
         showHint(on ? R.string.show_art_on : R.string.show_art_off);
     }
 
-    /** What's on and off for Now playing on this TV, and how to turn it on. */
     private void showNowPlayingSetup() {
         String message = getString(R.string.now_playing_message,
-                getString(nowPlaying.helperOn() ? R.string.on : R.string.off),
-                getString(nowPlaying.hasAccess() ? R.string.on : R.string.off),
-                nowPlaying.lowMemoryTv() && !nowPlaying.hasAccess() ? getString(R.string.low_memory_note) : "");
+                getString(nowPlaying.hasAccess() ? R.string.on : R.string.off));
         List<String> items = new ArrayList<>();
-        items.add(getString(R.string.open_accessibility_settings));
+        items.add(getString(R.string.open_notification_access));
         items.add(getString(R.string.close));
         Sheet.pick(this, getString(R.string.now_playing_title), message, items, which -> {
-            if (which == 0) open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+            if (which == 0) open(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
         });
     }
 

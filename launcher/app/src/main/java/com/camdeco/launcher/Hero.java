@@ -17,8 +17,9 @@ import java.util.List;
 
 /**
  * The big area at the top of Home. It shows one of three things for what has focus:
- * an app (its banner on the right), a streaming app's shows (full-screen artwork that changes
- * every few seconds, like the Apple TV home screen), or the track that's playing.
+ * an app (just its banner on the right), a streaming app's shows (full-screen artwork that
+ * changes every few seconds, like the Apple TV home screen), or what's playing (the cover, or a
+ * video's thumbnail full-screen).
  */
 final class Hero {
 
@@ -56,6 +57,8 @@ final class Hero {
     private int featureIndex;
     private Images images;
     private final Runnable rotate = this::nextFeature;
+    /** The cover on screen, so play/pause updates don't fade the same picture again. */
+    private Object shownCover;
 
     Hero(Activity activity, Handler main) {
         this.activity = activity;
@@ -79,14 +82,15 @@ final class Hero {
 
     // ---- What to show ----
 
-    /** An app: its name and details now; its banner follows with setAppArt. */
-    void showApp(AppEntry app, String kindText, String chipText, String descText) {
+    /** A plain app: just its banner (set with setAppArt), no name or version text. */
+    void showApp() {
         stopFeatures();
-        setText(app.label, kindText, chipText, descText);
+        setText(null, null, null, null);
         showHoldHint(true);
     }
 
     void setAppArt(Drawable drawable, boolean isBanner) {
+        shownCover = null;
         int pad = isBanner ? 0 : (int) (72 * density);
         swapArt(false, AppRepository.copy(drawable), AppRepository.copy(drawable),
                 isBanner ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER, pad);
@@ -108,6 +112,15 @@ final class Hero {
         String detail = track.album != null ? track.album + " · " + track.app : track.app;
         setText(track.title, track.artist, null, detail);
         showHoldHint(false);
+        Object picture = track.art != null ? track.art : track.packageName;
+        if (picture.equals(shownCover)) return; // same picture: only the text changed
+        shownCover = picture;
+        if (track.art != null && track.art.getWidth() > track.art.getHeight() * 1.4f) {
+            // Wide art (a YouTube video's thumbnail) fills the screen, like a show.
+            swapArt(true, new BitmapDrawable(activity.getResources(), track.art), null, ImageView.ScaleType.CENTER_CROP, 0);
+            return;
+        }
+        // A square cover (Spotify) sits on the right, its colours tinting the whole screen.
         Drawable cover = track.art != null ? new BitmapDrawable(activity.getResources(), track.art) : fallbackIcon;
         if (cover != null) {
             swapArt(false, AppRepository.copy(cover), AppRepository.copy(cover),
@@ -151,6 +164,7 @@ final class Hero {
     }
 
     private void setFeatureArt(Bitmap bitmap) {
+        shownCover = null;
         swapArt(true, new BitmapDrawable(activity.getResources(), bitmap), null, ImageView.ScaleType.CENTER_CROP, 0);
     }
 
@@ -223,6 +237,7 @@ final class Hero {
 
     private void setText(String titleText, String kindText, String chipText, String descText) {
         title.setText(titleText);
+        title.setVisibility(titleText == null ? View.GONE : View.VISIBLE);
         kind.setText(kindText);
         kind.setVisibility(kindText == null ? View.GONE : View.VISIBLE);
         chip.setText(chipText);

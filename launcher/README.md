@@ -11,9 +11,10 @@ turn off. The APK is about 390 KB.
 
 ## Design
 
-- **Layout after the Apple TV app.** The focused app fills the screen as the hero: its art on
-  the right fading into the background, a big title on the left, and a blurred copy tinting the
-  whole screen in the app's colours. A pill of tabs sits at the top with the clock on the right.
+- **Layout after the Apple TV app.** The focused app fills the screen as the hero: its banner on
+  the right fading into the background, with a blurred copy tinting the whole screen in the app's
+  colours. Streaming apps show their shows full-screen with a big title on the left, and the app
+  that's playing music or video shows the cover or the video's thumbnail. A pill of tabs sits at the top with the clock on the right.
   Rows of cards run along the bottom, and the next row peeks in. Moving down scrolls the rows up
   and fades the hero away.
 - **Look from Worldly.** Graphite surfaces (`#0B1322`, `#11141E`, `#1C2230`), thin slate borders
@@ -43,8 +44,9 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 
 ## What it does
 
-- **Home tab:** a **Now playing** row while music plays (see [Now playing](#now-playing)), a
-  **Favourites** row (once you add some), then **TV apps** and **Other apps** (phone apps)
+- **Home tab:** a **Favourites** row (once you add some), then **TV apps** and **Other apps**
+  (phone apps)
+- **Mini player** in the top bar while something plays (see [Now playing](#now-playing))
 - **Streaming apps show their shows:** focus Netflix, Disney+, Prime Video, HBO Max, Hulu,
   Apple TV, Paramount+ or Peacock and the hero fills with that service's shows, changing every
   8 seconds (see [Show artwork](#show-artwork))
@@ -63,36 +65,20 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 
 ## Now playing
 
-While Spotify (or YouTube Music, a podcast app, any app with standard media controls) is playing
-or paused, Home starts with a **Now playing** row: cover, track, artist, previous / play-pause /
-next and a progress bar. OK on the track opens the player; the hero shows the cover.
+While Spotify, YouTube (or any app with standard media controls) is playing or paused, a small
+player appears in the top bar, after Home / Apps / ⚙ / ⋮: the cover, "title · artist", play/pause
+and next. OK on the cover opens the player. On the player, and on the playing app's own card, the
+hero shows what's playing: Spotify's cover, or a YouTube video's thumbnail full-screen.
 
-Android only shows other apps' media to apps that are allowed to see it. There are two ways, and
-**⋮ → Now playing** shows which are on:
+Android only shows other apps' media to apps with notification access, and Android TV has no
+screen to turn that on, so do it once from Termux:
 
-1. **Now playing switch (works on every TV, including the Chromecast HD).** Go to
-   **Settings → System → Accessibility → Deco Launcher Now playing** and turn it on. It picks up
-   the player's media controls from its notification when the player starts, and ignores every
-   other notification. After turning it on, start (or restart) a song. From Termux instead:
+```bash
+adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService
+```
 
-   ```bash
-   adb shell settings put secure enabled_accessibility_services com.camdeco.launcher/com.camdeco.launcher.NowPlayingService
-   adb shell settings put secure accessibility_enabled 1
-   ```
-
-   This replaces the list of enabled accessibility services. If you also use the Home button
-   override, list both, separated by a colon:
-   `com.camdeco.launcher/com.camdeco.launcher.NowPlayingService:com.camdeco.launcher/com.camdeco.launcher.HomeButtonService`
-
-2. **Notification access (TVs that aren't low-memory).** It also sees players that were already
-   playing before the launcher started:
-
-   ```bash
-   adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService
-   ```
-
-   Low-memory TVs (`adb shell getprop ro.config.low_ram` says `true`, like the 1.5 GB Chromecast
-   HD) refuse this: the switch flips back off. Use the Now playing switch there.
+Go back to Home and start some music. **⋮ → Now playing** shows whether access is on. To turn it
+off, run the same command with `disallow_listener`.
 
 ## Show artwork
 
@@ -182,10 +168,20 @@ Download the latest APK again and install it over the old one with `adb install 
 Favourites, hidden apps and the order are kept.
 
 Android only installs an update that is signed with the same key as the version already on the TV.
-GitHub Actions signs every build with the key stored in the `DECO_KEYSTORE_BASE64` secret. That key
-is the one that signed the earlier builds, so the builds install over each other. If you ever see a
-signature error, run `adb uninstall com.camdeco.launcher` first; that resets favourites, hidden apps
-and the order.
+Every build on the `launcher-latest` release is signed with the same key, so they install over each
+other. Only install from that link: the **DecoLauncher.apk** artifacts of early GitHub runs (before
+the signing key was set up) used a different key.
+
+If the TV says **"package conflicts with an existing package"** (or adb says
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE`), the copy on the TV has a different key. Replace it once,
+making sure the TV keeps a home screen meanwhile (this resets favourites, hidden apps and the order):
+
+```bash
+adb shell pm enable com.google.android.apps.tv.launcherx   # a home screen while Deco is away
+adb uninstall com.camdeco.launcher
+adb install DecoLauncher.apk
+bash disable-google-tv.sh 192.168.x.x                      # Deco Launcher as Home again
+```
 
 ## Building
 

@@ -143,6 +143,9 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         boolean focused = view.isFocused();
         holder.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         holder.card.setScaleY(focused ? FOCUS_SCALE : 1f);
+        // The focused card can be given a different app when the rows refresh (adding a
+        // favourite, say). Focus doesn't move, so tell the listener; else the hero shows the old app.
+        if (focused) listener.onCardFocused(view, app, true);
     }
 
     final class Holder extends RecyclerView.ViewHolder {

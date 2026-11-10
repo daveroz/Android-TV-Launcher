@@ -7,10 +7,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.media.MediaMetadata;
 import android.media.session.MediaController;
-import android.media.session.MediaSession;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
-import android.os.Build;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.provider.Settings;
@@ -19,9 +17,7 @@ import java.util.List;
 
 /**
  * Follows whatever media is playing (Spotify, YouTube Music, a podcast app...) through Android's
- * media sessions. Two ways to see other apps' sessions: notification access (MediaListenerService),
- * which low-memory TVs refuse, or the Now playing accessibility switch (NowPlayingService), which
- * picks sessions up from players' notifications.
+ * media sessions. Seeing other apps' sessions needs notification access, see MediaListenerService.
  */
 final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedListener {
 
@@ -66,19 +62,13 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
         }
     }
 
-    /** Makes a controller for a session found in a notification; swapped out in tests. */
-    static java.util.function.BiFunction<Context, MediaSession.Token, MediaController> controllerFactory =
-            MediaController::new;
-
     private final Context context;
     private final MediaSessionManager sessions;
     private final ComponentName component;
     private final Handler handler;
     private final Listener listener;
-    private final java.util.Map<MediaSession.Token, MediaController> fromNotifications = new java.util.HashMap<>();
     private MediaController current;
     private boolean listening;
-    private boolean sessionAccess;
 
     private final MediaController.Callback callback = new MediaController.Callback() {
         @Override
@@ -105,73 +95,46 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
         this.listener = listener;
     }
 
-    /** Notification access: the full route, but low-memory TVs refuse to turn it on. */
+    /** Whether notification access is on, which is what lets the launcher see other apps' media. */
     boolean hasAccess() {
-        if (Build.VERSION.SDK_INT >= 27) {
-            android.app.NotificationManager nm = context.getSystemService(android.app.NotificationManager.class);
-            return nm != null && nm.isNotificationListenerAccessGranted(component);
-        }
-        return settingContains("enabled_notification_listeners", component);
+        String enabled = Settings.Secure.getString(context.getContentResolver(), "enabled_notification_listeners");
+        return enabled != null
+                && (enabled.contains(component.flattenToString()) || enabled.contains(component.flattenToShortString()));
     }
 
-    /** The Now playing accessibility switch: the route that works on low-memory TVs too. */
-    boolean helperOn() {
-        return settingContains(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                new ComponentName(context, NowPlayingService.class));
-    }
-
-    /** Low-memory TVs (Android's own label) don't allow notification access for most apps. */
-    boolean lowMemoryTv() {
-        android.app.ActivityManager am = context.getSystemService(android.app.ActivityManager.class);
-        return am != null && am.isLowRamDevice();
-    }
-
-    /** Whether either route is on. */
-    boolean available() {
-        return hasAccess() || helperOn();
-    }
-
-    /** Starts following media: through notification access if allowed, and players' notifications. */
+    /** Starts following media sessions. Does nothing without notification access. */
     void start() {
-        if (listening) return;
-        listening = true;
-        MediaTokens.setListener(() -> handler.post(this::refresh));
-        sessionAccess = false;
-        if (sessions != null) {
-            try {
-                sessions.addOnActiveSessionsChangedListener(this, component, handler);
-                sessionAccess = true;
-            } catch (SecurityException e) {
-                // No notification access: rely on players' notifications (NowPlayingService).
-            }
+        if (listening || sessions == null) return;
+        try {
+            sessions.addOnActiveSessionsChangedListener(this, component, handler);
+            listening = true;
+            onActiveSessionsChanged(sessions.getActiveSessions(component));
+        } catch (SecurityException e) {
+            listening = false; // notification access is off
+            setCurrent(null);
         }
-        refresh();
     }
 
     /** Stops listening while the launcher is in the background; the last track is kept. */
     void stop() {
         if (!listening) return;
-        if (sessionAccess) sessions.removeOnActiveSessionsChangedListener(this);
-        MediaTokens.setListener(null);
+        sessions.removeOnActiveSessionsChangedListener(this);
         if (current != null) current.unregisterCallback(callback);
         listening = false;
     }
 
     @Override
-    public void onActiveSessionsChanged(List<MediaController> ignored) {
-        refresh(); // look at both routes together
-    }
-
-    /** Picks what to show from every session we can see: playing first, then paused. */
-    private void choose(List<MediaController> controllers) {
+    public void onActiveSessionsChanged(List<MediaController> controllers) {
         MediaController best = null;
-        for (MediaController c : controllers) {
-            if (!worthShowing(c)) continue;
-            if (isPlaying(c)) {
-                best = c;
-                break;
+        if (controllers != null) {
+            for (MediaController c : controllers) {
+                if (!worthShowing(c)) continue;
+                if (isPlaying(c)) {
+                    best = c;
+                    break;
+                }
+                if (best == null) best = c;
             }
-            if (best == null) best = c;
         }
         setCurrent(best);
     }
@@ -181,39 +144,11 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
             listener.onNowPlayingChanged();
             return;
         }
-        List<MediaController> all = new java.util.ArrayList<>();
-        if (sessionAccess) {
-            try {
-                all.addAll(sessions.getActiveSessions(component));
-            } catch (SecurityException e) {
-                sessionAccess = false; // access was turned off
-            }
+        try {
+            onActiveSessionsChanged(sessions.getActiveSessions(component));
+        } catch (SecurityException e) {
+            setCurrent(null);
         }
-        for (MediaSession.Token token : MediaTokens.all()) {
-            MediaController c = fromNotifications.get(token);
-            if (c == null) {
-                try {
-                    c = controllerFactory.apply(context, token);
-                } catch (RuntimeException e) {
-                    continue; // the player has gone away
-                }
-                fromNotifications.put(token, c);
-            }
-            if (!containsSession(all, c)) all.add(c);
-        }
-        choose(all);
-    }
-
-    private static boolean containsSession(List<MediaController> list, MediaController c) {
-        for (MediaController other : list) {
-            if (other.getSessionToken().equals(c.getSessionToken())) return true;
-        }
-        return false;
-    }
-
-    private boolean settingContains(String setting, ComponentName name) {
-        String value = Settings.Secure.getString(context.getContentResolver(), setting);
-        return value != null && (value.contains(name.flattenToString()) || value.contains(name.flattenToShortString()));
     }
 
     private void setCurrent(MediaController controller) {

@@ -8,7 +8,6 @@ import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Dialog;
-import android.app.Notification;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -68,8 +67,6 @@ public class HomeActivityTest {
         net.offline = true;
         HomeActivity.fetcherForTests = net;
         ShowArt.requestGapMs = 0;
-        MediaTokens.clear();
-        NowPlaying.controllerFactory = MediaController::new;
         packages = shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
         installApp(NETFLIX, "Netflix", Intent.CATEGORY_LEANBACK_LAUNCHER);
         installApp(YOUTUBE, "YouTube", Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -92,10 +89,12 @@ public class HomeActivityTest {
         HomeActivity home = start().get();
         assertEquals(List.of("TV apps: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
                 "Other apps: [" + VLC + "]"), rows(home));
-        // The first card has focus and fills the hero.
+        // The first card has focus and fills the hero: just its banner, no name or version text.
         assertEquals(card(home, 0, 0), focus(home));
-        assertEquals("Netflix", text(home, R.id.hero_title));
-        assertEquals("TV app", text(home, R.id.hero_kind));
+        assertEquals(NETFLIX, home.heroApp.packageName);
+        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
+        assertEquals(View.GONE, home.findViewById(R.id.hero_version).getVisibility());
+        assertEquals(View.GONE, home.findViewById(R.id.hero_desc).getVisibility());
         // Cards keep the 16:9 banner shape.
         View banner = card(home, 0, 0).findViewById(R.id.card);
         assertTrue(banner.getWidth() > 0);
@@ -107,11 +106,41 @@ public class HomeActivityTest {
         HomeActivity home = start().get();
         card(home, 0, 2).requestFocus();
         idle();
-        assertEquals("YouTube", text(home, R.id.hero_title));
+        assertEquals(YOUTUBE, home.heroApp.packageName);
         card(home, 1, 0).requestFocus();
         idle();
-        assertEquals("VLC", text(home, R.id.hero_title));
-        assertEquals("Phone app", text(home, R.id.hero_kind));
+        assertEquals(VLC, home.heroApp.packageName);
+    }
+
+    @Test
+    public void heroMatchesTheHighlightedCardAfterAddingAFavourite() throws Exception {
+        HomeActivity home = start().get();
+        card(home, 0, 2).requestFocus(); // YouTube
+        idle();
+        card(home, 0, 2).performLongClick();
+        choose("Add to Favourites");
+        idle();
+        AppEntry highlighted = (AppEntry) focus(home).getTag(R.id.tag_app);
+        assertEquals(YOUTUBE, highlighted.packageName);
+        assertEquals(highlighted, home.heroApp);
+
+        card(home, 0, 0).performLongClick();
+        choose("Remove from Favourites");
+        idle();
+        highlighted = (AppEntry) focus(home).getTag(R.id.tag_app);
+        assertEquals(highlighted, home.heroApp);
+    }
+
+    @Test
+    public void heroFollowsWhenTheHighlightedCardChangesApp() throws Exception {
+        HomeActivity home = start().get(); // Netflix highlighted
+        card(home, 0, 0).performLongClick();
+        choose("Hide");
+        idle();
+        // The same spot now holds Prime Video; the hero must follow it.
+        AppEntry highlighted = (AppEntry) focus(home).getTag(R.id.tag_app);
+        assertEquals(PRIME, highlighted.packageName);
+        assertEquals(PRIME, home.heroApp.packageName);
     }
 
     @Test
@@ -293,10 +322,11 @@ public class HomeActivityTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(9));
         waitFor(() -> "Love Is Blind".equals(text(home, R.id.hero_title)));
 
-        // Apps that aren't streaming services keep their own banner and name.
+        // Apps that aren't streaming services just show their banner.
         card(home, 0, 2).requestFocus(); // YouTube
         idle();
-        assertEquals("YouTube", text(home, R.id.hero_title));
+        assertEquals(YOUTUBE, home.heroApp.packageName);
+        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
         assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
 
         // Turned off in the menu: Netflix shows its banner again.
@@ -305,99 +335,58 @@ public class HomeActivityTest {
         choose("Show artwork: On");
         card(home, 0, 0).requestFocus();
         idle();
-        assertEquals("Netflix", text(home, R.id.hero_title));
+        assertEquals(NETFLIX, home.heroApp.packageName);
+        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
+        assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
     }
 
     @Test
-    public void whatsPlayingGetsItsOwnRowAtTheTop() throws Exception {
-        Context app = RuntimeEnvironment.getApplication();
-        Settings.Secure.putString(app.getContentResolver(), "enabled_notification_listeners",
-                new ComponentName(app, MediaListenerService.class).flattenToString());
+    public void whatsPlayingShowsAsASmallPlayerInTheTopBar() throws Exception {
         installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
         HomeActivity home = start().get();
+        MediaController spotify = play("com.spotify.tv.android", "Midnight City", "M83", null);
 
-        MediaController spotify = new MediaSession(app, "test").getController();
-        shadowOf(spotify).setPackageName("com.spotify.tv.android");
-        shadowOf(spotify).setMetadata(new MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, "Midnight City")
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, "M83")
-                .putString(MediaMetadata.METADATA_KEY_ALBUM, "Hurry Up, We're Dreaming")
-                .putLong(MediaMetadata.METADATA_KEY_DURATION, 240000)
-                .build());
-        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PLAYING));
-        shadowOf(app.getSystemService(MediaSessionManager.class)).addController(spotify);
+        // A mini player in the top bar; the rows and focus stay as they were.
+        assertEquals(View.VISIBLE, home.findViewById(R.id.np_bar).getVisibility());
+        assertEquals("Midnight City · M83", text(home, R.id.np_title));
+        assertTrue(rows(home).get(0).startsWith("TV apps"));
+        assertEquals(card(home, 0, 0), focus(home));
+
+        // On the mini player, the hero shows the track.
+        home.findViewById(R.id.np_open).requestFocus();
         idle();
-
-        assertEquals("Now playing: []", rows(home).get(0));
-        RowsAdapter.NowPlayingHolder player = nowPlaying(home);
-        assertEquals("Midnight City", player.title.getText().toString());
-        assertEquals("M83", player.artist.getText().toString());
-        // We were at the top, so the player takes focus and fills the hero.
-        assertEquals(player.open, focus(home));
         assertEquals("Midnight City", text(home, R.id.hero_title));
         assertEquals("M83", text(home, R.id.hero_kind));
-        // Up still goes to the tabs; down goes to the apps.
-        assertEquals(home.findViewById(R.id.tab_home), player.open.focusSearch(View.FOCUS_UP));
-        assertTrue(rows(home).get(1).startsWith("TV apps"));
 
-        // Paused: the row stays, with a play button.
+        // Spotify's own card shows what's playing too; other apps keep their banner.
+        card(home, 0, 2).requestFocus(); // Netflix, Prime Video, Spotify, YouTube
+        idle();
+        assertEquals("Midnight City", text(home, R.id.hero_title));
+        card(home, 0, 3).requestFocus();
+        idle();
+        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
+
+        // Paused: still there. Stopped: gone.
         shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PAUSED));
         shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
         idle();
-        assertEquals("Now playing: []", rows(home).get(0));
-
-        // Stopped: the row goes away and focus returns to the apps.
+        assertEquals(View.VISIBLE, home.findViewById(R.id.np_bar).getVisibility());
         shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_STOPPED));
         shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
         idle();
-        assertTrue(rows(home).get(0).startsWith("TV apps"));
-        assertEquals(card(home, 0, 0), focus(home));
+        assertEquals(View.GONE, home.findViewById(R.id.np_bar).getVisibility());
     }
 
     @Test
-    public void lowMemoryTvsGetThePlayerFromItsNotification() throws Exception {
-        // Like the Chromecast HD: no notification access, but the Now playing switch is on.
-        Context app = RuntimeEnvironment.getApplication();
-        Settings.Secure.putString(app.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                new ComponentName(app, NowPlayingService.class).flattenToString());
-        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+    public void youTubeShowsTheVideoThumbnailFullScreen() throws Exception {
         HomeActivity home = start().get();
-        assertTrue(rows(home).get(0).startsWith("TV apps"));
-
-        MediaSession session = new MediaSession(app, "spotify");
-        MediaController spotify = session.getController();
-        shadowOf(spotify).setPackageName("com.spotify.tv.android");
-        shadowOf(spotify).setMetadata(new MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, "Midnight City")
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, "M83")
-                .build());
-        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PLAYING));
-        // On a TV, a controller made from the notification's session talks to Spotify itself.
-        NowPlaying.controllerFactory = (context, token) -> spotify;
-
-        NowPlayingService service = Robolectric.setupService(NowPlayingService.class);
-        // Other notifications are ignored.
-        service.onAccessibilityEvent(notificationEvent("com.example.mail", new Notification.Builder(app, "mail")
-                .setSmallIcon(android.R.drawable.ic_dialog_email).setContentTitle("New mail").build()));
+        android.graphics.Bitmap thumbnail = android.graphics.Bitmap.createBitmap(1280, 720, android.graphics.Bitmap.Config.ARGB_8888);
+        play(YOUTUBE, "Lofi Hip Hop Radio", "Lofi Girl", thumbnail);
+        card(home, 0, 2).requestFocus(); // YouTube
         idle();
-        assertTrue(rows(home).get(0).startsWith("TV apps"));
-
-        // Spotify starts playing and posts its media notification.
-        service.onAccessibilityEvent(notificationEvent("com.spotify.tv.android", new Notification.Builder(app, "playback")
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()))
-                .build()));
-        idle();
-        assertEquals("Now playing: []", rows(home).get(0));
-        assertEquals("Midnight City", nowPlaying(home).title.getText().toString());
-
-        home.findViewById(R.id.tab_options).performClick();
-        idle();
-        assertTrue(sheetItems().contains("Now playing: On"));
-        choose("Now playing: On");
-        String message = ((TextView) ShadowDialog.getLatestDialog().findViewById(R.id.sheet_message)).getText().toString();
-        assertTrue(message, message.contains("Now playing switch (Accessibility): On"));
-        assertTrue(message, message.contains("Notification access: Off"));
+        assertEquals("Lofi Hip Hop Radio", text(home, R.id.hero_title));
+        android.view.ViewGroup.LayoutParams art = home.findViewById(R.id.hero_art).getLayoutParams();
+        assertEquals(android.view.ViewGroup.LayoutParams.MATCH_PARENT, art.width);
     }
 
     @Test
@@ -406,7 +395,7 @@ public class HomeActivityTest {
         home.findViewById(R.id.tab_options).performClick();
         idle();
         assertTrue(sheetItems().contains("Now playing: Off"));
-        assertTrue(rows(home).get(0).startsWith("TV apps"));
+        assertEquals(View.GONE, home.findViewById(R.id.np_bar).getVisibility());
     }
 
     @Test
@@ -465,22 +454,27 @@ public class HomeActivityTest {
         throw new AssertionError("timed out waiting");
     }
 
-    private static AccessibilityEvent notificationEvent(String pkg, Notification notification) {
-        AccessibilityEvent event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
-        event.setPackageName(pkg);
-        event.setParcelableData(notification);
-        return event;
-    }
-
     private static PlaybackState state(int state) {
         return new PlaybackState.Builder().setState(state, 60000, state == PlaybackState.STATE_PLAYING ? 1f : 0f).build();
     }
 
-    private static RowsAdapter.NowPlayingHolder nowPlaying(HomeActivity home) {
-        RecyclerView rows = home.findViewById(R.id.rows);
-        RecyclerView.ViewHolder holder = rows.findViewHolderForAdapterPosition(0);
-        assertTrue("no player row", holder instanceof RowsAdapter.NowPlayingHolder);
-        return (RowsAdapter.NowPlayingHolder) holder;
+    /** Something starts playing in an app, with notification access on. */
+    private static MediaController play(String pkg, String title, String artist, android.graphics.Bitmap art) {
+        Context app = RuntimeEnvironment.getApplication();
+        Settings.Secure.putString(app.getContentResolver(), "enabled_notification_listeners",
+                new ComponentName(app, MediaListenerService.class).flattenToString());
+        MediaController controller = new MediaSession(app, pkg).getController();
+        shadowOf(controller).setPackageName(pkg);
+        MediaMetadata.Builder metadata = new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
+                .putLong(MediaMetadata.METADATA_KEY_DURATION, 240000);
+        if (art != null) metadata.putBitmap(MediaMetadata.METADATA_KEY_ART, art);
+        shadowOf(controller).setMetadata(metadata.build());
+        shadowOf(controller).setPlaybackState(state(PlaybackState.STATE_PLAYING));
+        shadowOf(app.getSystemService(MediaSessionManager.class)).addController(controller);
+        idle();
+        return controller;
     }
 
     private static void idle() {
