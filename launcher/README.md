@@ -99,8 +99,16 @@ off, run the same command with `disallow_listener`.
 
 ### Sound wave
 
-While the hero shows what's playing, a line under the song moves with the music: it takes the
-album cover's colours, ripples with the bass and treble, and goes flat on pause.
+While the hero shows what's playing, three strands under the song move with the music, in the
+album cover's colours:
+
+- a **thick, slow** strand for the **bass** (up to 250 Hz),
+- a **medium** strand for **voices** (250 Hz to 4 kHz),
+- a **thin, fast** strand for the **treble**, like cymbals and hi-hats (4 to 16 kHz).
+
+The three share one volume scale, so a bassy song swells the thick strand and a sung part the
+middle one. The higher ranges get lifted to make up for music naturally carrying far more energy in
+the bass. Drum hits and syllables give a short extra push, and everything goes flat on pause.
 
 To follow the real song, Deco listens to what the TV plays through Android's audio visualizer.
 Android files that under the microphone permission ("record audio"), but Deco only reads the TV's
@@ -115,8 +123,8 @@ adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
 
 - **it follows the music**: Deco hears the TV's sound.
 - **it moves on its own**: Deco isn't allowed to listen, or the TV keeps its sound private (some
-  TVs give apps only silence). The line still moves while music plays and rests on pause, but it
-  doesn't follow the beat.
+  TVs give apps only silence). The strands still move while music plays and rest on pause, but they
+  don't follow the song.
 
 The same menu turns the wave off. It only runs while it's on screen, so it costs nothing otherwise.
 

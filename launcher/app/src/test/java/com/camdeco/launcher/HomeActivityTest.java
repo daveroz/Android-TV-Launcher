@@ -497,16 +497,31 @@ public class HomeActivityTest {
         idle();
         assertTrue(home.hero.showsWave());
 
-        // The TV shares its sound: the line follows it.
+        // The TV shares its sound: the strands follow it. A bassy song shows mostly bass...
         android.media.audiofx.Visualizer visualizer = home.soundWave.visualizerForTests();
         assertNotNull(visualizer);
         ShadowVisualizer audio = org.robolectric.shadow.api.Shadow.extract(visualizer);
-        audio.setSource(music(40));
+        float[] levels = new float[SoundWave.BANDS];
+        audio.setSource(spectrum(60, 1, 1));
         audio.triggerDataCapture();
         assertEquals(SoundWave.Status.FOLLOWING, home.soundWave.status());
-        float[] levels = new float[SoundWave.BANDS];
         home.soundWave.levels(1.0, levels);
-        assertTrue("the bass is heard", levels[0] > 0.5f);
+        assertTrue("bass fills its strand", levels[SoundWave.BASS] > 0.9f);
+        assertTrue("little voice or treble", levels[SoundWave.VOICE] < 0.4f && levels[SoundWave.TREBLE] < 0.4f);
+
+        // ...a sung part mostly voice...
+        audio.setSource(spectrum(2, 30, 1));
+        audio.triggerDataCapture();
+        home.soundWave.levels(1.0, levels);
+        assertTrue("the voice strand leads", levels[SoundWave.VOICE] > 0.9f);
+        assertTrue(levels[SoundWave.BASS] < 0.3f && levels[SoundWave.TREBLE] < 0.4f);
+
+        // ...and cymbals the treble, even though they carry less raw energy than the kick under them.
+        audio.setSource(spectrum(6, 3, 3));
+        audio.triggerDataCapture();
+        home.soundWave.levels(1.0, levels);
+        assertTrue("the treble strand leads", levels[SoundWave.TREBLE] > levels[SoundWave.BASS]
+                && levels[SoundWave.TREBLE] > levels[SoundWave.VOICE]);
 
         // The menu says so.
         home.findViewById(R.id.tab_options).performClick();
@@ -589,6 +604,28 @@ public class HomeActivityTest {
             @Override
             public int getFft(byte[] fft) {
                 java.util.Arrays.fill(fft, (byte) loudness);
+                return android.media.audiofx.Visualizer.SUCCESS;
+            }
+        };
+    }
+
+    /** Music as the visualizer sees it, with this much bass (to 250 Hz), voice (to 4 kHz) and treble. */
+    private static ShadowVisualizer.VisualizerSource spectrum(int bass, int voice, int treble) {
+        return new ShadowVisualizer.VisualizerSource() {
+            @Override
+            public int getSamplingRate() {
+                return 44100000; // in millihertz
+            }
+
+            @Override
+            public int getFft(byte[] fft) {
+                double binHz = 44100.0 / fft.length;
+                for (int k = 1; k < fft.length / 2; k++) {
+                    double hz = k * binHz;
+                    byte v = (byte) (hz <= 250 ? bass : hz <= 4000 ? voice : treble);
+                    fft[2 * k] = v;
+                    fft[2 * k + 1] = v;
+                }
                 return android.media.audiofx.Visualizer.SUCCESS;
             }
         };

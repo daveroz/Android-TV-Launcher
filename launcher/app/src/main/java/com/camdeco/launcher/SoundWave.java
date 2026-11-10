@@ -7,7 +7,9 @@ import android.media.audiofx.Visualizer;
 import android.os.SystemClock;
 
 /**
- * How loud the music is right now in six bands, bass to treble, for the wave line in the hero.
+ * How loud the music is right now in three ranges, for the three strands of the wave in the hero:
+ * bass (20 to 250 Hz), voices (250 Hz to 4 kHz) and treble (4 to 16 kHz). The ranges share one
+ * volume scale, so a bassy song shows mostly bass and a sung part mostly voice.
  *
  * It listens to what the TV plays through Android's audio visualizer. That needs the "record
  * audio" permission, but it only reads the TV's own sound (at low detail) and never opens a
@@ -15,11 +17,18 @@ import android.os.SystemClock;
  * that move like music while something plays, and still while paused.
  */
 final class SoundWave implements Visualizer.OnDataCaptureListener {
-    static final int BANDS = 6;
+    static final int BANDS = 3;
+    static final int BASS = 0, VOICE = 1, TREBLE = 2;
     /** Nothing heard after this much playing time means the TV keeps its sound private. */
     static final long SILENT_AFTER_MS = 5000;
-    /** Band edges in Hz: bass, low mids, mids, upper mids, presence, treble. */
-    private static final int[] EDGES = {20, 150, 400, 1000, 2500, 6000, 16000};
+    /** Range edges in Hz: bass, voices, treble. */
+    private static final int[] EDGES = {20, 250, 4000, 16000};
+    /**
+     * Music carries far more energy in the bass than higher up (about 3 times per frequency step
+     * at voice pitch and 8 times at cymbal pitch), so the higher ranges are lifted by that much
+     * before they share the volume scale. Without it, every song would look like bass only.
+     */
+    private static final float[] LIFT = {1f, 3f, 8f};
 
     enum Status {
         /** Listening, but nothing has played yet. */
@@ -38,8 +47,9 @@ final class SoundWave implements Visualizer.OnDataCaptureListener {
     private Visualizer visualizer;
     private boolean unavailable;
     private final float[] heard = new float[BANDS];
-    /** The loudest recent level per band, falling slowly, so quiet and loud songs both fill the line. */
-    private final float[] peak = new float[BANDS];
+    private final float[] lifted = new float[BANDS];
+    /** The loudest recent range, falling slowly, so quiet and loud songs both fill the strands. */
+    private float peak;
     private boolean everHeard;
     /** What the last listening session found out, kept while not listening (for the menu). */
     private Status verdict;
@@ -122,7 +132,7 @@ final class SoundWave implements Visualizer.OnDataCaptureListener {
         return Status.WAITING;
     }
 
-    /** Fills {@code out} with the six levels (0 to 1) to draw at {@code t} seconds. */
+    /** Fills {@code out} with the three levels (0 to 1: bass, voice, treble) to draw at {@code t} seconds. */
     void levels(double t, float[] out) {
         if (everHeard) {
             System.arraycopy(heard, 0, out, 0, BANDS);
@@ -133,22 +143,18 @@ final class SoundWave implements Visualizer.OnDataCaptureListener {
         }
     }
 
-    /** Levels that move like a song at 112 BPM: kick, snare, hi-hats and a wandering melody. */
+    /** Levels that move like a song at 112 BPM: a kick for the bass, a melody, hi-hats. */
     static void madeUp(double t, float[] out) {
         double beat = 60.0 / 112;
         double pos = t % beat;
         long beatNo = (long) (t / beat);
-        double kick = Math.exp(-pos / 0.11);
+        double kick = Math.exp(-pos / 0.12);
         double snare = beatNo % 2 == 1 ? Math.exp(-pos / 0.16) : 0;
         double hat = Math.exp(-(t % (beat / 2)) / 0.05);
-        for (int b = 0; b < BANDS; b++) {
-            double f = b / (double) (BANDS - 1);
-            double melody = 0.5 + 0.5 * Math.sin(t * 1.7 + b * 1.4) * Math.sin(t * 0.43 + b * 0.5);
-            double v = Math.exp(-f * 4) * (0.2 + 0.75 * kick)
-                    + Math.exp(-((f - 0.45) * (f - 0.45)) / 0.06) * (0.2 + 0.4 * snare + 0.3 * melody)
-                    + Math.max(0, f - 0.5) * 2 * (0.15 + 0.45 * hat);
-            out[b] = (float) Math.min(1, v * 0.9);
-        }
+        double melody = Math.pow(0.5 + 0.5 * Math.sin(t * Math.PI * 2 * 1.9), 1.5);
+        out[BASS] = (float) Math.min(1, 0.25 + 0.7 * kick);
+        out[VOICE] = (float) Math.min(1, 0.2 + 0.35 * melody + 0.25 * snare);
+        out[TREBLE] = (float) Math.min(1, 0.12 + 0.5 * hat);
     }
 
     @Override
@@ -162,8 +168,9 @@ final class SoundWave implements Visualizer.OnDataCaptureListener {
         int bins = fft.length / 2;
         double binHz = samplingRateMilliHz / 1000.0 / fft.length;
         float total = 0;
+        float loudest = 0;
         for (int b = 0; b < BANDS; b++) {
-            int from = Math.max(1, (int) (EDGES[b] / binHz));
+            int from = Math.max(1, (int) (EDGES[b] / binHz) + (b > 0 ? 1 : 0));
             int to = Math.min(bins - 1, Math.max(from, (int) (EDGES[b + 1] / binHz)));
             double sum = 0;
             for (int k = from; k <= to; k++) {
@@ -171,8 +178,13 @@ final class SoundWave implements Visualizer.OnDataCaptureListener {
             }
             float magnitude = (float) (sum / (to - from + 1));
             total += magnitude;
-            peak[b] = Math.max(Math.max(magnitude, 2f), peak[b] * 0.995f);
-            heard[b] = (float) Math.pow(Math.min(1f, magnitude / peak[b]), 0.8);
+            lifted[b] = magnitude * LIFT[b];
+            loudest = Math.max(loudest, lifted[b]);
+        }
+        // One shared scale: the loudest recent range fills the strands, the others in proportion.
+        peak = Math.max(Math.max(loudest, 3f), peak * 0.995f);
+        for (int b = 0; b < BANDS; b++) {
+            heard[b] = (float) Math.pow(Math.min(1f, lifted[b] / peak), 0.8);
         }
         if (total > 1.5f) everHeard = true;
     }
