@@ -108,6 +108,10 @@ then streaming apps show their own banner like every other app and nothing is do
 
 ## Install
 
+One APK works on the Chromecast with Google TV **HD** and **4K**, and on any Android TV running
+Android 8.0 or later. Install the same file on each TV. It has no native code, and its layout is
+measured in screen-independent units, so it looks the same on a 1080p and a 4K screen.
+
 From Termux on your phone (see the main README for setting up `adb`):
 
 ```bash
@@ -145,7 +149,8 @@ watches Google TV's windows and doesn't read anything on screen.
 
 ### Option 2: Turn off Google TV (frees the most memory)
 
-The HD model only has 1.5 GB of RAM, and Google TV's home screen is the biggest thing running on it.
+The HD model only has 1.5 GB of RAM (the 4K has 2 GB), and Google TV's home screen is the biggest
+thing running on it.
 The safest way to turn it off is the script in this repo, which makes Deco Launcher Home first,
 turns off only the Google TV home screen, checks Home, WiFi, Settings, casting and the rest, and
 puts Google TV back by itself if anything goes wrong:
@@ -156,8 +161,9 @@ bash disable-google-tv.sh 192.168.x.x
 ```
 
 By hand, in the TV's own command line (or with `adb shell "..."` in front), this one line does
-the same and was confirmed on a Chromecast HD. It stops if Deco Launcher isn't installed, and puts
-Google TV back if Home doesn't open Deco Launcher:
+the same and was confirmed on a Chromecast HD. The 4K runs the same Google TV, so use the same line
+there. It stops if Deco Launcher isn't installed, and puts Google TV back if Home doesn't open
+Deco Launcher:
 
 ```
 [ -n "$(pm path com.camdeco.launcher)" ] && { cmd package set-home-activity --user 0 com.camdeco.launcher/com.camdeco.launcher.HomeActivity; pm disable-user --user 0 com.google.android.apps.tv.launcherx; pm disable-user --user 0 com.google.android.tungsten.setupwraith; input keyevent KEYCODE_HOME; sleep 5; if dumpsys window | grep mCurrentFocus | grep -q com.camdeco.launcher; then echo "OK: Home opens Deco Launcher"; else echo "Home opened: $(dumpsys window | grep mCurrentFocus)"; pm enable com.google.android.apps.tv.launcherx; pm enable com.google.android.tungsten.setupwraith; echo "Google TV is back on"; fi; } || echo "STOP: Deco Launcher is not installed, nothing was changed"

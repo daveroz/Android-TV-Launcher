@@ -1,6 +1,7 @@
 # Cam-deco
 
-Tools for a Chromecast with Google TV (HD, codename `boreal`, Android TV OS 14).
+Tools for the Chromecast with Google TV, both the HD (codename `boreal`) and the 4K (`sabrina`),
+on Android TV OS 14. The same launcher APK and scripts work on both.
 
 - **[Deco Launcher](launcher/README.md):** a lightweight, ad-free home screen with an Apple TV-style layout and Worldly's look. Built by GitHub Actions; the latest APK is always at [`releases/download/launcher-latest/DecoLauncher.apk`](https://github.com/daveroz/Cam-deco/releases/download/launcher-latest/DecoLauncher.apk).
 - **[`scripts/chromecast-dump.sh`](#copy-the-firmware-files-off-the-chromecast):** copies the readable firmware files off the device.
