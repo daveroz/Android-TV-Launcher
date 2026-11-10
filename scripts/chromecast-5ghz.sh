@@ -60,16 +60,17 @@ SSID=$2
 SECURITY=${3:-wpa2}
 
 # ---- 1. Google TV home screen off ----
+# Same careful approach as disable-google-tv.sh: Deco Launcher becomes Home first, then only the
+# Google TV home screen app is turned off (the setup app is left alone).
 say "1. Turning off the Google TV home screen"
 if [ -z "$(tv pm path "$DECO")" ]; then
   bad "Deco Launcher isn't installed, so Google TV stays on (otherwise there'd be no home screen)."
   exit 1
 fi
+tv cmd package set-home-activity --user 0 com.camdeco.launcher/com.camdeco.launcher.HomeActivity >/dev/null
 tv pm disable-user --user 0 "$GOOGLE_TV" >/dev/null
-tv pm disable-user --user 0 "$GOOGLE_SETUP" >/dev/null
-disabled=$(tv pm list packages -d)
-if printf '%s\n' "$disabled" | grep -q "$GOOGLE_TV"; then ok "Google TV home screen is off; Deco Launcher is Home"; else bad "Google TV home screen is still on"; fi
-if printf '%s\n' "$disabled" | grep -q "$GOOGLE_SETUP"; then ok "Google TV setup app is off"; else bad "Google TV setup app is still on"; fi
+if tv pm list packages -d | grep -q "$GOOGLE_TV"; then ok "Google TV home screen is off; Deco Launcher is Home"; else bad "Google TV home screen is still on"; fi
+echo "  (For the full set of safety checks, use disable-google-tv.sh instead.)"
 
 # ---- 2. WiFi now ----
 say "2. WiFi right now"

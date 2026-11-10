@@ -143,27 +143,38 @@ Google TV may flash for a moment. Panels that Google TV itself opens (from its
 home screen app) will also bounce back to Deco Launcher. The service only
 watches Google TV's windows and doesn't read anything on screen.
 
-### Option 2: Disable Google TV (frees the most memory)
+### Option 2: Turn off Google TV (frees the most memory)
 
-The HD model only has 1.5 GB of RAM, and Google TV's home screen is the biggest
-thing running on it. Disabling it gives that memory back:
+The HD model only has 1.5 GB of RAM, and Google TV's home screen is the biggest thing running on it.
+The safest way to turn it off is the script in this repo, which makes Deco Launcher Home first,
+turns off only the Google TV home screen, checks Home, WiFi, Settings, casting and the rest, and
+puts Google TV back by itself if anything goes wrong:
 
 ```bash
+curl -LO https://raw.githubusercontent.com/daveroz/Cam-deco/ccr-beaea807-gbu79w/scripts/disable-google-tv.sh
+bash disable-google-tv.sh 192.168.x.x
+```
+
+By hand, the same thing is:
+
+```bash
+adb shell cmd package set-home-activity --user 0 com.camdeco.launcher/com.camdeco.launcher.HomeActivity
 adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
 ```
 
-Deco Launcher then becomes the Home app. To undo:
+Only if Home then still goes to Google TV's setup screen, also turn off
+`com.google.android.tungsten.setupwraith` the same way. To undo:
 
 ```bash
-adb shell pm enable com.google.android.apps.tv.launcherx
-adb shell pm enable com.google.android.tungsten.setupwraith
+bash disable-google-tv.sh 192.168.x.x --undo
+# or: adb shell pm enable com.google.android.apps.tv.launcherx
+#     adb shell pm enable com.google.android.tungsten.setupwraith
 ```
 
-**Keep the undo commands.** If Deco Launcher is ever uninstalled while Google TV is
-disabled, the Home button does nothing until you run them. With Google TV disabled,
-its own features (profiles, the For You tab, recommendations) are gone. Casting and
-voice search are separate apps and should keep working.
+**Keep the undo command.** If Deco Launcher is ever uninstalled while Google TV is off, the Home
+button does nothing until you run it. With Google TV off, its own features (profiles, the For You
+tab, recommendations) are gone. Casting, voice search, Settings and the Play Store are separate
+apps and keep working; the script checks them.
 
 ## Updating
 
