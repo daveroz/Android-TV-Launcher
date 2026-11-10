@@ -97,6 +97,29 @@ adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launc
 Go back to Home and start some music. **⋮ → Now playing** shows whether access is on. To turn it
 off, run the same command with `disallow_listener`.
 
+### Sound wave
+
+While the hero shows what's playing, a line under the song moves with the music: it takes the
+album cover's colours, ripples with the bass and treble, and goes flat on pause.
+
+To follow the real song, Deco listens to what the TV plays through Android's audio visualizer.
+Android files that under the microphone permission ("record audio"), but Deco only reads the TV's
+own sound, at low detail, and never opens a microphone. Allow it from **⋮ → Sound wave** (the TV
+asks once), or from Termux:
+
+```bash
+adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
+```
+
+**⋮ → Sound wave** says what the line is doing on your TV:
+
+- **it follows the music**: Deco hears the TV's sound.
+- **it moves on its own**: Deco isn't allowed to listen, or the TV keeps its sound private (some
+  TVs give apps only silence). The line still moves while music plays and rests on pause, but it
+  doesn't follow the beat.
+
+The same menu turns the wave off. It only runs while it's on screen, so it costs nothing otherwise.
+
 ## Show artwork
 
 Netflix, Disney+ and the other services only share their own recommendations with Google's

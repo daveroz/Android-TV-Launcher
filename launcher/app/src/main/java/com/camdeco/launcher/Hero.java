@@ -42,6 +42,8 @@ final class Hero {
     private final ImageView cover;
     /** The app's colours, behind its banner card. */
     private final ColorFieldView field;
+    /** The music's waveform under the song. */
+    private final SoundWaveView wave;
     private final int cardHeight;
     private final ImageView ambient;
     private final TextView title;
@@ -75,6 +77,7 @@ final class Hero {
         cover = activity.findViewById(R.id.hero_cover);
         cover.setClipToOutline(true); // round the picture's corners to the card
         field = activity.findViewById(R.id.hero_field);
+        wave = activity.findViewById(R.id.hero_wave);
         cardHeight = activity.getResources().getDimensionPixelSize(R.dimen.hero_card_height);
         ambient = activity.findViewById(R.id.hero_ambient);
         title = activity.findViewById(R.id.hero_title);
@@ -342,6 +345,36 @@ final class Hero {
             field.animate().alpha(blurred != null ? 0f : 1f).setDuration(300).start();
             cover.animate().alpha(1f).setDuration(280).start();
         }).start();
+    }
+
+    // ---- Sound wave ----
+
+    void setWaveSource(SoundWave source) {
+        wave.setSource(source);
+    }
+
+    void setWaveColours(AppColors colours) {
+        wave.setColours(colours);
+    }
+
+    /** Fades the waveform in under the song, or away. It only animates while it's showing. */
+    void showWave(boolean show) {
+        wave.animate().cancel();
+        if (show) {
+            wave.setVisibility(View.VISIBLE);
+            wave.setRunning(true);
+            wave.animate().alpha(1f).setDuration(300).start();
+        } else if (wave.getVisibility() == View.VISIBLE) {
+            wave.animate().alpha(0f).setDuration(200).withEndAction(() -> {
+                wave.setRunning(false);
+                wave.setVisibility(View.GONE);
+            }).start();
+        }
+    }
+
+    /** Whether the waveform is on screen (for tests). */
+    boolean showsWave() {
+        return wave.getVisibility() == View.VISIBLE && wave.getAlpha() > 0.5f;
     }
 
     /** Whether the app's colour field is on screen (for tests). */

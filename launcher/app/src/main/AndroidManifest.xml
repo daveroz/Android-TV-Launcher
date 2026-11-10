@@ -5,9 +5,15 @@
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <!-- Only for show artwork from TVmaze (api.tvmaze.com, static.tvmaze.com); can be turned off. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Only for the sound wave: Android's audio visualizer reads what the TV plays (at low detail)
+         and needs this permission for that. Deco never opens a microphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <!-- RECORD_AUDIO is only for the sound wave; no microphone is used or needed. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- Which other apps this launcher may see: anything with a launcher entry. -->
     <queries>

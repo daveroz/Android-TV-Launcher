@@ -27,6 +27,7 @@ final class AppRepository {
     private static final String KEY_ORDER = "order";
     private static final String KEY_HIDDEN = "hidden";
     private static final String KEY_SHOW_ART = "show_art";
+    private static final String KEY_SOUND_WAVE = "sound_wave";
 
     private final Context context;
     private final PackageManager pm;
@@ -135,6 +136,14 @@ final class AppRepository {
 
     void setShowArtEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_SHOW_ART, enabled).apply();
+    }
+
+    boolean soundWaveEnabled() {
+        return prefs.getBoolean(KEY_SOUND_WAVE, true);
+    }
+
+    void setSoundWaveEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_SOUND_WAVE, enabled).apply();
     }
 
     private List<String> getList(String key) {

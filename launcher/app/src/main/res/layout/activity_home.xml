@@ -57,6 +57,18 @@
             android:layout_height="120dp"
             android:background="@drawable/scrim_top" />
 
+        <!-- What's playing: the music's waveform under the song, ending before the cover card. -->
+        <com.camdeco.launcher.SoundWaveView
+            android:id="@+id/hero_wave"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/wave_height"
+            android:layout_marginStart="@dimen/overscan_h"
+            android:layout_marginTop="@dimen/wave_top"
+            android:layout_marginEnd="@dimen/wave_end"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
         <!-- The card on the right: an album cover, or an app's banner. Its top lines up with the
              title on the left, its right edge with the screen margin (like the clock and rows), and
              it ends well above the rows. -->

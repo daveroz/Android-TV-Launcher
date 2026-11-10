@@ -1,5 +1,6 @@
 package com.camdeco.launcher;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.app.PendingIntent;
@@ -11,6 +12,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.Bitmap;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
@@ -52,6 +54,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     static final int COLUMNS = 5;
     /** Google Play Store, opened from the top bar. */
     static final String PLAY_STORE = "com.android.vending";
+    private static final int REQUEST_SOUND = 1;
     private static final int PAGE_HOME = 0;
     private static final int PAGE_APPS = 1;
     /** Wait for the remote to settle before swapping the big hero art. */
@@ -99,6 +102,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private TextView npTitle;
     private ImageButton npPlay;
     private View storeButton;
+    /** What the TV is playing, for the sound wave under the song. */
+    SoundWave soundWave;
+    private Bitmap waveArt;
+    private boolean resumed;
 
     private List<AppEntry> allApps = new ArrayList<>();
     private int page = PAGE_HOME;
@@ -152,6 +159,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         images = new ImageCache(this, fetcher);
         nowPlaying = new NowPlaying(this, main, this::onNowPlayingChanged);
         hero = new Hero(this, main);
+        soundWave = new SoundWave(this);
+        hero.setWaveSource(soundWave);
 
         appsPage = findViewById(R.id.apps_page);
         empty = findViewById(R.id.empty);
@@ -242,6 +251,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         super.onResume();
         nowPlaying.start(); // also picks up notification access granted while we were away
         hero.resume();
+        resumed = true;
+        syncWave();
     }
 
     @Override
@@ -249,12 +260,15 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         if (movingPackage != null) endMove();
         nowPlaying.stop();
         hero.pause();
+        resumed = false;
+        syncWave();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
         unregisterReceiver(packageReceiver);
+        soundWave.stop();
         loader.shutdownNow();
         network.shutdownNow();
         imageLoader.shutdownNow();
@@ -346,6 +360,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         rows.setVisibility(home ? View.VISIBLE : View.GONE);
         appsPage.setVisibility(home ? View.GONE : View.VISIBLE);
         hero.setVisible(home);
+        syncWave();
     }
 
     /** Fades the hero away as the rows scroll up over it. */
@@ -443,10 +458,12 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
             // Spotify, YouTube...: while they play, their card shows what's playing.
             heroShowsTrack = true;
             hero.showTrack(track, appIcon(track.packageName));
+            syncWave();
             return;
         }
         heroShowsTrack = false;
         hero.showApp();
+        syncWave();
 
         AppArt cached = artCache.get(app.packageName);
         if (cached != null) {
@@ -517,6 +534,87 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         main.removeCallbacks(heroUpdate);
         heroShowsTrack = true;
         hero.showTrack(track, appIcon(track.packageName));
+        syncWave();
+    }
+
+    // ---- Sound wave ----
+
+    /** The sound wave runs only while the hero shows what's playing on Home, with Deco on screen. */
+    private void syncWave() {
+        NowPlaying.Track track = nowPlaying.track();
+        boolean show = resumed && page == PAGE_HOME && heroShowsTrack && track != null
+                && repo.soundWaveEnabled();
+        if (show) {
+            soundWave.start();
+            soundWave.setPlaying(track.playing);
+            updateWaveColours(track);
+        } else {
+            soundWave.stop();
+        }
+        hero.showWave(show);
+    }
+
+    /** The line takes the album cover's colours, worked out in the background. */
+    private void updateWaveColours(NowPlaying.Track track) {
+        if (track.art == waveArt && waveArt != null) return;
+        waveArt = track.art;
+        Bitmap art = track.art;
+        if (art == null) {
+            hero.setWaveColours(AppColors.worldly());
+            return;
+        }
+        if (loader.isShutdown()) return;
+        loader.execute(() -> {
+            AppColors colours = AppColors.from(new BitmapDrawable(getResources(), art));
+            main.post(() -> {
+                if (!isDestroyed() && waveArt == art) hero.setWaveColours(colours);
+            });
+        });
+    }
+
+    private void showSoundWaveSetup() {
+        boolean on = repo.soundWaveEnabled();
+        String message = getString(R.string.sound_wave_message,
+                getString(on ? statusText(soundWave.status()) : R.string.sound_wave_off));
+        List<String> items = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        if (on && !soundWave.hasPermission()) {
+            items.add(getString(R.string.sound_wave_allow));
+            actions.add(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_SOUND));
+        }
+        items.add(getString(on ? R.string.sound_wave_turn_off : R.string.sound_wave_turn_on));
+        actions.add(() -> {
+            repo.setSoundWaveEnabled(!on);
+            syncWave();
+        });
+        items.add(getString(R.string.close));
+        actions.add(() -> { });
+        Sheet.pick(this, getString(R.string.sound_wave_title), message, items, which -> actions.get(which).run());
+    }
+
+    private static int statusText(SoundWave.Status status) {
+        switch (status) {
+            case FOLLOWING:
+                return R.string.sound_wave_following;
+            case NO_PERMISSION:
+                return R.string.sound_wave_no_permission;
+            case TV_SILENT:
+                return R.string.sound_wave_tv_silent;
+            case UNAVAILABLE:
+                return R.string.sound_wave_unavailable;
+            default:
+                return R.string.sound_wave_waiting;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode != REQUEST_SOUND) return;
+        boolean granted = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+        soundWave.reset(); // try listening again from scratch
+        syncWave();
+        showHint(granted ? R.string.sound_wave_allowed : R.string.sound_wave_denied);
     }
 
     // ---- Now playing ----
@@ -531,6 +629,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                 AppEntry app = heroApp != null ? heroApp : focusedApp();
                 if (app != null) showHero(app);
             }
+            syncWave(); // nothing playing: no wave
             return;
         }
         if (heroApp == null) {
@@ -538,6 +637,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         } else if (heroShowsTrack || heroApp.packageName.equals(track.packageName)) {
             showHero(heroApp); // the player's card has focus: show (or stop showing) the cover
         }
+        syncWave(); // play and pause
     }
 
     /** The mini player in the top bar: cover, "title · artist", play/pause and next. */
@@ -679,6 +779,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         items.add(getString(R.string.option_hidden_apps, hiddenApps.size()));
         items.add(getString(R.string.option_now_playing, getString(nowPlaying.hasAccess() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_show_art, getString(repo.showArtEnabled() ? R.string.on : R.string.off)));
+        items.add(getString(R.string.option_sound_wave, getString(repo.soundWaveEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_home_setup));
         items.add(getString(R.string.option_tv_settings));
         Sheet.pick(this, getString(R.string.app_name), null, items, which -> {
@@ -693,6 +794,9 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                     toggleShowArt();
                     break;
                 case 3:
+                    showSoundWaveSetup();
+                    break;
+                case 4:
                     showHomeSetup();
                     break;
                 default:

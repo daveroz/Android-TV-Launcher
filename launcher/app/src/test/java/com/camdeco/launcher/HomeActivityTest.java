@@ -41,6 +41,7 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowDialog;
 import org.robolectric.shadows.ShadowInstrumentation;
 import org.robolectric.shadows.ShadowPackageManager;
+import org.robolectric.shadows.ShadowVisualizer;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -483,6 +484,124 @@ public class HomeActivityTest {
         android.graphics.Bitmap cover = android.graphics.Bitmap.createBitmap(300, 300, android.graphics.Bitmap.Config.ARGB_8888);
         cover.eraseColor(0xFFDB2777);
         return cover;
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void theSoundWaveFollowsTheMusicUnderTheSong() throws Exception {
+        allowListening();
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        play("com.spotify.tv.android", "Midnight City", "M83", cover());
+        card(home, 0, 2).requestFocus(); // Spotify: the hero shows the song, with the wave under it
+        idle();
+        assertTrue(home.hero.showsWave());
+
+        // The TV shares its sound: the line follows it.
+        android.media.audiofx.Visualizer visualizer = home.soundWave.visualizerForTests();
+        assertNotNull(visualizer);
+        ShadowVisualizer audio = org.robolectric.shadow.api.Shadow.extract(visualizer);
+        audio.setSource(music(40));
+        audio.triggerDataCapture();
+        assertEquals(SoundWave.Status.FOLLOWING, home.soundWave.status());
+        float[] levels = new float[SoundWave.BANDS];
+        home.soundWave.levels(1.0, levels);
+        assertTrue("the bass is heard", levels[0] > 0.5f);
+
+        // The menu says so.
+        home.findViewById(R.id.tab_options).performClick();
+        choose("Sound wave: On");
+        assertTrue(sheetMessage().contains("it follows the music."));
+        choose("Close");
+
+        // Other apps' cards don't get a wave.
+        card(home, 0, 0).requestFocus(); // Netflix
+        idle();
+        assertFalse(home.hero.showsWave());
+        assertNull(home.soundWave.visualizerForTests()); // and Deco stops listening
+    }
+
+    @Test
+    public void aTvThatKeepsItsSoundPrivateStillGetsAMovingLine() throws Exception {
+        allowListening();
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        MediaController spotify = play("com.spotify.tv.android", "Midnight City", "M83", null);
+        card(home, 0, 2).requestFocus();
+        idle();
+        ShadowVisualizer audio = org.robolectric.shadow.api.Shadow.extract(home.soundWave.visualizerForTests());
+        audio.setSource(music(0)); // only silence, however long it plays
+        for (int i = 0; i < 7; i++) {
+            audio.triggerDataCapture();
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1));
+        }
+        assertEquals(SoundWave.Status.TV_SILENT, home.soundWave.status());
+        float[] levels = new float[SoundWave.BANDS];
+        home.soundWave.levels(1.3, levels);
+        assertTrue("it moves on its own while playing", max(levels) > 0.2f);
+
+        // Paused: the line goes flat.
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PAUSED));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        idle();
+        home.soundWave.levels(1.3, levels);
+        assertEquals(0f, max(levels), 0f);
+        assertTrue(home.hero.showsWave()); // still there, just still
+    }
+
+    @Test
+    public void withoutPermissionTheWaveMovesOnItsOwnAndCanBeTurnedOff() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        play("com.spotify.tv.android", "Midnight City", "M83", null);
+        home.findViewById(R.id.np_open).requestFocus(); // the mini player: the hero shows the song
+        idle();
+        assertTrue(home.hero.showsWave());
+        assertNull(home.soundWave.visualizerForTests()); // not allowed to listen
+        assertEquals(SoundWave.Status.NO_PERMISSION, home.soundWave.status());
+        float[] levels = new float[SoundWave.BANDS];
+        home.soundWave.levels(2.0, levels);
+        assertTrue(max(levels) > 0.2f);
+
+        // The menu offers to allow it, and to turn the wave off.
+        home.findViewById(R.id.tab_options).performClick();
+        choose("Sound wave: On");
+        assertTrue(sheetMessage().contains("Deco isn't allowed to hear the TV's sound"));
+        assertEquals(List.of("Let Deco hear the TV's sound", "Turn off the sound wave", "Close"), sheetItems());
+        choose("Turn off the sound wave");
+        assertFalse(home.hero.showsWave());
+        home.findViewById(R.id.tab_options).performClick();
+        assertTrue(sheetItems().contains("Sound wave: Off"));
+    }
+
+    private static void allowListening() {
+        shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(android.Manifest.permission.RECORD_AUDIO);
+    }
+
+    /** The TV's sound as the visualizer sees it: the same loudness in every frequency. */
+    private static ShadowVisualizer.VisualizerSource music(int loudness) {
+        return new ShadowVisualizer.VisualizerSource() {
+            @Override
+            public int getSamplingRate() {
+                return 44100000; // in millihertz
+            }
+
+            @Override
+            public int getFft(byte[] fft) {
+                java.util.Arrays.fill(fft, (byte) loudness);
+                return android.media.audiofx.Visualizer.SUCCESS;
+            }
+        };
+    }
+
+    private static float max(float[] values) {
+        float m = 0;
+        for (float v : values) m = Math.max(m, v);
+        return m;
+    }
+
+    private static String sheetMessage() {
+        return ((TextView) ShadowDialog.getLatestDialog().findViewById(R.id.sheet_message)).getText().toString();
     }
 
     @Test
