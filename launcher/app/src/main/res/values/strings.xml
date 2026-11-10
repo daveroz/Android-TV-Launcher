@@ -10,7 +10,6 @@
     <string name="tab_apps">Apps</string>
 
     <!-- Home rows -->
-    <string name="row_favourites">Favourites</string>
     <string name="row_tv">TV apps</string>
     <string name="row_other">Other apps</string>
 
@@ -33,7 +32,6 @@
     <!-- Cards and hero -->
     <string name="kind_tv">TV app</string>
     <string name="kind_phone">Phone app</string>
-    <string name="kind_favourite">Favourite</string>
     <string name="moving">Moving · OK to drop</string>
     <string name="key_ok">OK</string>
     <string name="key_ok_action">Open</string>
@@ -45,16 +43,12 @@
     <string name="apps_subtitle">Hold OK on an app to move, hide or uninstall it. The order here is used everywhere.</string>
 
     <!-- App menu -->
-    <string name="option_add_favourite">Add to Favourites</string>
-    <string name="option_remove_favourite">Remove from Favourites</string>
     <string name="option_move">Move</string>
     <string name="option_hide">Hide</string>
     <string name="option_app_info">App info</string>
     <string name="option_uninstall">Uninstall</string>
     <string name="move_hint">Use the arrows to move it, then press OK</string>
     <string name="hidden_hint">Hidden. Bring it back from ⋮ → Hidden apps.</string>
-    <string name="favourite_added">Added to Favourites</string>
-    <string name="favourite_removed">Removed from Favourites</string>
 
     <!-- Launcher menu -->
     <string name="option_hidden_apps">Hidden apps (%1$d)</string>
@@ -75,4 +69,5 @@
 
     <string name="home_service_label">Deco Launcher Home button</string>
     <string name="home_service_description">Opens Deco Launcher whenever the Google TV home screen appears, so the Home button takes you to Deco Launcher. It only watches for the Google TV home screen and doesn\'t read anything on your screen.</string>
+    <string name="play_store">Google Play Store</string>
 </resources>

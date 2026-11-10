@@ -52,18 +52,17 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 
 ## What it does
 
-- **Home tab:** a **Favourites** row (once you add some), then **TV apps** and **Other apps**
-  (phone apps)
+- **Home tab:** two rows, **TV apps** and **Other apps** (phone apps)
 - **Mini player** in the top bar while something plays (see [Now playing](#now-playing))
 - **Streaming apps show their shows:** focus Netflix, Disney+, Prime Video, HBO Max, Hulu,
   Apple TV, Paramount+ or Peacock and the hero fills with that service's shows, changing every
   8 seconds (see [Show artwork](#show-artwork))
 - **Apps tab:** every app in a 5-column grid. The order you set here is used everywhere.
 - **Hold OK on a card** (or press Menu on remotes that have one):
-  - **Add to / Remove from Favourites**
   - **Move** (Apps tab): use the arrows to slide the card, then press OK
   - **Hide**, **App info**, **Uninstall**
-- **⚙** opens Android TV settings. **⋮** has hidden apps, Now playing setup, show artwork on/off
+- **Play Store** (the bag icon) opens Google Play; it only shows when the Play Store is
+  installed. **⚙** opens Android TV settings. **⋮** has hidden apps, Now playing setup, show artwork on/off
   and Home button setup.
 - **Up** from the top row, or **Back** from anywhere, goes to the tabs. Back on the Apps tab goes
   to Home. Focus coming up from the cards always lands on the current tab.
@@ -74,7 +73,7 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 ## Now playing
 
 While Spotify, YouTube (or any app with standard media controls) is playing or paused, a small
-player appears in the top bar, after Home / Apps / ⚙ / ⋮: the cover, "title · artist", play/pause
+player appears in the top bar, after Home / Apps / Play Store / ⚙ / ⋮: the cover, "title · artist", play/pause
 and next. OK on the cover opens the player. On the player, and on the playing app's own card, the
 hero shows what's playing: Spotify's cover as a large card with its blur filling the screen, or a
 YouTube video's thumbnail full-screen.
@@ -187,7 +186,7 @@ apps and keep working; the script checks them.
 ## Updating
 
 Download the latest APK again and install it over the old one with `adb install -r DecoLauncher.apk`.
-Favourites, hidden apps and the order are kept.
+Hidden apps and the order are kept.
 
 Android only installs an update that is signed with the same key as the version already on the TV.
 Every build on the `launcher-latest` release is signed with the same key, so they install over each
@@ -196,7 +195,7 @@ the signing key was set up) used a different key.
 
 If the TV says **"package conflicts with an existing package"** (or adb says
 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`), the copy on the TV has a different key. Replace it once,
-making sure the TV keeps a home screen meanwhile (this resets favourites, hidden apps and the order):
+making sure the TV keeps a home screen meanwhile (this resets hidden apps and the order):
 
 ```bash
 adb shell pm enable com.google.android.apps.tv.launcherx   # a home screen while Deco is away

@@ -114,25 +114,6 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void heroMatchesTheHighlightedCardAfterAddingAFavourite() throws Exception {
-        HomeActivity home = start().get();
-        card(home, 0, 2).requestFocus(); // YouTube
-        idle();
-        card(home, 0, 2).performLongClick();
-        choose("Add to Favourites");
-        idle();
-        AppEntry highlighted = (AppEntry) focus(home).getTag(R.id.tag_app);
-        assertEquals(YOUTUBE, highlighted.packageName);
-        assertEquals(highlighted, home.heroApp);
-
-        card(home, 0, 0).performLongClick();
-        choose("Remove from Favourites");
-        idle();
-        highlighted = (AppEntry) focus(home).getTag(R.id.tag_app);
-        assertEquals(highlighted, home.heroApp);
-    }
-
-    @Test
     public void heroFollowsWhenTheHighlightedCardChangesApp() throws Exception {
         HomeActivity home = start().get(); // Netflix highlighted
         card(home, 0, 0).performLongClick();
@@ -142,21 +123,6 @@ public class HomeActivityTest {
         AppEntry highlighted = (AppEntry) focus(home).getTag(R.id.tag_app);
         assertEquals(PRIME, highlighted.packageName);
         assertEquals(PRIME, home.heroApp.packageName);
-    }
-
-    @Test
-    public void favouritesGetTheirOwnFirstRow() throws Exception {
-        HomeActivity home = start().get();
-        card(home, 0, 2).performLongClick(); // YouTube
-        choose("Add to Favourites");
-        assertEquals(List.of("Favourites: [" + YOUTUBE + "]", "TV apps: [" + NETFLIX + ", " + PRIME + "]",
-                "Other apps: [" + VLC + "]"), rows(home));
-        assertEquals(card(home, 0, 0), focus(home)); // focus followed the card
-
-        card(home, 0, 0).performLongClick();
-        choose("Remove from Favourites");
-        assertEquals(List.of("TV apps: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
-                "Other apps: [" + VLC + "]"), rows(home));
     }
 
     @Test
@@ -202,10 +168,35 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void moveIsOnlyOfferedOnTheAppsPage() throws Exception {
+    public void theCardMenuIsSimple() throws Exception {
         HomeActivity home = start().get();
         card(home, 0, 0).performLongClick();
-        assertFalse(sheetItems().contains("Move"));
+        // No Favourites, and Move is only offered on the Apps page.
+        assertEquals(List.of("Hide", "App info", "Uninstall"), sheetItems());
+    }
+
+    @Test
+    public void playStoreSitsInTheTopBarBeforeSettings() throws Exception {
+        HomeActivity home = start().get();
+        View store = home.findViewById(R.id.tab_store);
+        View settings = home.findViewById(R.id.tab_settings);
+        assertEquals(View.GONE, store.getVisibility()); // not installed
+
+        installApp(HomeActivity.PLAY_STORE, "Google Play Store", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        RuntimeEnvironment.getApplication().sendBroadcast(new Intent(Intent.ACTION_PACKAGE_ADDED,
+                Uri.parse("package:" + HomeActivity.PLAY_STORE)));
+        waitFor(() -> store.getVisibility() == View.VISIBLE);
+        LinearLayout tabs = home.findViewById(R.id.tabs);
+        assertEquals(tabs.indexOfChild(settings) - 1, tabs.indexOfChild(store));
+
+        // Left of settings on the remote; OK opens the Play Store.
+        settings.requestFocus();
+        assertEquals(store, settings.focusSearch(View.FOCUS_LEFT));
+        store.requestFocus();
+        press(home, KeyEvent.KEYCODE_DPAD_CENTER);
+        Intent started = shadowOf(home).getNextStartedActivity();
+        assertNotNull(started);
+        assertEquals(HomeActivity.PLAY_STORE, started.getComponent().getPackageName());
     }
 
     @Test

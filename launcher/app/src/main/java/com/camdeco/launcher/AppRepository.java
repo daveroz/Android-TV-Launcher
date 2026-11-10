@@ -22,11 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Finds launchable apps and remembers the order, favourites and hidden apps. */
+/** Finds launchable apps and remembers the order and hidden apps. */
 final class AppRepository {
     private static final String KEY_ORDER = "order";
     private static final String KEY_HIDDEN = "hidden";
-    private static final String KEY_FAVOURITES = "favourites";
     private static final String KEY_SHOW_ART = "show_art";
 
     private final Context context;
@@ -127,14 +126,6 @@ final class AppRepository {
 
     void setHidden(Set<String> hidden) {
         putList(KEY_HIDDEN, new ArrayList<>(hidden));
-    }
-
-    Set<String> getFavourites() {
-        return new LinkedHashSet<>(getList(KEY_FAVOURITES));
-    }
-
-    void setFavourites(Set<String> favourites) {
-        putList(KEY_FAVOURITES, new ArrayList<>(favourites));
     }
 
     /** Whether streaming apps fill the hero with their shows (needs the internet). On by default. */

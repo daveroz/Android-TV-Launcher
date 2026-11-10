@@ -10,9 +10,7 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 /** App cards, used both in the Home rows and in the Apps grid. */
 final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
@@ -31,7 +29,6 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
     private final Listener listener;
     /** Grid cells stretch to their column; row cards keep their fixed width. */
     private final boolean fillWidth;
-    private Set<String> favourites = Collections.emptySet();
     private String movingPackage;
 
     CardAdapter(Listener listener, boolean fillWidth) {
@@ -40,10 +37,9 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         setHasStableIds(true); // lets the grid keep focus on the same app across reloads
     }
 
-    void submit(List<AppEntry> list, Set<String> favourites) {
+    void submit(List<AppEntry> list) {
         apps.clear();
         apps.addAll(list);
-        this.favourites = favourites;
         notifyDataSetChanged();
     }
 
@@ -136,15 +132,14 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         }
         holder.title.setText(app.label);
         int subtitle = moving ? R.string.moving
-                : favourites.contains(app.packageName) ? R.string.kind_favourite
                 : app.leanback ? R.string.kind_tv : R.string.kind_phone;
         holder.subtitle.setText(subtitle);
         // A recycled view may still carry the focus lift of the app it showed before.
         boolean focused = view.isFocused();
         holder.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         holder.card.setScaleY(focused ? FOCUS_SCALE : 1f);
-        // The focused card can be given a different app when the rows refresh (adding a
-        // favourite, say). Focus doesn't move, so tell the listener; else the hero shows the old app.
+        // The focused card can be given a different app when the rows refresh (hiding an
+        // app, say). Focus doesn't move, so tell the listener; else the hero shows the old app.
         if (focused) listener.onCardFocused(view, app, true);
     }
 

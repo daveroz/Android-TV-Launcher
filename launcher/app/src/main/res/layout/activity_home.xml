@@ -304,6 +304,14 @@
                 style="@style/Tab"
                 android:text="@string/tab_apps" />
 
+            <!-- Google Play Store: shown only when it's installed. -->
+            <ImageButton
+                android:id="@+id/tab_store"
+                style="@style/TabIcon"
+                android:contentDescription="@string/play_store"
+                android:src="@drawable/ic_store"
+                android:visibility="gone" />
+
             <ImageButton
                 android:id="@+id/tab_settings"
                 style="@style/TabIcon"

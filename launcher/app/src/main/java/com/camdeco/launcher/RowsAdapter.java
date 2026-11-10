@@ -10,9 +10,7 @@ import androidx.leanback.widget.HorizontalGridView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 /** The Home page: titled rows, each a sideways-scrolling line of app cards. */
 final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.Holder> {
@@ -32,17 +30,15 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.Holder> {
     private final List<Row> rows = new ArrayList<>();
     private final CardAdapter.Listener listener;
     private final RecyclerView.RecycledViewPool cardPool = new RecyclerView.RecycledViewPool();
-    private Set<String> favourites = Collections.emptySet();
 
     RowsAdapter(CardAdapter.Listener listener) {
         this.listener = listener;
         setHasStableIds(true);
     }
 
-    void submit(List<Row> list, Set<String> favourites) {
+    void submit(List<Row> list) {
         rows.clear();
         rows.addAll(list);
-        this.favourites = favourites;
         notifyDataSetChanged();
     }
 
@@ -81,7 +77,7 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.Holder> {
     public void onBindViewHolder(Holder holder, int position) {
         Row row = rows.get(position);
         holder.title.setText(row.title);
-        holder.cards.submit(row.apps, favourites);
+        holder.cards.submit(row.apps);
     }
 
     static final class Holder extends RecyclerView.ViewHolder {

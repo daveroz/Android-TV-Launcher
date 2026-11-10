@@ -50,6 +50,8 @@ import java.util.function.Consumer;
  */
 public class HomeActivity extends Activity implements CardAdapter.Listener {
     static final int COLUMNS = 5;
+    /** Google Play Store, opened from the top bar. */
+    static final String PLAY_STORE = "com.android.vending";
     private static final int PAGE_HOME = 0;
     private static final int PAGE_APPS = 1;
     /** Wait for the remote to settle before swapping the big hero art. */
@@ -96,6 +98,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private ImageView npArt;
     private TextView npTitle;
     private ImageButton npPlay;
+    private View storeButton;
 
     private List<AppEntry> allApps = new ArrayList<>();
     private int page = PAGE_HOME;
@@ -108,7 +111,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
 
     private final Runnable heroUpdate = () -> {
         // Follow whichever card has focus now, not the one that asked: the rows can refresh in
-        // between (adding a favourite), and the hero must always match the highlighted card.
+        // between (hiding an app), and the hero must always match the highlighted card.
         AppEntry focused = focusedApp();
         if (focused != null && focused != heroApp && page == PAGE_HOME) showHero(focused);
     };
@@ -212,6 +215,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         });
         tabHome.setOnClickListener(v -> focusContent());
         tabApps.setOnClickListener(v -> focusContent());
+        storeButton = findViewById(R.id.tab_store);
+        storeButton.setOnClickListener(v -> openPackage(PLAY_STORE));
         findViewById(R.id.tab_settings).setOnClickListener(v -> open(new Intent(Settings.ACTION_SETTINGS)));
         findViewById(R.id.tab_options).setOnClickListener(v -> showLauncherOptions());
 
@@ -276,8 +281,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         if (loader.isShutdown()) return;
         loader.execute(() -> {
             List<AppEntry> apps = repo.loadAll();
+            boolean hasStore = launchIntent(PLAY_STORE) != null;
             main.post(() -> {
                 if (isDestroyed()) return;
+                storeButton.setVisibility(hasStore ? View.VISIBLE : View.GONE);
                 if (movingPackage != null) endMove();
                 repo.sort(apps);
                 allApps = apps;
@@ -290,28 +297,22 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     /** Rebuilds the rows and the grid; refocus keeps focus on the same app. */
     private void showApps(boolean refocus) {
         Set<String> hidden = repo.getHidden();
-        Set<String> favourites = repo.getFavourites();
         List<AppEntry> visible = new ArrayList<>();
-        List<AppEntry> favouriteApps = new ArrayList<>();
         List<AppEntry> tvApps = new ArrayList<>();
         List<AppEntry> otherApps = new ArrayList<>();
         for (AppEntry app : allApps) {
             if (hidden.contains(app.packageName)) continue;
             visible.add(app);
-            if (favourites.contains(app.packageName)) favouriteApps.add(app);
-            else if (app.leanback) tvApps.add(app);
+            if (app.leanback) tvApps.add(app);
             else otherApps.add(app);
         }
         List<RowsAdapter.Row> list = new ArrayList<>();
-        if (!favouriteApps.isEmpty()) {
-            list.add(new RowsAdapter.Row("favourites", getString(R.string.row_favourites), favouriteApps));
-        }
         if (!tvApps.isEmpty()) list.add(new RowsAdapter.Row("tv", getString(R.string.row_tv), tvApps));
         if (!otherApps.isEmpty()) list.add(new RowsAdapter.Row("other", getString(R.string.row_other), otherApps));
 
         String focusedPackage = focusedPackage();
-        rowsAdapter.submit(list, favourites);
-        appsAdapter.submit(visible, favourites);
+        rowsAdapter.submit(list);
+        appsAdapter.submit(visible);
         empty.setVisibility(visible.isEmpty() ? View.VISIBLE : View.GONE);
 
         if (!loaded) {
@@ -586,12 +587,20 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
             }
         }
         String packageName = nowPlaying.packageName();
-        if (packageName == null) return;
-        PackageManager pm = getPackageManager();
-        Intent launch = pm.getLeanbackLaunchIntentForPackage(packageName);
-        if (launch == null) launch = pm.getLaunchIntentForPackage(packageName);
+        if (packageName != null) openPackage(packageName);
+    }
+
+    /** Opens an app by package name: its TV screen if it has one, else its phone one. */
+    private void openPackage(String packageName) {
+        Intent launch = launchIntent(packageName);
         if (launch != null) open(launch);
         else showHint(R.string.cannot_open);
+    }
+
+    private Intent launchIntent(String packageName) {
+        PackageManager pm = getPackageManager();
+        Intent launch = pm.getLeanbackLaunchIntentForPackage(packageName);
+        return launch != null ? launch : pm.getLaunchIntentForPackage(packageName);
     }
 
     // ---- Cards ----
@@ -606,11 +615,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
 
     @Override
     public void onOptions(AppEntry app) {
-        boolean favourite = repo.getFavourites().contains(app.packageName);
         List<String> labels = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
-        labels.add(getString(favourite ? R.string.option_remove_favourite : R.string.option_add_favourite));
-        actions.add(() -> toggleFavourite(app));
         if (page == PAGE_APPS) {
             labels.add(getString(R.string.option_move));
             actions.add(() -> startMove(app));
@@ -622,17 +628,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         labels.add(getString(R.string.option_uninstall));
         actions.add(() -> open(new Intent(Intent.ACTION_DELETE, packageUri(app))));
         Sheet.pick(this, app.label, null, labels, which -> actions.get(which).run());
-    }
-
-    private void toggleFavourite(AppEntry app) {
-        Set<String> favourites = repo.getFavourites();
-        boolean adding = favourites.add(app.packageName);
-        if (!adding) favourites.remove(app.packageName);
-        repo.setFavourites(favourites);
-        showApps(false);
-        focusApp(app.packageName); // follow the card into (or out of) the Favourites row
-        if (heroApp == app) showHero(app);
-        showHint(adding ? R.string.favourite_added : R.string.favourite_removed);
     }
 
     private void hide(AppEntry app) {
