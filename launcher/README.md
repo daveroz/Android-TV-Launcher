@@ -100,8 +100,6 @@ adb install -r DecoLauncher.apk
 ```
 
 That link always points to the latest build from GitHub Actions (see [Building](#building)).
-Until the first signed build has been published there, use the copy in the repo instead:
-`curl -LO https://raw.githubusercontent.com/daveroz/Cam-deco/ccr-beaea807-gbu79w/releases/deco-launcher.apk`
 
 Then open **Deco Launcher** from the Google TV apps list to try it out.
 
