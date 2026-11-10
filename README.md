@@ -4,6 +4,23 @@ Tools for a Chromecast with Google TV (HD, codename `boreal`, Android TV OS 14).
 
 - **[Deco Launcher](launcher/README.md):** a lightweight, ad-free home screen with an Apple TV-style layout and Worldly's look. Built by GitHub Actions; the latest APK is always at [`releases/download/launcher-latest/DecoLauncher.apk`](https://github.com/daveroz/Cam-deco/releases/download/launcher-latest/DecoLauncher.apk).
 - **[`scripts/chromecast-dump.sh`](#copy-the-firmware-files-off-the-chromecast):** copies the readable firmware files off the device.
+- **[`scripts/chromecast-5ghz.sh`](#turn-off-google-tv-and-check-5-ghz-wifi):** turns off the Google TV home screen, then checks the TV can see and join your 5 GHz WiFi.
+
+## Turn off Google TV and check 5 GHz WiFi
+
+From Termux, on the same network as the TV:
+
+```bash
+curl -LO https://raw.githubusercontent.com/daveroz/Cam-deco/ccr-beaea807-gbu79w/scripts/chromecast-5ghz.sh
+bash chromecast-5ghz.sh 192.168.x.x "Your 5 GHz WiFi name"      # add wpa3 or open if needed
+bash chromecast-5ghz.sh 192.168.x.x --undo                      # Google TV home screen back on
+```
+
+It only turns Google TV off if Deco Launcher is installed. It then shows the current WiFi and
+country code, scans for your network on 5 GHz (with its channel and signal), joins it (asking for
+the password without showing it), and checks the internet works. If the TV can't see the network
+on 5 GHz, it says what to change on the router. Joining another network can change the TV's
+address; if so, the script tells you how to reconnect.
 
 ## Copy the firmware files off the Chromecast
 
