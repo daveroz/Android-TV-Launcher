@@ -497,7 +497,7 @@ public class HomeActivityTest {
         idle();
         assertTrue(home.hero.showsWave());
 
-        // The TV shares its sound: the strands follow it. A bassy song shows mostly bass...
+        // The TV shares its sound: the line follows it. A bassy song shows mostly bass...
         android.media.audiofx.Visualizer visualizer = home.soundWave.visualizerForTests();
         assertNotNull(visualizer);
         ShadowVisualizer audio = org.robolectric.shadow.api.Shadow.extract(visualizer);
@@ -506,21 +506,21 @@ public class HomeActivityTest {
         audio.triggerDataCapture();
         assertEquals(SoundWave.Status.FOLLOWING, home.soundWave.status());
         home.soundWave.levels(1.0, levels);
-        assertTrue("bass fills its strand", levels[SoundWave.BASS] > 0.9f);
+        assertTrue("bass fills its zone", levels[SoundWave.BASS] > 0.9f);
         assertTrue("little voice or treble", levels[SoundWave.VOICE] < 0.4f && levels[SoundWave.TREBLE] < 0.4f);
 
         // ...a sung part mostly voice...
         audio.setSource(spectrum(2, 30, 1));
         audio.triggerDataCapture();
         home.soundWave.levels(1.0, levels);
-        assertTrue("the voice strand leads", levels[SoundWave.VOICE] > 0.9f);
+        assertTrue("the voice zone leads", levels[SoundWave.VOICE] > 0.9f);
         assertTrue(levels[SoundWave.BASS] < 0.3f && levels[SoundWave.TREBLE] < 0.4f);
 
         // ...and cymbals the treble, even though they carry less raw energy than the kick under them.
         audio.setSource(spectrum(6, 3, 3));
         audio.triggerDataCapture();
         home.soundWave.levels(1.0, levels);
-        assertTrue("the treble strand leads", levels[SoundWave.TREBLE] > levels[SoundWave.BASS]
+        assertTrue("the treble zone leads", levels[SoundWave.TREBLE] > levels[SoundWave.BASS]
                 && levels[SoundWave.TREBLE] > levels[SoundWave.VOICE]);
 
         // The menu says so.
