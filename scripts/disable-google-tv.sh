@@ -62,7 +62,7 @@ home_target() {
 # Press Home and report which app is on screen.
 press_home() {
   tv input keyevent KEYCODE_HOME >/dev/null
-  sleep 3
+  sleep 5 # the Chromecast HD can take a few seconds to start an app
   tv dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' | head -2
 }
 wifi_now() {
