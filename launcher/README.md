@@ -131,7 +131,7 @@ and the order.
 
 [`.github/workflows/build.yml`](../.github/workflows/build.yml) runs on every push that changes
 `launcher/`, and from **Actions → Build APK → Run workflow**. It runs the tests, builds the release
-APK, uploads it as the **DecoLauncher** artifact and, on the default branch, publishes it to the
+APK, uploads it as the **DecoLauncher.apk** artifact and, on the default branch, publishes it to the
 [`launcher-latest`](https://github.com/daveroz/Cam-deco/releases/tag/launcher-latest) release. The
 run's summary shows the version and the signing key's SHA-256 fingerprint.
 
