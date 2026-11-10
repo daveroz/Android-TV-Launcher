@@ -20,10 +20,10 @@
     <!-- Card height: from hero_top to 24dp above the rows (rows_top). Covers are square,
          banners 16:9 at this height. -->
     <dimen name="hero_card_height">176dp</dimen>
-    <!-- The audio visualizer's grid of cells: the full width from the screen margin to 36dp before
-         the cover card (overscan_h + hero_card_height + 36dp from the right), rising from 10dp above
-         the rows (296dp) to behind the song's text. 48 columns of about 11.5dp cells, 11 rows. -->
-    <dimen name="wave_top">134dp</dimen>
-    <dimen name="wave_height">152dp</dimen>
-    <dimen name="wave_end">260dp</dimen>
+    <!-- What's playing as an LP: the sleeve (hero_card_height square) plus the record when it's out,
+         reaching 0.47 of the sleeve to the left of it (83dp), plus a little for the edge. -->
+    <dimen name="record_width">260dp</dimen>
+    <!-- The audio visualizer: level with the cover (hero_top, hero_card_height), from the screen
+         margin to 12dp before the record when it's out (overscan_h + record_width + 12dp). -->
+    <dimen name="wave_end">320dp</dimen>
 </resources>

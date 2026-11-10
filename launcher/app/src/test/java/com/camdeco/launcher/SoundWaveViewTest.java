@@ -31,21 +31,21 @@ public class SoundWaveViewTest {
     @Test
     public void bassLightsTheLeftColumns() {
         play(60, 1, 1, 45);
-        int bass = litRows(40, 250), voice = litRows(250, 4000), treble = litRows(4000, 16000);
+        int bass = litRows(40, 200), voice = litRows(400, 3000), treble = litRows(5000, 16000);
         assertTrue("bass " + bass + " voice " + voice + " treble " + treble, bass >= 5 && bass > 2 * voice && bass > 2 * treble);
     }
 
     @Test
     public void voicesLightTheMiddle() {
         play(2, 30, 1, 45);
-        int bass = litRows(40, 250), voice = litRows(250, 4000), treble = litRows(4000, 16000);
+        int bass = litRows(40, 200), voice = litRows(400, 3000), treble = litRows(5000, 16000);
         assertTrue("bass " + bass + " voice " + voice + " treble " + treble, voice >= 4 && voice > 2 * bass && voice > treble);
     }
 
     @Test
     public void trebleLightsTheRight() {
         play(6, 3, 3, 45);
-        int bass = litRows(40, 250), treble = litRows(4000, 16000);
+        int bass = litRows(40, 200), treble = litRows(5000, 16000);
         assertTrue("bass " + bass + " treble " + treble, treble > bass);
     }
 
@@ -70,7 +70,7 @@ public class SoundWaveViewTest {
         view = new SoundWaveView(app, null);
         view.setSource(wave);
         float dp = app.getResources().getDisplayMetrics().density;
-        int w = Math.round(652 * dp), h = Math.round(152 * dp);
+        int w = Math.round(592 * dp), h = Math.round(176 * dp);
         view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, w, h);
@@ -86,7 +86,10 @@ public class SoundWaveViewTest {
         }
     }
 
-    /** How many rows of cells are lit, at most, in the columns between these frequencies. */
+    /**
+     * How many rows of cells are lit, at most, in the columns between these frequencies. The ranges
+     * the tests use stay clear of the 250 Hz and 4 kHz edges, where a column holds a bit of both.
+     */
     private int litRows(double fromHz, double toHz) {
         float pitch = view.pitch();
         int from = SoundWave.columnOf(fromHz * 1.01), to = SoundWave.columnOf(toHz * 0.99);
@@ -111,8 +114,8 @@ public class SoundWaveViewTest {
     public void theCellsFillTheWidthAndAreSeeThrough() {
         play(60, 30, 10, 45);
         float dp = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics().density;
-        assertTrue("about 11 rows: " + view.rows(), view.rows() >= 10);
-        assertTrue("square cells of about 11dp: " + view.pitch() / dp, view.pitch() / dp > 13 && view.pitch() / dp < 14.5);
+        assertTrue("about 14 rows, as tall as the cover: " + view.rows(), view.rows() >= 13);
+        assertTrue("square cells of about 10dp: " + view.pitch() / dp, view.pitch() / dp > 11.5 && view.pitch() / dp < 13);
         // The last column ends at the right edge.
         int lastColumnX = Math.round(frame.getWidth() - view.pitch() * 0.42f);
         boolean seen = false;

@@ -402,6 +402,29 @@ public class HomeActivityTest {
 
     @Test
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void playingMusicShowsAnLpThatSpinsAndStopsOnPause() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        MediaController spotify = play("com.spotify.tv.android", "Midnight City", "M83", cover());
+        card(home, 0, 2).requestFocus(); // Spotify
+        idle();
+        assertTrue("the cover is an LP", home.hero.showsRecord());
+        RecordView record = home.hero.recordForTests();
+        assertTrue("its record comes out and spins", record.isPlaying());
+
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PAUSED));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        idle();
+        assertFalse("paused: the record stops", record.isPlaying());
+        assertTrue(home.hero.showsRecord());
+
+        card(home, 0, 0).requestFocus(); // Netflix: its own card, no LP
+        idle();
+        assertFalse(home.hero.showsRecord());
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
     public void appsWithNothingToShowGlowWithTheirOwnColours() throws Exception {
         android.graphics.Bitmap orange = android.graphics.Bitmap.createBitmap(96, 96, android.graphics.Bitmap.Config.ARGB_8888);
         orange.eraseColor(0xFFFF8800); // VLC's cone

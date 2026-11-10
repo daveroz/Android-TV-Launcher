@@ -61,9 +61,9 @@
         <com.camdeco.launcher.SoundWaveView
             android:id="@+id/hero_wave"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/wave_height"
+            android:layout_height="@dimen/hero_card_height"
             android:layout_marginStart="@dimen/overscan_h"
-            android:layout_marginTop="@dimen/wave_top"
+            android:layout_marginTop="@dimen/hero_top"
             android:layout_marginEnd="@dimen/wave_end"
             android:alpha="0"
             android:importantForAccessibility="no"
@@ -84,6 +84,18 @@
             android:elevation="18dp"
             android:importantForAccessibility="no"
             android:scaleType="centerCrop" />
+
+        <!-- What's playing, as an LP: the cover is the sleeve, the record slides out to the left. -->
+        <com.camdeco.launcher.RecordView
+            android:id="@+id/hero_record"
+            android:layout_width="@dimen/record_width"
+            android:layout_height="@dimen/hero_card_height"
+            android:layout_gravity="end|top"
+            android:layout_marginTop="@dimen/hero_top"
+            android:layout_marginEnd="@dimen/overscan_h"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/hero_text"

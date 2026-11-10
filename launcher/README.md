@@ -97,16 +97,24 @@ adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launc
 Go back to Home and start some music. **⋮ → Now playing** shows whether access is on. To turn it
 off, run the same command with `disallow_listener`.
 
+### The record
+
+The album cover is shown as an LP: the cover is the sleeve. When the song plays, the record slides
+out to the left and spins at 33⅓ rpm; on pause it slows to a stop. When the song changes, the
+record stops, slides back into the sleeve, the sleeve changes to the new cover, and the new record
+slides out and spins. The record is tinted from the cover, with grooves and the cover art on its
+label. Recently played songs show their LP with the record in the sleeve.
+
 ### Audio visualizer
 
-While the hero shows what's playing, a grid of light cells shows the music, like a hi-fi spectrum
-display: 48 columns, from the bass on the left (40 Hz) through voices in the middle to the treble
-on the right (16 kHz). It spans the width under the song, from the screen margin to just before the
-cover, and rises behind the song's title and artist. The cells are see-through, so the cover's
-glow shows through them, and fade more toward the top so the text stays easy to read. Each column
-rises with its part of the music and settles back gently, and the top cell of a column fades in and
-out, so the heights change smoothly. The cells take the album cover's colours, whiter at the
-bottom, and go dark on pause.
+While the hero shows what's playing, light cells show the music, like a hi-fi spectrum display: 48
+columns, from the bass on the left (40 Hz) through voices in the middle to the treble on the right
+(16 kHz). The grid is level with the album cover (same top and bottom), runs from the screen margin
+to just before the record, and sits behind the song's text. Only cells with sound light up; they're
+see-through, so the cover's glow shows through them, and fade more toward the top so the text stays
+easy to read. Each column rises with its part of the music and settles back gently, and the top
+cell of a column fades in and out, so the heights change smoothly. The cells take the album cover's
+colours, whiter at the bottom, and go dark on pause.
 
 All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher columns get lifted to make up for music naturally carrying far more energy in

@@ -44,6 +44,8 @@ final class Hero {
     private final ColorFieldView field;
     /** The music's waveform under the song. */
     private final SoundWaveView wave;
+    /** What's playing, as an LP: the cover is the sleeve, and the record spins while it plays. */
+    private final RecordView record;
     private final int cardHeight;
     private final ImageView ambient;
     private final TextView title;
@@ -78,6 +80,7 @@ final class Hero {
         cover.setClipToOutline(true); // round the picture's corners to the card
         field = activity.findViewById(R.id.hero_field);
         wave = activity.findViewById(R.id.hero_wave);
+        record = activity.findViewById(R.id.hero_record);
         cardHeight = activity.getResources().getDimensionPixelSize(R.dimen.hero_card_height);
         ambient = activity.findViewById(R.id.hero_ambient);
         title = activity.findViewById(R.id.hero_title);
@@ -138,25 +141,29 @@ final class Hero {
         setText(track.title, track.artist, null, detail);
         showHoldHint(false);
         Object picture = track.art != null ? track.art : track.packageName;
-        if (picture.equals(shownCover)) return; // same picture: only the text changed
+        if (picture.equals(shownCover)) {
+            record.setPlaying(track.playing); // same song: play or pause
+            return;
+        }
         if (track.art != null) {
-            showPicture(track.art);
+            showPicture(track.art, track.playing);
         } else if (fallbackIcon != null) {
-            swapCover(AppRepository.copy(fallbackIcon), AppRepository.copy(fallbackIcon));
+            swapCover(AppRepository.copy(fallbackIcon), AppRepository.copy(fallbackIcon), track.playing);
         }
         shownCover = picture;
     }
 
     /**
      * A wide picture (a show, a YouTube thumbnail) fills the screen. A square one (an album
-     * cover) becomes a sharp card on the right with a soft blur of itself across the screen.
+     * cover) becomes an LP on the right, with a soft blur of itself across the screen; its record
+     * comes out and spins while {@code playing}.
      */
-    private void showPicture(Bitmap bitmap) {
+    private void showPicture(Bitmap bitmap, boolean playing) {
         if (bitmap.getWidth() > bitmap.getHeight() * 1.4f) {
             swapArt(true, new BitmapDrawable(activity.getResources(), bitmap), null, ImageView.ScaleType.CENTER_CROP, 0);
         } else {
             swapCover(new BitmapDrawable(activity.getResources(), bitmap),
-                    new BitmapDrawable(activity.getResources(), bitmap));
+                    new BitmapDrawable(activity.getResources(), bitmap), playing);
         }
     }
 
@@ -208,7 +215,7 @@ final class Hero {
 
     private void setFeatureArt(Bitmap bitmap) {
         shownCover = null;
-        showPicture(bitmap);
+        showPicture(bitmap, false); // recently played: the record stays in its sleeve
     }
 
     private void stopFeatures() {
@@ -294,6 +301,7 @@ final class Hero {
      * sits in the box on the right with a blurred copy tinting the screen.
      */
     private void swapArt(boolean fullScreen, Drawable sharp, Drawable blurred, ImageView.ScaleType scale, int pad) {
+        hideRecord();
         cover.animate().cancel();
         cover.animate().alpha(0f).setDuration(120).start();
         field.animate().cancel();
@@ -317,9 +325,25 @@ final class Hero {
         }).start();
     }
 
-    /** Cross-fades to an album cover card, with the cover blurred across the whole screen behind it. */
-    private void swapCover(Drawable picture, Drawable blurred) {
-        showCard(picture, cardHeight, ImageView.ScaleType.CENTER_CROP, 0, blurred);
+    /** Shows an album cover as an LP, with the cover blurred across the whole screen behind it. */
+    private void swapCover(Drawable picture, Drawable blurred, boolean playing) {
+        art.animate().cancel();
+        art.animate().alpha(0f).setDuration(160).start();
+        cover.animate().cancel();
+        cover.animate().alpha(0f).setDuration(120).start();
+        record.animate().cancel();
+        record.setVisibility(View.VISIBLE);
+        record.animate().alpha(1f).setDuration(280).start();
+        record.show(picture, playing);
+        ambient.setImageDrawable(blurred);
+        ambient.animate().alpha(0.85f).setDuration(300).start();
+        field.animate().alpha(0f).setDuration(300).start();
+    }
+
+    private void hideRecord() {
+        record.animate().cancel();
+        if (record.getVisibility() != View.VISIBLE) return;
+        record.animate().alpha(0f).setDuration(160).withEndAction(() -> record.setVisibility(View.GONE)).start();
     }
 
     /**
@@ -327,6 +351,7 @@ final class Hero {
      * screen (album covers); without one, the app's colour field does (app banners).
      */
     private void showCard(Drawable picture, int width, ImageView.ScaleType scale, int pad, Drawable blurred) {
+        hideRecord();
         art.animate().cancel();
         art.animate().alpha(0f).setDuration(160).start();
         cover.animate().cancel();
@@ -387,8 +412,17 @@ final class Hero {
         return field.vividColour();
     }
 
-    /** Whether a cover card is on screen (for tests). */
+    /** Whether a cover is on screen, as a card or an LP (for tests). */
     boolean showsCover() {
-        return cover.getAlpha() > 0.5f && cover.getDrawable() != null;
+        return (cover.getAlpha() > 0.5f && cover.getDrawable() != null) || showsRecord();
+    }
+
+    /** Whether the LP is on screen (for tests). */
+    boolean showsRecord() {
+        return record.getVisibility() == View.VISIBLE && record.getAlpha() > 0.5f;
+    }
+
+    RecordView recordForTests() {
+        return record;
     }
 }

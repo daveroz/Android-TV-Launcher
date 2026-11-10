@@ -1,7 +1,6 @@
 package com.camdeco.launcher;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -11,10 +10,10 @@ import android.view.View;
 import android.view.animation.AnimationUtils;
 
 /**
- * The music under the song in the hero, as a grid of light cells like a hi-fi spectrum display:
- * one column per part of the music, bass on the left and treble on the right, spanning the width
- * under the song and rising behind its text. The cells are see-through, so the cover's glow shows
- * through them, and fade more toward the top so the song's text stays easy to read.
+ * The music under the song in the hero, as light cells like a hi-fi spectrum display: one column
+ * per part of the music, bass on the left and treble on the right, level with the album cover
+ * (same top and bottom) and behind the song's text. Only cells with sound light up, see-through so
+ * the cover's glow shows through, fading more toward the top so the text stays easy to read.
  *
  * Each column rises with its part of the music and settles back gently; the top cell of a column
  * fades in and out, so heights change smoothly rather than a whole cell at a time. Cells take the
@@ -42,8 +41,6 @@ public class SoundWaveView extends View {
     /** Per row, bottom first: the lit colour and its opacity. Sized when the view gets its size. */
     private int[] rowColours = new int[0];
     private float[] rowOpacity = new float[0];
-    /** The faint grid of unlit cells, drawn once per size. */
-    private Bitmap grid;
     private int rows;
     private float pitch;
     private float cell;
@@ -100,7 +97,6 @@ public class SoundWaveView extends View {
         rowColours = new int[rows];
         rowOpacity = new float[rows];
         updateRows();
-        buildGrid(w, h);
     }
 
     private void updateRows() {
@@ -108,22 +104,6 @@ public class SoundWaveView extends View {
             float f = rows > 1 ? r / (float) (rows - 1) : 0f;
             rowColours[r] = mix(bottomColour, topColour, f);
             rowOpacity[r] = BOTTOM_OPACITY + (TOP_OPACITY - BOTTOM_OPACITY) * f;
-        }
-    }
-
-    private void buildGrid(int w, int h) {
-        if (grid != null) grid.recycle();
-        grid = null;
-        if (w <= 0 || h <= 0 || rows == 0) return;
-        grid = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(grid);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setColor(0x09FFFFFF); // unlit cells: just a hint of the grid
-        for (int col = 0; col < COLUMNS; col++) {
-            for (int row = 0; row < rows; row++) {
-                cellRect(col, row, 0);
-                c.drawRoundRect(rect, radius, radius, p);
-            }
         }
     }
 
@@ -151,7 +131,6 @@ public class SoundWaveView extends View {
             shown[c] = goal > shown[c] ? shown[c] + (goal - shown[c]) * rise : goal + (shown[c] - goal) * settle;
         }
 
-        if (grid != null) canvas.drawBitmap(grid, 0, 0, null);
         float glow = 2 * density;
         for (int c = 0; c < COLUMNS; c++) {
             float lit = shown[c] * rows;
