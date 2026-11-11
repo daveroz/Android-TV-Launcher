@@ -12,7 +12,6 @@
     <dimen name="rows_top">296dp</dimen>
     <!-- How far the rows scroll before the hero has fully faded. -->
     <dimen name="hero_fade_range">160dp</dimen>
-    <dimen name="hero_scrim_width">660dp</dimen>
     <!-- The hero's top line (title and card), clear of the top bar, which ends at about 72dp. -->
     <dimen name="hero_top">96dp</dimen>
     <!-- Card height: from hero_top to 24dp above the rows (rows_top). Covers are square,
@@ -21,8 +20,4 @@
     <!-- What's playing as an LP: the sleeve (hero_card_height square) plus the record when it's out,
          reaching 0.47 of the sleeve to the left of it (83dp), plus a little for the edge. -->
     <dimen name="record_width">260dp</dimen>
-    <!-- The audio visualizer: level with the cover (hero_top, hero_card_height), from the screen
-         margin to the cover's left edge (overscan_h + hero_card_height), passing behind the record
-         and fading out as it gets there. -->
-    <dimen name="wave_end">224dp</dimen>
 </resources>

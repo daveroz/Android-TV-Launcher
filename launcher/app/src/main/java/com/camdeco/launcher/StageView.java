@@ -75,7 +75,7 @@ public class StageView extends View {
     private long lastFrame;
     private float air;
     private float bass;
-    private SoundWaveView levels;
+    private LightShowView levels;
 
     public StageView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -97,8 +97,8 @@ public class StageView extends View {
         return lights.scene;
     }
 
-    /** The visualizer, whose bass makes the washes swell while it shows. */
-    void setLevelSource(SoundWaveView view) {
+    /** The light show, whose bass makes the washes swell while it follows the sound. */
+    void setLevelSource(LightShowView view) {
         levels = view;
     }
 

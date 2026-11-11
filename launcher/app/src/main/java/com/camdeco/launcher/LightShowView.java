@@ -13,14 +13,22 @@ import android.view.View;
 import android.view.animation.AnimationUtils;
 
 /**
- * The hero for an app: a wall of square lamps in its colour, right across the screen from margin
- * to margin, as tall as an album cover, played like the LED panels on Justice's stage. Behind the
- * app's name the lamps are dimmer, so the text stays easy to read. The lamps stand in strips three wide,
- * split into an upper and a lower panel, and each panel runs its own pattern for a couple of
- * seconds before switching: filling down or up, a band running down it, a flickering pixel pattern,
- * a flash that fades, all on at once, or dark. Dark lamps keep a faint ember, so the panels still
- * read. Each lit lamp is sharp, white-hot at full strength, with a soft round glow, and lit panels
- * throw soft beams down into the haze. One colour only: the app's own.
+ * The light show at the top of Home, for every app: a wall of square lamps right across the screen
+ * from margin to margin, as tall as an album cover, in one colour (the focused app's, or the album
+ * cover's while a song shows), like the LED panels on Justice's stage. The lamps stand in strips
+ * three wide, split into an upper and a lower panel.
+ *
+ * While something plays, the wall follows the sound: each lamp column is a part of the music, bass
+ * on the left and treble on the right, filling up from the bottom with it, rising quickly and
+ * settling back gently, its top lamp fading in and out. With an LP on screen, the music's columns
+ * end where the record starts and the ones behind it echo the treble. When nothing plays, or it's
+ * paused, each panel runs its own pattern for a couple of seconds before switching: filling down or
+ * up, a band running down it, a flickering pixel pattern, a flash that fades, all on, or dark. The
+ * two blend into each other.
+ *
+ * Dark lamps keep a faint ember, so the panels still read. Each lit lamp is sharp, white-hot at full
+ * strength, with a soft round glow, and lit panels throw soft beams down into the haze. Behind the
+ * text on the left the lamps are dimmer, so it stays easy to read.
  */
 public class LightShowView extends View {
     private static final int ROWS = 10;
@@ -36,6 +44,11 @@ public class LightShowView extends View {
     private static final int[] PATTERN_WEIGHTS = {4, 3, 2, 3, 4, 2, 2};
     private static final float SOFT = 1 / 8f;
     private static final long FRAME_MS = 33;
+    private static final int BANDS = SoundWave.COLUMNS;
+    /** Following the sound: the top lamp of each column, and the one under it, are a little softer. */
+    private static final float[] TIP = {0.6f, 0.85f};
+    /** How long the wall takes to go from its patterns to the sound, or back. */
+    private static final float REACT_SECONDS = 0.6f;
 
     private final float density;
     private final Paint lamp = new Paint();
@@ -60,6 +73,19 @@ public class LightShowView extends View {
     private float time;
     /** The wall's top-left lamp space, and the pitch and size of the lamps. */
     private float left, top, pitch, cell;
+    /** The sound: where it comes from, the levels it's heading for, and the levels on show. */
+    private SoundWave source;
+    private final float[] target = new float[BANDS];
+    private final float[] shown = new float[BANDS];
+    private double soundTime;
+    /** Whether the wall follows the sound, and how far it has gone over to it (0 patterns, 1 sound). */
+    private boolean reactive;
+    private float react;
+    /** Whether an LP is on screen, so the music's columns end where the record starts. */
+    private boolean recordShown;
+    /** Following the sound, per column: which part of the music (-1 for a gap), and how strong. */
+    private int[] columnBand = new int[0];
+    private float[] soundStrength = new float[0];
 
     public LightShowView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -75,6 +101,53 @@ public class LightShowView extends View {
     /** The colour the show is lit in (for tests). */
     int keyColour() {
         return scene.key;
+    }
+
+    /** Where the sound comes from. */
+    void setSource(SoundWave wave) {
+        source = wave;
+    }
+
+    /** Follow the sound (something is playing), or play the patterns (paused, or nothing playing). */
+    void setReactive(boolean on) {
+        if (reactive == on) return;
+        reactive = on;
+        invalidate();
+    }
+
+    boolean isReactive() {
+        return reactive;
+    }
+
+    /** An LP is on the right: the music's columns end where its record starts. */
+    void setRecordShown(boolean shown) {
+        if (recordShown == shown) return;
+        recordShown = shown;
+        mapBands();
+        invalidate();
+    }
+
+    /** How loud the bass is on the wall right now, 0 to 1: the stage's washes swell with it. */
+    float bass() {
+        float sum = 0f;
+        for (int b = 0; b < 8; b++) sum += shown[b];
+        return react * sum / 8;
+    }
+
+    /** How lit a part of the music is right now (for tests). */
+    float level(int band) {
+        return shown[band];
+    }
+
+    /** Sets a part of the music's level straight away, and goes all the way over to the sound (for tests). */
+    void showForTests(int band, float value) {
+        shown[band] = value;
+        react = reactive ? 1f : 0f;
+    }
+
+    /** Which part of the music a column shows while following the sound, or -1 (for tests). */
+    int bandOfColumn(int column) {
+        return columnBand[column];
     }
 
     /** Animates while the show is on screen and the launcher is in front. */
@@ -98,6 +171,11 @@ public class LightShowView extends View {
     /** How lit a lamp is right now, 0 to 1, after the last frame drawn (for tests). */
     float lampForTests(int column, int row) {
         return values[row * columns + column];
+    }
+
+    /** The distance from one lamp to the next (for tests). */
+    float pitch() {
+        return pitch;
     }
 
     /** How many columns the wall has (for tests). */
@@ -127,11 +205,16 @@ public class LightShowView extends View {
         // Behind the text (the left 440dp) the lamps are dimmer, brightening just past it.
         float textRight = margin + 440 * density;
         columnStrength = new float[columns];
+        soundStrength = new float[columns];
+        columnBand = new int[columns];
         for (int c = 0; c < columns; c++) {
             float x = left + (c + 0.5f) * pitch;
             float t = Math.max(0f, Math.min(1f, (x - (textRight - 20 * density)) / (100 * density)));
-            columnStrength[c] = 0.45f + 0.55f * t * t * (3 - 2 * t);
+            float ease = t * t * (3 - 2 * t);
+            columnStrength[c] = 0.45f + 0.55f * ease;
+            soundStrength[c] = 0.7f + 0.3f * ease; // the music's bass is behind the text: dim it less
         }
+        mapBands();
         // The glow spreads around the wall, and the beams fall well below it, behind the rows.
         softBounds.set(Math.round(left - 64 * density), Math.round(top - 40 * density),
                 Math.round(left + columns * pitch + 40 * density), Math.round(top + height + 150 * density));
@@ -146,6 +229,31 @@ public class LightShowView extends View {
         }
     }
 
+    /**
+     * Shares the music out between the lamp columns, bass first: across the whole wall, or up to
+     * where the record starts, the columns behind it echoing the treble more and more faintly.
+     */
+    private void mapBands() {
+        if (columns == 0) return;
+        float margin = getResources().getDimension(R.dimen.overscan_h);
+        float card = getResources().getDimension(R.dimen.hero_card_height);
+        float edge = recordShown ? getWidth() - margin - card * 1.47f - 8 * density : Float.MAX_VALUE;
+        int music = 0;
+        for (int c = 0; c < columns; c++) if (!gap(c) && left + (c + 1) * pitch <= edge) music++;
+        music = Math.max(2, music);
+        int index = 0;
+        for (int c = 0; c < columns; c++) {
+            if (gap(c)) {
+                columnBand[c] = -1;
+                continue;
+            }
+            columnBand[c] = index < music ? Math.round(index * (BANDS - 1) / (float) (music - 1))
+                    : Math.max(0, BANDS - 1 - (index - music) * 2);
+            soundStrength[c] = Math.abs(soundStrength[c]) * (index < music ? 1f : -1f); // negative: an echo
+            index++;
+        }
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         if (soft == null) return;
@@ -153,7 +261,10 @@ public class LightShowView extends View {
         float dt = lastFrame == 0 ? 0f : Math.min(0.1f, (now - lastFrame) / 1000f);
         lastFrame = now;
         time += dt;
+        listen(dt);
         light();
+        if (react > 0f) followSound();
+        measurePanels();
 
         soft.eraseColor(0);
         float gap = (pitch - cell) / 2;
@@ -195,7 +306,67 @@ public class LightShowView extends View {
                 canvas.drawRect(x, y, x + cell, y + cell, lamp);
             }
         }
-        if (running) postInvalidateDelayed(FRAME_MS);
+        if (running) {
+            if (reactive || react > 0f) postInvalidateOnAnimation(); // the sound needs every frame
+            else postInvalidateDelayed(FRAME_MS);
+        }
+    }
+
+    /** Moves the sound's levels on, and the blend between the patterns and the sound. */
+    private void listen(float dt) {
+        float step = dt / REACT_SECONDS;
+        react = reactive ? Math.min(1f, react + step) : Math.max(0f, react - step);
+        soundTime += dt;
+        if (source != null && (reactive || react > 0f)) source.levels(soundTime, target);
+        else java.util.Arrays.fill(target, 0f);
+        // Rise quickly but eased; settle back over about a second.
+        float rise = Math.min(1f, dt * 18);
+        float settle = (float) Math.pow(0.06, dt);
+        for (int b = 0; b < BANDS; b++) {
+            float l = target[Math.max(0, b - 1)], r = target[Math.min(BANDS - 1, b + 1)];
+            float goal = 0.2f * l + 0.6f * target[b] + 0.2f * r;
+            shown[b] = goal > shown[b] ? shown[b] + (goal - shown[b]) * rise : goal + (shown[b] - goal) * settle;
+        }
+    }
+
+    /** Blends each lamp toward the sound: columns filling up from the bottom with their part of the music. */
+    private void followSound() {
+        float blend = react * react * (3 - 2 * react);
+        for (int c = 0; c < columns; c++) {
+            if (columnBand[c] < 0) continue;
+            boolean echo = soundStrength[c] < 0;
+            float strength = Math.abs(soundStrength[c]) * (echo ? 0.5f : 1f);
+            float lit = shown[columnBand[c]] * ROWS;
+            int full = (int) lit;
+            int topRow = full < ROWS && lit - full >= 0.03f ? full : full - 1;
+            for (int r = 0; r < ROWS; r++) {
+                int fromBottom = ROWS - 1 - r;
+                float v = fromBottom < full ? 1f : fromBottom == full ? lit - full : 0f;
+                int fromTop = topRow - fromBottom;
+                if (v > 0f && fromTop >= 0 && fromTop < TIP.length) v *= TIP[fromTop];
+                int i = r * columns + c;
+                values[i] += (v * strength - values[i]) * blend;
+            }
+        }
+    }
+
+    /** Each panel's average light, for its beam. */
+    private void measurePanels() {
+        for (int s = 0; s < strips; s++) {
+            for (int p = 0; p < 2; p++) {
+                float sum = 0f;
+                int count = 0;
+                for (int r = p * PANEL_ROWS; r < (p + 1) * PANEL_ROWS; r++) {
+                    for (int k = 0; k < STRIP; k++) {
+                        int c = s * (STRIP + 1) + 1 + k;
+                        if (c >= columns) continue;
+                        sum += values[r * columns + c];
+                        count++;
+                    }
+                }
+                panelLight[s * 2 + p] = count == 0 ? 0f : sum / count;
+            }
+        }
     }
 
     /** Works out every lamp's strength for now, panel by panel, easing from one pattern to the next. */
@@ -208,8 +379,6 @@ public class LightShowView extends View {
                 float local = (clock - turn) * PATTERN_SECONDS;
                 int now = pattern(panel, turn), before = pattern(panel, turn - 1);
                 float blend = Math.min(1f, local / SWITCH_SECONDS);
-                float sum = 0f;
-                int count = 0;
                 for (int r = 0; r < PANEL_ROWS; r++) {
                     for (int k = 0; k < STRIP; k++) {
                         int c = s * (STRIP + 1) + 1 + k;
@@ -221,11 +390,8 @@ public class LightShowView extends View {
                         }
                         v *= columnStrength[c];
                         values[(p * PANEL_ROWS + r) * columns + c] = v;
-                        sum += v;
-                        count++;
                     }
                 }
-                panelLight[panel] = count == 0 ? 0f : sum / count;
             }
         }
     }

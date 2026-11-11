@@ -20,62 +20,20 @@
         android:importantForAccessibility="no" />
 
     <!-- ===== Hero: the focused app, its shows, or what's playing ===== -->
-    <!-- Not clipped, so the visualizer's glow can spread a little past its panel. -->
+    <!-- Not clipped, so the light show's glow and beams can spread past it. -->
     <FrameLayout
         android:id="@+id/hero"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipChildren="false">
 
-        <!-- A video's thumbnail across the screen, faded into the night behind the text and rows. -->
-        <FrameLayout
-            android:id="@+id/hero_photo"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:alpha="0">
-
-            <com.camdeco.launcher.HeroArtView
-                android:id="@+id/hero_art"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:importantForAccessibility="no"
-                android:scaleType="centerCrop" />
-
-            <View
-                android:layout_width="@dimen/hero_scrim_width"
-                android:layout_height="match_parent"
-                android:background="@drawable/scrim_left" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/scrim_bottom" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="120dp"
-                android:background="@drawable/scrim_top" />
-        </FrameLayout>
-
-        <!-- An app: a small light show in its own colour, on the right where a cover would be. -->
+        <!-- The light show, right across, for every app: it follows the sound while something
+             plays, and plays its patterns otherwise. -->
         <com.camdeco.launcher.LightShowView
             android:id="@+id/hero_show"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:alpha="0"
             android:importantForAccessibility="no" />
-
-        <!-- What's playing: the audio visualizer, behind the song's text and ending before the cover card. -->
-        <com.camdeco.launcher.SoundWaveView
-            android:id="@+id/hero_wave"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/hero_card_height"
-            android:layout_marginStart="@dimen/overscan_h"
-            android:layout_marginTop="@dimen/hero_top"
-            android:layout_marginEnd="@dimen/wave_end"
-            android:alpha="0"
-            android:importantForAccessibility="no"
-            android:visibility="gone" />
 
         <!-- What's playing, as an LP: the cover is the sleeve, the record slides out to the left. -->
         <com.camdeco.launcher.RecordView

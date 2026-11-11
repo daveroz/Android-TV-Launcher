@@ -15,11 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The big area at the top of Home. It shows one of three things for what has focus:
- * an app (its name on the left, a small light show in its colour on the right), what was recently
- * played in a music app (its covers taking turns, as an LP in its sleeve), or what's playing (the
- * cover as an LP with the visualizer beside it, or a video's thumbnail full-screen). A small label
- * on top says which: TV APP, RECENTLY PLAYED, NOW PLAYING.
+ * The big area at the top of Home: a light show right across it for every app (following the sound
+ * while something plays, playing its patterns otherwise), with text on the left for what has
+ * focus: an app's name, what was recently played in a music app (its covers taking turns, as an LP
+ * in its sleeve on the right), or what's playing (with the cover as an LP on the right for music;
+ * videos just get the light show). A small label on top says which: TV APP, RECENTLY PLAYED,
+ * NOW PLAYING.
  */
 final class Hero {
 
@@ -54,13 +55,8 @@ final class Hero {
     private final Handler main;
     private final View root;
     private final View text;
-    /** A video's thumbnail across the screen, with the scrims that fade it into the night. */
-    private final View photo;
-    private final ImageView art;
     /** A small light show in the app's colour, on the right. */
     private final LightShowView lights;
-    /** The music's light panel beside the song. */
-    private final SoundWaveView wave;
     /** What's playing, as an LP: the cover is the sleeve, and the record spins while it plays. */
     private final RecordView record;
     private final View eyebrow;
@@ -102,10 +98,7 @@ final class Hero {
         this.main = main;
         root = activity.findViewById(R.id.hero);
         text = activity.findViewById(R.id.hero_text);
-        photo = activity.findViewById(R.id.hero_photo);
-        art = activity.findViewById(R.id.hero_art);
         lights = activity.findViewById(R.id.hero_show);
-        wave = activity.findViewById(R.id.hero_wave);
         record = activity.findViewById(R.id.hero_record);
         eyebrow = activity.findViewById(R.id.hero_eyebrow);
         label = activity.findViewById(R.id.hero_label);
@@ -133,7 +126,6 @@ final class Hero {
     void setScene(Scene newScene) {
         scene = newScene;
         label.setTextColor(newScene.label);
-        wave.setScene(newScene);
         lights.setScene(newScene);
         record.setGlow(newScene.key);
         bar.setScene(newScene);
@@ -153,9 +145,7 @@ final class Hero {
         setEyebrow(kindLabel, null);
         setText(appName, null, null, null);
         showHoldHint(true);
-        hidePhoto();
         hideRecord();
-        showLights();
     }
 
     /** What was recently played in a music app, taking turns: each cover as an LP in its sleeve. */
@@ -198,11 +188,7 @@ final class Hero {
 
     /** The same song's picture again, as a new copy: swap it in without any animation. */
     private void refreshPicture(Bitmap bitmap, boolean playing, String song) {
-        if (isWide(bitmap)) {
-            art.setImageDrawable(new BitmapDrawable(activity.getResources(), bitmap));
-        } else {
-            record.show(new BitmapDrawable(activity.getResources(), bitmap), playing, song);
-        }
+        if (!isWide(bitmap)) record.show(new BitmapDrawable(activity.getResources(), bitmap), playing, song);
     }
 
     static boolean isWide(int width, int height) {
@@ -214,13 +200,13 @@ final class Hero {
     }
 
     /**
-     * A wide picture (a video's thumbnail) fills the screen. A square one (an album cover) becomes
-     * an LP on the right, lit by the stage in its colours; its record comes out and spins while
-     * {@code playing}.
+     * A square picture (an album cover) becomes an LP on the right; its record comes out and spins
+     * while {@code playing}. A wide one (a video's thumbnail) isn't shown: videos just get the light
+     * show.
      */
     private void showPicture(Bitmap bitmap, boolean playing, String song) {
         if (isWide(bitmap)) {
-            swapArt(new BitmapDrawable(activity.getResources(), bitmap));
+            hideRecord();
         } else {
             swapCover(new BitmapDrawable(activity.getResources(), bitmap), playing, song);
         }
@@ -309,13 +295,13 @@ final class Hero {
         running = true;
         main.removeCallbacks(rotate);
         if (features.size() > 1) main.postDelayed(rotate, ROTATE_MS);
-        lights.setRunning(visible && lights.getAlpha() > 0f);
+        lights.setRunning(visible);
         if (progressTrack != null) updateProgress();
     }
 
     void setVisible(boolean show) {
         visible = show;
-        lights.setRunning(show && running && lights.getAlpha() > 0f); // no need to animate it off screen
+        lights.setRunning(show && running); // no need to animate it off screen
         root.animate().alpha(show ? scrollFade : 0f).setDuration(200).start();
     }
 
@@ -413,92 +399,46 @@ final class Hero {
 
     // ---- Pictures ----
 
-    /** Cross-fades to a video's thumbnail, across the whole screen behind the text. */
-    private void swapArt(Drawable sharp) {
-        hideRecord();
-        hideLights();
-        photo.animate().cancel();
-        photo.animate().alpha(0f).setDuration(120).withEndAction(() -> {
-            art.setImageDrawable(sharp);
-            photo.animate().alpha(1f).setDuration(260).start();
-        }).start();
-    }
-
-    /** Shows an album cover as an LP, lit by the stage in its colours. */
+    /** Shows an album cover as an LP on the right; the light show's music ends where its record starts. */
     private void swapCover(Drawable picture, boolean playing, String song) {
-        hidePhoto();
-        hideLights();
         record.animate().cancel();
         record.setVisibility(View.VISIBLE);
         record.animate().alpha(1f).setDuration(280).start();
         record.show(picture, playing, song);
-    }
-
-    private void hidePhoto() {
-        photo.animate().cancel();
-        photo.animate().alpha(0f).setDuration(160).start();
-    }
-
-    private void hideLights() {
-        lights.animate().cancel();
-        if (lights.getAlpha() == 0f) {
-            lights.setRunning(false);
-            return;
-        }
-        lights.animate().alpha(0f).setDuration(250).withEndAction(() -> lights.setRunning(false)).start();
-    }
-
-    private void showLights() {
-        lights.animate().cancel();
-        lights.setRunning(running && visible);
-        lights.animate().alpha(1f).setDuration(300).start();
+        lights.setRecordShown(true);
     }
 
     private void hideRecord() {
+        lights.setRecordShown(false);
         record.animate().cancel();
         if (record.getVisibility() != View.VISIBLE) return;
         record.animate().alpha(0f).setDuration(160).withEndAction(() -> record.setVisibility(View.GONE)).start();
     }
 
-    // ---- Sound wave ----
+    // ---- Sound ----
 
     void setWaveSource(SoundWave source) {
-        wave.setSource(source);
+        lights.setSource(source);
     }
 
-    /** Fades the light panel in beside the song, or away. It only animates while it's showing. */
-    void showWave(boolean show) {
-        wave.animate().cancel();
-        if (show) {
-            wave.setVisibility(View.VISIBLE);
-            wave.setRunning(true);
-            wave.animate().alpha(1f).setDuration(300).start();
-        } else if (wave.getVisibility() == View.VISIBLE) {
-            wave.animate().alpha(0f).setDuration(200).withEndAction(() -> {
-                wave.setRunning(false);
-                wave.setVisibility(View.GONE);
-            }).start();
-        }
+    /** The light show follows the sound while something plays; otherwise it plays its patterns. */
+    void showWave(boolean follow) {
+        lights.setReactive(follow);
     }
 
-    /** Whether the light panel is on screen (for tests). */
-    boolean showsWave() {
-        return wave.getVisibility() == View.VISIBLE && wave.getAlpha() > 0.5f;
-    }
-
-    /** Whether the light show is on screen (for tests). */
+    /** Whether the light show is on screen (for tests): it always is, on Home. */
     boolean showsLightShow() {
-        return lights.getAlpha() > 0.5f;
+        return lights.getVisibility() == View.VISIBLE && lights.getAlpha() > 0.5f;
+    }
+
+    /** Whether the light show is following the sound (for tests). */
+    boolean followsSound() {
+        return lights.isReactive();
     }
 
     /** The colour the light show is lit in (for tests). */
     int showColour() {
         return lights.keyColour();
-    }
-
-    /** Whether a video's thumbnail fills the screen (for tests). */
-    boolean showsPhoto() {
-        return photo.getAlpha() > 0.5f;
     }
 
     /** Whether the LP is on screen (for tests). */

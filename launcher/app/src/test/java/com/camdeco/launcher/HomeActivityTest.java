@@ -324,7 +324,6 @@ public class HomeActivityTest {
         // No shows from the internet: its name, and a light show in its own red.
         assertEquals("Netflix", text(home, R.id.hero_title));
         assertTrue(home.hero.showsLightShow());
-        assertFalse(home.hero.showsPhoto());
         assertFalse(home.hero.showsRecord());
         assertEquals(home.scene().key, home.hero.showColour());
         // Its card: Netflix's own red, with its logo in white.
@@ -386,7 +385,6 @@ public class HomeActivityTest {
         play("com.spotify.tv.android", "Midnight City", "M83", cover());
         card(home, 0, 2).requestFocus(); // Spotify
         waitFor(() -> home.hero.showsRecord() && hue(home.scene().key) > 300);
-        assertFalse(home.hero.showsPhoto());
         assertEquals("Now playing · Spotify", home.hero.eyebrowText());
         // The pink cover's primary colour is the only light.
         assertEquals(330f, hue(home.scene().key), 8f);
@@ -584,8 +582,8 @@ public class HomeActivityTest {
         // Something playing in it: the LP, lit by the cover's colours, replaces the wall.
         play(VLC, "Midnight City", "M83", cover());
         waitFor(() -> hue(home.scene().key) > 300);
-        assertFalse(home.hero.showsLightShow());
         assertTrue(home.hero.showsRecord());
+        assertTrue("the light show stays, following the music", home.hero.showsLightShow() && home.hero.followsSound());
     }
 
     @Test
@@ -665,7 +663,6 @@ public class HomeActivityTest {
         assertEquals("YouTube", text(home, R.id.hero_title));
         assertNull(home.hero.currentFeature());
         assertTrue(home.hero.showsLightShow());
-        assertFalse(home.hero.showsPhoto());
     }
 
     private static android.graphics.Bitmap cover() {
@@ -681,9 +678,9 @@ public class HomeActivityTest {
         installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
         HomeActivity home = start().get();
         play("com.spotify.tv.android", "Midnight City", "M83", cover());
-        card(home, 0, 2).requestFocus(); // Spotify: the hero shows the song, with the wave under it
+        card(home, 0, 2).requestFocus(); // Spotify: the hero shows the song, the light show follows it
         idle();
-        assertTrue(home.hero.showsWave());
+        assertTrue(home.hero.followsSound());
 
         // The TV shares its sound: the panel follows it. A bassy song lights the bass columns...
         android.media.audiofx.Visualizer visualizer = home.soundWave.visualizerForTests();
@@ -717,11 +714,17 @@ public class HomeActivityTest {
         assertTrue(sheetMessage().contains("it follows the music."));
         choose("Close");
 
-        // Other apps' cards don't get a wave.
+        // Other apps' cards follow the music too, in their own colour.
         card(home, 0, 0).requestFocus(); // Netflix
         idle();
-        assertFalse(home.hero.showsWave());
-        assertNull(home.soundWave.visualizerForTests()); // and Deco stops listening
+        assertTrue(home.hero.followsSound());
+        assertNotNull(home.soundWave.visualizerForTests()); // still listening
+        assertFalse(home.hero.showsRecord()); // only the music app gets the LP
+
+        // On Apps, nothing follows the sound, so Deco stops listening.
+        home.findViewById(R.id.tab_apps).requestFocus();
+        idle();
+        assertNull(home.soundWave.visualizerForTests());
     }
 
     @Test
@@ -749,7 +752,8 @@ public class HomeActivityTest {
         idle();
         home.soundWave.levels(1.3, levels);
         assertEquals(0f, max(levels), 0f);
-        assertTrue(home.hero.showsWave()); // still there, just still
+        assertFalse("paused: back to its patterns", home.hero.followsSound());
+        assertTrue(home.hero.showsLightShow());
     }
 
     @Test
@@ -759,7 +763,7 @@ public class HomeActivityTest {
         play("com.spotify.tv.android", "Midnight City", "M83", null);
         home.findViewById(R.id.np_open).requestFocus(); // the mini player: the hero shows the song
         idle();
-        assertTrue(home.hero.showsWave());
+        assertTrue(home.hero.followsSound());
         assertNull(home.soundWave.visualizerForTests()); // not allowed to listen
         assertEquals(SoundWave.Status.NO_PERMISSION, home.soundWave.status());
         float[] levels = new float[SoundWave.COLUMNS];
@@ -772,7 +776,7 @@ public class HomeActivityTest {
         assertTrue(sheetMessage().contains("Deco isn't allowed to hear the TV's sound"));
         assertEquals(List.of("Let Deco hear the TV's sound", "Turn off the visualizer", "Close"), sheetItems());
         choose("Turn off the visualizer");
-        assertFalse(home.hero.showsWave());
+        assertFalse(home.hero.followsSound()); // just its patterns
         home.findViewById(R.id.tab_settings).performClick();
         assertTrue(sheetItems().contains("Audio visualizer: Off"));
     }
@@ -838,15 +842,17 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void youTubeShowsTheVideoThumbnailFullScreen() throws Exception {
+    public void aPlayingVideoGetsTheLightShowInItsAppsColourNotItsThumbnail() throws Exception {
         HomeActivity home = start().get();
         android.graphics.Bitmap thumbnail = android.graphics.Bitmap.createBitmap(1280, 720, android.graphics.Bitmap.Config.ARGB_8888);
+        thumbnail.eraseColor(0xFF2266AA); // a blue picture
         play(YOUTUBE, "Lofi Hip Hop Radio", "Lofi Girl", thumbnail);
         card(home, 0, 2).requestFocus(); // YouTube
         idle();
         assertEquals("Lofi Hip Hop Radio", text(home, R.id.hero_title));
-        android.view.ViewGroup.LayoutParams art = home.findViewById(R.id.hero_art).getLayoutParams();
-        assertEquals(android.view.ViewGroup.LayoutParams.MATCH_PARENT, art.width);
+        assertFalse("only music gets an LP", home.hero.showsRecord());
+        assertTrue(home.hero.followsSound());
+        assertEquals("YouTube's red, not the thumbnail's blue", 0f, hue(home.scene().key), 5f);
     }
 
     @Test

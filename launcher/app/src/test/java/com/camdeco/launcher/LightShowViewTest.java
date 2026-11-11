@@ -98,4 +98,117 @@ public class LightShowViewTest {
         assertEquals(new Scene(0xFFE50914).key, view.keyColour());
         assertNotEquals(Scene.promise().key, view.keyColour());
     }
+
+    // ---- Following the sound ----
+
+    /** Plays this much bass (to 250 Hz), voice (to 4 kHz) and treble for a while, following the sound. */
+    private void play(int bass, int voice, int treble, int frames) {
+        SoundWave wave = new SoundWave(RuntimeEnvironment.getApplication());
+        wave.onFftDataCapture(null, fft(bass, voice, treble), 44100000);
+        view.setSource(wave);
+        view.setReactive(true);
+        for (int i = 0; i < frames; i++) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(16));
+            draw();
+        }
+    }
+
+    /** The tallest lit column (in lamps) among the music's columns for these frequencies. */
+    private int tallest(double fromHz, double toHz) {
+        int from = SoundWave.columnOf(fromHz * 1.01), to = SoundWave.columnOf(toHz * 0.99);
+        int best = 0;
+        for (int c = 0; c < view.columnsForTests(); c++) {
+            int band = view.bandOfColumn(c);
+            if (band < from || band > to) continue;
+            int lit = 0;
+            for (int r = 0; r < 10; r++) if (view.lampForTests(c, r) > 0.35f) lit++;
+            best = Math.max(best, lit);
+        }
+        return best;
+    }
+
+    @Test
+    public void whileMusicPlaysBassLightsTheLeftVoicesTheMiddleTrebleTheRight() {
+        play(60, 1, 1, 60);
+        assertTrue("bass: " + tallest(40, 200) + " vs voice " + tallest(400, 3000), tallest(40, 200) >= 5 && tallest(40, 200) > 2 * tallest(400, 3000));
+        play(2, 30, 1, 60);
+        assertTrue("voice: " + tallest(400, 3000) + " vs bass " + tallest(40, 200), tallest(400, 3000) >= 4 && tallest(400, 3000) > tallest(40, 200));
+        play(6, 3, 3, 60);
+        assertTrue("treble: " + tallest(5000, 16000) + " vs bass " + tallest(40, 200), tallest(5000, 16000) > tallest(40, 200));
+        // Bass on the left edge, treble at the right edge.
+        assertEquals(0, view.bandOfColumn(1));
+        assertEquals(SoundWave.COLUMNS - 1, view.bandOfColumn(lastLampColumn()));
+    }
+
+    @Test
+    public void withAnLpTheMusicEndsWhereTheRecordStarts() {
+        view.setRecordShown(true);
+        int lastMusic = -1;
+        for (int c = 0; c < view.columnsForTests(); c++) if (view.bandOfColumn(c) == SoundWave.COLUMNS - 1) { lastMusic = c; break; }
+        float dp = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics().density;
+        float x = view.showBounds()[0] + (lastMusic + 1) * view.pitch();
+        assertTrue("the treble ends before the record: " + x / dp, x / dp < 960 - 48 - 176 * 1.47f);
+        assertTrue("and the columns behind it echo the music", lastLampColumn() > lastMusic);
+        assertTrue(view.bandOfColumn(lastLampColumn()) < SoundWave.COLUMNS - 1);
+        view.setRecordShown(false);
+        assertEquals(SoundWave.COLUMNS - 1, view.bandOfColumn(lastLampColumn()));
+    }
+
+    @Test
+    public void columnsRiseQuicklyAndSettleGently() {
+        int band = SoundWave.columnOf(100);
+        play(60, 1, 1, 9); // about 0.15 s of a loud bass
+        assertTrue("rises within a moment: " + view.level(band), view.level(band) > 0.6f);
+        view.setSource(null); // silence
+        for (int i = 0; i < 9; i++) draw16();
+        assertTrue("still settling a moment later: " + view.level(band), view.level(band) > 0.3f);
+        for (int i = 0; i < 150; i++) draw16();
+        assertTrue("dark after a while: " + view.level(band), view.level(band) < 0.05f);
+    }
+
+    @Test
+    public void eachColumnsTopLampIsALittleSofter() {
+        view.setReactive(true);
+        int a = 1, b = 5; // the first column of the first two strips: bands 0 and a little higher
+        view.showForTests(view.bandOfColumn(a), 5f / 10);
+        view.showForTests(view.bandOfColumn(b), 9f / 10);
+        draw();
+        // Row 5 from the top is the top lamp of the first column, the middle of the second.
+        float tip = view.lampForTests(a, 5), middle = view.lampForTests(b, 5);
+        assertTrue("softer at the top: " + tip + " vs " + middle, middle > 0.3f && tip > 0.45f * middle && tip < 0.8f * middle);
+    }
+
+    /** The rightmost column with lamps (the very last may be a dark gap). */
+    private int lastLampColumn() {
+        int c = view.columnsForTests() - 1;
+        while (c > 0 && view.bandOfColumn(c) < 0) c--;
+        return c;
+    }
+
+    @Test
+    public void pausedItGoesBackToItsPatterns() {
+        play(60, 1, 1, 60);
+        assertTrue(view.bass() > 0.3f);
+        view.setReactive(false);
+        for (int i = 0; i < 60; i++) draw16();
+        assertEquals("no sound on the wall", 0f, view.bass(), 0.01f);
+    }
+
+    private void draw16() {
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(16));
+        draw();
+    }
+
+    /** Music as the visualizer sees it, with this much bass (to 250 Hz), voice (to 4 kHz) and treble. */
+    private static byte[] fft(int bass, int voice, int treble) {
+        byte[] fft = new byte[1024];
+        double binHz = 44100.0 / fft.length;
+        for (int k = 1; k < fft.length / 2; k++) {
+            double hz = k * binHz;
+            byte v = (byte) (hz <= 250 ? bass : hz <= 4000 ? voice : treble);
+            fft[2 * k] = v;
+            fft[2 * k + 1] = v;
+        }
+        return fft;
+    }
 }

@@ -30,8 +30,4 @@
     <color name="focus_glass">#1AECF6FF</color>
     <!-- a dark halo behind text that sits over the visualizer's lights -->
     <color name="halo">#E605070B</color>
-    <!-- hero scrims over full-screen show art: the night at different strengths -->
-    <color name="bg_0">#0005070B</color>
-    <color name="bg_60">#9905070B</color>
-    <color name="bg_85">#D905070B</color>
 </resources>

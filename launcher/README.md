@@ -25,19 +25,22 @@ light takes each app's own colours.*
 - **The background is a quiet light show,** the same on Home and Apps. Two washes of the colour
   drift slowly and swell a little with the bass, and a row of small lamps far overhead runs a
   slow chase, like a lighting rig seen through haze.
-- **Layout after the Apple TV app.** The focused app fills the hero: its name on the left over a
-  light show that runs right across; music shows its album cover as an LP on the right with the
-  visualizer beside it; a playing video shows its thumbnail full-screen. A glass pill of
+- **Layout after the Apple TV app.** A light show runs right across the hero for every app, with
+  the focused app's name on the left; music players also show the album cover as an LP on the right
+  (videos don't show a picture, just the light show). A glass pill of
   tabs sits at the top, the DECO mark on the left and the clock on the right. Rows of glass cards
   run along the bottom, and the next row peeks in.
-- **Every app gets a light show** in its own colour, right across the screen from margin to margin
-  and as tall as an album cover (dimmer behind the app's name, so it stays easy to read): a wall of
-  square lamps played like the LED panels on Justice's stage. The lamps stand in strips three
-  wide, in an upper and a lower panel, and each panel runs its own pattern for a couple of seconds
-  before switching: filling down or up, a band running down it, a flickering pixel pattern, a
-  flash that fades, all on, or dark. Dark lamps keep a faint ember so the panels still read; lit
-  ones are white-hot at full strength with a soft round glow, and lit panels throw soft beams down
-  into the haze. Streaming apps get it too, instead of show previews.
+- **Every app gets a light show** right across the screen from margin to margin, as tall as an
+  album cover, in its own colour: a wall of square lamps like the LED panels on Justice's stage,
+  in strips three wide in an upper and a lower panel. **While something plays** (in any app), it
+  follows the sound: each lamp column is a part of the music, bass on the left and treble on the
+  right, filling up from the bottom with it. Music players also get the LP, and their light show
+  takes the album cover's colour, its music ending where the record starts. **When it's paused,
+  or nothing plays,** each panel runs its own pattern for a couple of seconds before switching:
+  filling down or up, a band running down it, a flickering pixel pattern, a flash that fades, all
+  on, or dark. The two blend into each other. Dark lamps keep a faint ember; lit ones are white-hot
+  at full strength with a soft round glow, and lit panels throw soft beams down into the haze.
+  Behind the app's name the lamps are dimmer, so it stays easy to read.
 - **Cards are one solid colour with a logo that matches the others:** the app's brand colour with
   its logo in white (or dark, on a light colour), from [Simple Icons](https://simpleicons.org)
   (CC0; each brand belongs to its owner) for about 40 TV apps: Netflix, YouTube, Spotify, Max,
@@ -100,8 +103,8 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 While Spotify, YouTube (or any app with standard media controls) is playing or paused, a small
 player appears in the top bar, after Home / Apps / Play Store / ⚙: the cover, "title · artist", play/pause
 and next. OK on the cover opens the player. On the player, and on the playing app's own card, the
-hero shows what's playing: Spotify's cover as an LP lit in its own colours, with how far through the song it is, or a
-YouTube video's thumbnail full-screen.
+hero shows what's playing: Spotify's cover as an LP lit in its own colours, with how far through the song it is;
+a YouTube video just gets the light show, in YouTube's colour.
 
 **Recently played.** When nothing is playing, Spotify's (and any music app's) card shows what you
 last played in it, taking turns every 8 seconds: the cover as an LP in its sleeve, title, artist
@@ -135,17 +138,13 @@ mini player.
 
 ### Audio visualizer
 
-While the hero shows what's playing, the music plays on LED panels like an app's light show: the
-same square lamps, in strips three wide with a dark column between them, level with the album
-cover (same top and bottom), behind the song's text, from the screen margin to the cover. Each
-lamp column is a part of the music, from the bass on the left (40 Hz) through voices in the middle
-to the treble on the right (16 kHz), and fills up from the bottom with it, rising quickly and
-settling back gently; its top lamp fades in and out, so the heights change smoothly. Unlit lamps
-keep a faint ember, so the panels still read when it's quiet; lit ones glow, whiter toward the
-bottom, and each strip throws a soft beam down into the haze as loud as it is. The last strip
-trails off as it passes behind the record, the lamps behind the song's text are a little dimmer so
-it stays easy to read, and everything is in the album cover's primary colour. The lamps go dark on
-pause.
+While something plays, in any app, the light show at the top of Home follows the sound (see
+[Design](#design)): each lamp column is a part of the music, from the bass on the left (40 Hz)
+through voices in the middle to the treble on the right (16 kHz), and fills up from the bottom with
+it, rising quickly and settling back gently; its top lamp fades in and out, so the heights change
+smoothly. It's in the focused app's colour, or the album cover's when the music app's card or the
+mini player has focus, where the music's columns end at the LP's record and the ones behind it
+echo the treble. Paused, or when nothing plays, it goes back to its patterns.
 
 All the music shares one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher parts get lifted to make up for music naturally carrying far more energy in

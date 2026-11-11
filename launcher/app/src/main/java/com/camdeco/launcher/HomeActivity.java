@@ -159,7 +159,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         hero.setWaveSource(soundWave);
 
         stage = findViewById(R.id.stage);
-        stage.setLevelSource(findViewById(R.id.hero_wave));
+        stage.setLevelSource(findViewById(R.id.hero_show));
         appsPage = findViewById(R.id.apps_page);
         appsCount = findViewById(R.id.apps_count);
         empty = findViewById(R.id.empty);
@@ -532,7 +532,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         if (track.art == sceneArt && sceneArt != null) return;
         sceneArt = track.art;
         Bitmap art = track.art;
-        if (art == null) { // no cover: the player app's own colour
+        if (art == null || Hero.isWide(art.getWidth(), art.getHeight())) { // no cover, or a video: the app's colour
             AppEntry app = findApp(track.packageName);
             setHomeScene(app != null ? Scene.of(app.colour) : Scene.promise());
             return;
@@ -555,18 +555,20 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
 
     // ---- Sound wave ----
 
-    /** The sound wave runs only while the hero shows what's playing on Home, with Deco on screen. */
+    /**
+     * While something plays, the light show follows its sound, whichever app has focus (with Deco
+     * on screen, on Home, and the visualizer on). Paused or nothing playing, it plays its patterns.
+     */
     private void syncWave() {
         NowPlaying.Track track = nowPlaying.track();
-        boolean show = resumed && page == PAGE_HOME && heroShowsTrack && track != null
-                && repo.soundWaveEnabled();
-        if (show) {
+        boolean listen = resumed && page == PAGE_HOME && track != null && repo.soundWaveEnabled();
+        if (listen) {
             soundWave.start();
             soundWave.setPlaying(track.playing);
         } else {
             soundWave.stop();
         }
-        hero.showWave(show);
+        hero.showWave(listen && track.playing);
     }
 
     private void showSoundWaveSetup() {
