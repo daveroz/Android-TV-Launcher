@@ -134,10 +134,12 @@ colour and the new one comes out in the new song's, like a different disc. Recen
 show their LP with the record in the sleeve.
 
 Players often resend the song they're playing, sometimes with a new copy of the cover or for a
-moment without one, and some drop out for a split second between songs. Deco goes by the song
-itself (app, title, artist and album), not the picture, and waits 1.5 seconds before deciding
-something has stopped, so none of that sends the record back into its sleeve or flickers the
-mini player.
+moment without one, some drop out for a split second between songs, and many send the next song's
+title a moment before its cover. Deco goes by the song itself (app, title, artist and album), not
+the picture, waits 1.5 seconds before deciding something has stopped, and waits up to 1.5 seconds
+for a new song's cover (keeping the LP and its light as they are until it comes), so none of that
+sends the record back into its sleeve, flashes the app's icon or colour, or flickers the mini
+player.
 
 ### Audio visualizer
 

@@ -99,6 +99,9 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
     SoundWave soundWave;
     /** The cover whose colours light the stage while it plays. */
     private Bitmap sceneArt;
+    /** The app whose cover lit the stage last, and the app's own colour to fall back to if a cover doesn't come. */
+    private String sceneApp;
+    private final Runnable sceneWithoutCover = this::lightWithoutCover;
     private boolean resumed;
     /** The song in the mini player, so a moment without its cover doesn't swap in the app icon. */
     private String playerSong;
@@ -530,7 +533,16 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
     /** While a song shows, its cover's primary colour lights the stage, worked out in the background. */
     private void updateTrackScene(NowPlaying.Track track) {
         if (track.art == sceneArt && sceneArt != null) return;
+        if (track.art == null && sceneArt != null && track.packageName.equals(sceneApp)) {
+            // A moment without a cover (the player dropped it, or sent the next song's title first): keep the
+            // cover's light, unless no cover comes for a while.
+            main.removeCallbacks(sceneWithoutCover);
+            main.postDelayed(sceneWithoutCover, Hero.COVER_WAIT_MS);
+            return;
+        }
+        main.removeCallbacks(sceneWithoutCover);
         sceneArt = track.art;
+        sceneApp = track.packageName;
         Bitmap art = track.art;
         if (art == null || Hero.isWide(art.getWidth(), art.getHeight())) { // no cover, or a video: the app's colour
             AppEntry app = findApp(track.packageName);
@@ -544,6 +556,15 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
                 if (!isDestroyed() && sceneArt == art && heroShowsTrack) setHomeScene(Scene.of(primary));
             });
         });
+    }
+
+    /** No cover came back: the playing app's own colour lights the stage. */
+    private void lightWithoutCover() {
+        NowPlaying.Track track = nowPlaying.track();
+        if (isDestroyed() || !heroShowsTrack || track == null || track.art != null) return;
+        sceneArt = null;
+        AppEntry app = findApp(track.packageName);
+        setHomeScene(app != null ? Scene.of(app.colour) : Scene.promise());
     }
 
     private AppEntry findApp(String packageName) {

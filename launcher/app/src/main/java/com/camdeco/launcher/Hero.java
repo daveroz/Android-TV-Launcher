@@ -50,6 +50,12 @@ final class Hero {
 
     private static final long ROTATE_MS = 8000;
     private static final long PROGRESS_MS = 500;
+    /**
+     * How long a new song may wait for its cover: players often send the next song's title a moment before its
+     * picture. Until then the LP stays as it is (then it changes properly); only after this does the app's icon
+     * stand in.
+     */
+    static final long COVER_WAIT_MS = 1500;
 
     private final Activity activity;
     private final Handler main;
@@ -88,6 +94,11 @@ final class Hero {
     /** The cover on screen, so play/pause updates don't fade the same picture again. */
     private String shownSong;
     private Bitmap shownArt;
+    /** A new song waiting for its cover, with the app's icon to stand in if none comes. */
+    private boolean waitingForCover;
+    private Drawable waitingIcon;
+    private boolean waitingPlaying;
+    private final Runnable iconInstead = this::useIconInstead;
     /** The song whose progress is showing, or null. */
     private NowPlaying.Track progressTrack;
     private final Runnable tick = this::updateProgress;
@@ -141,6 +152,7 @@ final class Hero {
     void showApp(String kindLabel, String appName) {
         stopFeatures();
         stopProgress();
+        stopWaiting();
         shownSong = null;
         setEyebrow(kindLabel, null);
         setText(appName, null, null, null);
@@ -151,6 +163,7 @@ final class Hero {
     /** What was recently played in a music app, taking turns: each cover as an LP in its sleeve. */
     void showFeatures(List<Feature> list, Images source, String labelText, String sourceText) {
         if (list.isEmpty()) return;
+        stopWaiting();
         setEyebrow(labelText, sourceText);
         if (sameFeatures(list)) return; // already showing these, don't restart the turns
         stopProgress();
@@ -168,6 +181,15 @@ final class Hero {
         showProgress(track);
         String song = track.song();
         if (song.equals(shownSong)) {
+            if (waitingForCover) {
+                waitingPlaying = track.playing;
+                if (track.art != null) { // the new song's cover has come: now the LP changes, properly
+                    stopWaiting();
+                    shownArt = track.art;
+                    showPicture(track.art, track.playing, song);
+                }
+                return;
+            }
             // The same song. Players resend its cover as a new picture, or drop it for a moment:
             // a new copy just replaces the picture in place, and a missing one changes nothing.
             if (track.art != null && track.art != shownArt) {
@@ -177,13 +199,44 @@ final class Hero {
             record.setPlaying(track.playing); // play or pause
             return;
         }
+        stopWaiting();
         shownSong = song;
         shownArt = track.art;
         if (track.art != null) {
             showPicture(track.art, track.playing, song);
+        } else if (showsRecord() && record.shownCover() != null) {
+            // The next song's title came before its cover: keep the LP as it is for a moment, rather than putting
+            // the app's icon in the sleeve and swapping it straight out again.
+            waitingForCover = true;
+            waitingIcon = fallbackIcon;
+            waitingPlaying = track.playing;
+            record.postDelayed(iconInstead, COVER_WAIT_MS);
         } else if (fallbackIcon != null) {
             swapCover(AppRepository.copy(fallbackIcon), track.playing, song);
         }
+    }
+
+    /**
+     * No cover came for the new song: the app's icon stands in, or with no icon either, the LP goes and the light
+     * show carries on alone (as for a video), rather than the last song's cover staying.
+     */
+    private void useIconInstead() {
+        if (!waitingForCover) return;
+        waitingForCover = false;
+        if (waitingIcon != null) swapCover(AppRepository.copy(waitingIcon), waitingPlaying, shownSong);
+        else hideRecord();
+        waitingIcon = null;
+    }
+
+    private void stopWaiting() {
+        waitingForCover = false;
+        waitingIcon = null;
+        record.removeCallbacks(iconInstead);
+    }
+
+    /** Whether a new song is waiting for its cover (for tests). */
+    boolean waitingForCover() {
+        return waitingForCover;
     }
 
     /** The same song's picture again, as a new copy: swap it in without any animation. */

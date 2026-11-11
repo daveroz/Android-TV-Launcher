@@ -545,6 +545,53 @@ public class HomeActivityTest {
         assertTrue("a new song", record.songChanging());
     }
 
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void aNewSongsTitleBeforeItsCoverKeepsTheLpAndTheLightUntilTheCoverComes() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        MediaController spotify = play("com.spotify.tv.android", "Speed", "Bad Colours", cover());
+        card(home, 0, 2).requestFocus(); // Spotify
+        idle();
+        waitFor(() -> home.hero.showsRecord() && hue(home.scene().key) > 300);
+        RecordView record = home.hero.recordForTests();
+        android.graphics.drawable.Drawable before = record.shownCover();
+        int light = home.scene().key;
+
+        // The next song's title arrives a moment before its cover.
+        resend(spotify, "Promise", "Bad Colours", null);
+        org.junit.Assert.assertSame("the LP keeps its cover: no app icon in the sleeve for a moment", before, record.shownCover());
+        assertFalse(record.songChanging());
+        assertTrue(home.hero.waitingForCover());
+        assertEquals("and the light keeps the cover's colour", light, home.scene().key);
+
+        // Then its cover: now the record goes back and the sleeve changes, properly.
+        android.graphics.Bitmap other = android.graphics.Bitmap.createBitmap(300, 300, android.graphics.Bitmap.Config.ARGB_8888);
+        other.eraseColor(0xFF1E40AF);
+        resend(spotify, "Promise", "Bad Colours", other);
+        assertFalse(home.hero.waitingForCover());
+        assertTrue("a new song", record.songChanging());
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void aNewSongThatNeverGetsACoverLetsTheLastCoverGoAfterAMoment() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        MediaController spotify = play("com.spotify.tv.android", "Speed", "Bad Colours", cover());
+        card(home, 0, 2).requestFocus(); // Spotify
+        idle();
+        RecordView record = home.hero.recordForTests();
+        resend(spotify, "A podcast", "Someone", null);
+        assertTrue(home.hero.waitingForCover());
+        assertTrue("the LP stays for a moment", home.hero.showsRecord());
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(Hero.COVER_WAIT_MS));
+        idle();
+        assertFalse(home.hero.waitingForCover());
+        assertTrue("then the last song's cover goes: the app's icon stands in, or the light show carries on alone",
+                record.songChanging() || !home.hero.showsRecord());
+    }
+
     /** The player sends the song's details again, as players do. */
     private static void resend(MediaController controller, String title, String artist, android.graphics.Bitmap art) {
         MediaMetadata.Builder metadata = new MediaMetadata.Builder()
