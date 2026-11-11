@@ -682,11 +682,11 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         syncWave(); // play and pause
     }
 
-    /** Nothing has played for a moment: hide the player and show the focused app again. */
     private void checkOtherPlayer() {
         if (heroApp != null && heroShowsTrack) showHero(heroApp);
     }
 
+    /** Nothing has played for a moment: hide the player and show the focused app again. */
     private void onTrackGone() {
         trackGoneSoon = false;
         if (nowPlaying.track() != null) return;
