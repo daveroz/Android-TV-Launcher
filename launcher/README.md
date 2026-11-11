@@ -25,12 +25,13 @@ light takes each app's own colours.*
 - **The background is a quiet light show,** the same on Home and Apps. Two washes of the colour
   drift slowly and swell a little with the bass, and a row of small lamps far overhead runs a
   slow chase, like a lighting rig seen through haze.
-- **Layout after the Apple TV app.** The focused app fills the hero: its name on the left and a
-  small light show on the right; music shows its album cover as an LP on the right with the
+- **Layout after the Apple TV app.** The focused app fills the hero: its name on the left over a
+  light show that runs right across; music shows its album cover as an LP on the right with the
   visualizer beside it; a playing video shows its thumbnail full-screen. A glass pill of
   tabs sits at the top, the DECO mark on the left and the clock on the right. Rows of glass cards
   run along the bottom, and the next row peeks in.
-- **Every app gets a light show** in its own colour, where an album cover would be: a wall of
+- **Every app gets a light show** in its own colour, right across the screen from margin to margin
+  and as tall as an album cover (dimmer behind the app's name, so it stays easy to read): a wall of
   square lamps played like the LED panels on Justice's stage. The lamps stand in strips three
   wide, in an upper and a lower panel, and each panel runs its own pattern for a couple of seconds
   before switching: filling down or up, a band running down it, a flickering pixel pattern, a

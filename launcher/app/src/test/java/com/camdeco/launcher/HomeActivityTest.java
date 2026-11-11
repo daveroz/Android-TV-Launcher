@@ -614,7 +614,8 @@ public class HomeActivityTest {
         assertTrue("starts above the text's top", wallTop <= titleTop);
         assertEquals("ends at the screen margin", screenWidth - 48 * dp, wallRight, 1f);
         assertTrue("ends above the rows", rowsTop - wallBottom >= 16 * dp);
-        assertTrue("clear of the text", wallLeft > titleRight);
+        assertEquals("from the left margin", 48 * dp, wallLeft, 17.6f * dp);
+        assertTrue("right across, behind the text too", wallLeft < titleRight);
     }
 
     @Test

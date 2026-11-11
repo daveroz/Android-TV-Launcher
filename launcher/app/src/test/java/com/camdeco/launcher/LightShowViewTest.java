@@ -43,11 +43,13 @@ public class LightShowViewTest {
     }
 
     @Test
-    public void theLampsAreTheSizeOfTheWallsSquares() {
+    public void theSquaresStayTheSameSizeAndReachFromMarginToMargin() {
         float dp = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics().density;
         float[] b = view.showBounds();
-        assertEquals("22 columns of 17.6dp", 22 * 17.6f, (b[2] - b[0]) / dp, 0.5f);
+        assertEquals("columns of 17.6dp", 17.6f, (b[2] - b[0]) / dp / view.columnsForTests(), 0.05f);
         assertEquals("10 rows, as tall as a cover", 176f, (b[3] - b[1]) / dp, 0.5f);
+        assertEquals("from the left margin", 48f, b[0] / dp, 17.6f);
+        assertEquals("to the right margin", 960f - 48f, b[2] / dp, 0.5f);
     }
 
     @Test
@@ -60,11 +62,11 @@ public class LightShowViewTest {
             draw();
             StringBuilder state = new StringBuilder();
             for (int r = 0; r < 10; r++) {
-                for (int c = 0; c < 22; c++) {
+                for (int c = 0; c < view.columnsForTests(); c++) {
                     float v = view.lampForTests(c, r);
                     if (v > 0.5f) lit++;
                     state.append(v > 0.5f ? '#' : '.');
-                    if (c % 4 == 3) assertEquals("the column between strips stays dark", 0f, v, 0f);
+                    if (c % 4 == 0) assertEquals("the column between strips stays dark", 0f, v, 0f);
                 }
             }
             if (before != null && !before.equals(state.toString())) changed = true;
@@ -72,6 +74,22 @@ public class LightShowViewTest {
         }
         assertTrue("lamps light up: " + lit, lit > 100);
         assertTrue("the patterns move on", changed);
+    }
+
+    @Test
+    public void lampsBehindTheTextAreDimmer() {
+        float brightLeft = 0f, brightRight = 0f;
+        int columns = view.columnsForTests();
+        for (int i = 0; i < 60; i++) {
+            view.advanceForTests(0.37f);
+            draw();
+            for (int r = 0; r < 10; r++) {
+                for (int c = 1; c < 8; c++) brightLeft = Math.max(brightLeft, view.lampForTests(c, r));
+                for (int c = columns - 8; c < columns; c++) brightRight = Math.max(brightRight, view.lampForTests(c, r));
+            }
+        }
+        assertTrue("dimmer behind the text: " + brightLeft + " vs " + brightRight, brightLeft < 0.6f * brightRight);
+        assertTrue("but still lit: " + brightLeft, brightLeft > 0.3f);
     }
 
     @Test

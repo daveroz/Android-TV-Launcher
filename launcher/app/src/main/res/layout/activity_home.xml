@@ -267,6 +267,8 @@
                     android:paddingEnd="6dp"
                     android:paddingBottom="2dp"
                     android:text="@string/key_ok"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="8"
                     android:textColor="@color/led"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -277,6 +279,8 @@
                     android:layout_marginStart="8dp"
                     android:letterSpacing="0.16"
                     android:text="@string/key_ok_action"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="8"
                     android:textAllCaps="true"
                     android:textColor="@color/text_soft"
                     android:textSize="11sp" />
@@ -293,6 +297,8 @@
                     android:paddingEnd="6dp"
                     android:paddingBottom="2dp"
                     android:text="@string/key_hold"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="8"
                     android:textColor="@color/led"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -304,6 +310,8 @@
                     android:layout_marginStart="8dp"
                     android:letterSpacing="0.16"
                     android:text="@string/key_hold_action"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="8"
                     android:textAllCaps="true"
                     android:textColor="@color/text_soft"
                     android:textSize="11sp" />
