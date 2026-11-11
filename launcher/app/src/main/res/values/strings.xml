@@ -22,14 +22,11 @@
     <string name="now_playing_message">Shows what\'s playing in Spotify, YouTube and other apps as a small player in the top bar, with play, pause and skip.\n\nNotification access: %1$s\n\nAndroid only shows other apps\' media to apps with notification access, and Android TV has no screen to turn it on. Run this once from Termux:\n\nadb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService\n\nTo turn it off again, run the same with disallow_listener.</string>
     <string name="open_notification_access">Try the notification access screen</string>
 
-    <!-- Show artwork -->
-    <string name="tvmaze_credit">Show info from TVmaze</string>
-    <!-- Season and episode, as in "S2 E5". -->
-    <string name="episode_label">S%1$d E%2$d</string>
+    <!-- The hero -->
     <string name="recently_played">Recently played</string>
-    <string name="option_show_art">Show artwork: %1$s</string>
-    <string name="show_art_on">Show artwork on. Focus Netflix, Disney+ or another streaming app.</string>
-    <string name="show_art_off">Show artwork off</string>
+    <!-- Above an app's name in the hero. -->
+    <string name="kind_tv_app">TV app</string>
+    <string name="kind_app">App</string>
 
     <!-- Cards and hero -->
     <string name="moving">Moving · OK to drop</string>

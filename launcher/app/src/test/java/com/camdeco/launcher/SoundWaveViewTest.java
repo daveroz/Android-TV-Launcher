@@ -147,18 +147,21 @@ public class SoundWaveViewTest {
     }
 
     @Test
-    public void bassWearsTheFillColourAndTrebleTheKey() {
+    public void bandsOfTheScenesColoursDriftAcross() {
         play(30, 30, 30, 2);
         Scene signal = new Scene(0xFFFF3B2F, 0xFF3A6BFF, 0xFFFFEAE4); // red key, blue fill
         view.setScene(signal);
         int top = view.rows() - 1;
-        assertTrue("bass is blue", Color.blue(view.cellColour(0, top)) > 200 && Color.red(view.cellColour(0, top)) < 90);
-        int treble = view.cellColour(SoundWave.COLUMNS - 1, top);
-        assertTrue("treble is red", Color.red(treble) > 230 && Color.blue(treble) < 90);
-        int voice = view.cellColour(SoundWave.COLUMNS / 2, top);
-        assertTrue("voices blend between", Color.red(voice) > 100 && Color.blue(voice) > 100);
-        int base = view.cellColour(SoundWave.COLUMNS - 1, 0);
-        assertTrue("whiter at the bottom", Color.blue(base) > Color.blue(treble) + 20);
+        view.advanceForTests(2.25f); // a quarter of the way: the first column wears the fill
+        int first = view.cellColour(0, top);
+        assertTrue("blue now", Color.blue(first) > 200 && Color.red(first) < 120);
+        int further = view.cellColour(SoundWave.COLUMNS / 3, top);
+        assertTrue("further along, another colour", Color.red(further) > Color.red(first) + 60);
+        view.advanceForTests(4.5f); // half a band later, the key has drifted over it
+        int later = view.cellColour(0, top);
+        assertTrue("red now", Color.red(later) > 220 && Color.blue(later) < 120);
+        int base = view.cellColour(0, 0);
+        assertTrue("whiter at the bottom", Color.green(base) > Color.green(later) + 20);
     }
 
     /** The strongest opacity anywhere in this column. */

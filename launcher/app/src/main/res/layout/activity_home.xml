@@ -25,7 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- A show's artwork across the screen, faded into the night behind the text and rows. -->
+        <!-- A video's thumbnail across the screen, faded into the night behind the text and rows. -->
         <FrameLayout
             android:id="@+id/hero_photo"
             android:layout_width="match_parent"
@@ -55,14 +55,11 @@
                 android:background="@drawable/scrim_top" />
         </FrameLayout>
 
-        <!-- Apps with nothing else to show: a wall of lamps in the app's own light, behind its card. -->
+        <!-- An app: a wall of lamps in its own light, on the right where a cover would be. -->
         <com.camdeco.launcher.LightWallView
             android:id="@+id/hero_wall"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/hero_card_height"
-            android:layout_marginStart="@dimen/overscan_h"
-            android:layout_marginTop="@dimen/hero_top"
-            android:layout_marginEnd="@dimen/overscan_h"
+            android:layout_height="match_parent"
             android:alpha="0"
             android:importantForAccessibility="no" />
 
@@ -77,21 +74,6 @@
             android:alpha="0"
             android:importantForAccessibility="no"
             android:visibility="gone" />
-
-        <!-- The card on the right: an app's banner. Its top lines up with the text on the left, its
-             right edge with the screen margin (like the clock and rows), and it ends above the rows. -->
-        <ImageView
-            android:id="@+id/hero_cover"
-            android:layout_width="@dimen/hero_card_height"
-            android:layout_height="@dimen/hero_card_height"
-            android:layout_gravity="end|top"
-            android:layout_marginTop="@dimen/hero_top"
-            android:layout_marginEnd="@dimen/overscan_h"
-            android:alpha="0"
-            android:background="@drawable/cover_bg"
-            android:elevation="16dp"
-            android:importantForAccessibility="no"
-            android:scaleType="centerCrop" />
 
         <!-- What's playing, as an LP: the cover is the sleeve, the record slides out to the left. -->
         <com.camdeco.launcher.RecordView
@@ -113,7 +95,7 @@
             android:layout_marginTop="@dimen/hero_top"
             android:orientation="vertical">
 
-            <!-- NOW PLAYING — SPOTIFY: what this is, in the scene's colour, then where it's from. -->
+            <!-- NOW PLAYING — SPOTIFY, or TV APP: what this is, in the scene's colour, then where it's from. -->
             <LinearLayout
                 android:id="@+id/hero_eyebrow"
                 android:layout_width="wrap_content"
@@ -334,16 +316,6 @@
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- TVmaze's data is CC BY-SA, so shows are credited. -->
-            <TextView
-                android:id="@+id/hero_credit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/tvmaze_credit"
-                android:textColor="@color/dim"
-                android:textSize="11sp"
-                android:visibility="gone" />
         </LinearLayout>
     </FrameLayout>
 

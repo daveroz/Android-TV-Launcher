@@ -8,10 +8,8 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
-import android.util.DisplayMetrics;
 
 import java.text.Collator;
 import java.util.ArrayList;
@@ -26,7 +24,6 @@ import java.util.Set;
 final class AppRepository {
     private static final String KEY_ORDER = "order";
     private static final String KEY_HIDDEN = "hidden";
-    private static final String KEY_SHOW_ART = "show_art";
     private static final String KEY_SOUND_WAVE = "sound_wave";
 
     private final Context context;
@@ -77,23 +74,6 @@ final class AppRepository {
         }
     }
 
-    /**
-     * A sharper copy of the app's banner (or icon) for the big hero art: the highest-density
-     * version the app ships. Slow: call off the main thread.
-     */
-    Drawable loadHeroArt(AppEntry app) {
-        if (app.artRes != 0 && app.appInfo != null) {
-            try {
-                Resources res = pm.getResourcesForApplication(app.appInfo);
-                Drawable art = res.getDrawableForDensity(app.artRes, DisplayMetrics.DENSITY_XXXHIGH, null);
-                if (art != null) return art;
-            } catch (PackageManager.NameNotFoundException | RuntimeException ignored) {
-                // Fall back to the card's copy below.
-            }
-        }
-        return copy(app.banner != null ? app.banner : app.icon);
-    }
-
     /** A separate instance of a drawable, so two views never share bounds or state. */
     static Drawable copy(Drawable drawable) {
         if (drawable == null) return null;
@@ -127,15 +107,6 @@ final class AppRepository {
 
     void setHidden(Set<String> hidden) {
         putList(KEY_HIDDEN, new ArrayList<>(hidden));
-    }
-
-    /** Whether streaming apps fill the hero with their shows (needs the internet). On by default. */
-    boolean showArtEnabled() {
-        return prefs.getBoolean(KEY_SHOW_ART, true);
-    }
-
-    void setShowArtEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_SHOW_ART, enabled).apply();
     }
 
     boolean soundWaveEnabled() {

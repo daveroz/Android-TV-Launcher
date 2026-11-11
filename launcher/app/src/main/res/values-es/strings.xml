@@ -21,14 +21,10 @@
     <string name="now_playing_message">Muestra lo que suena en Spotify, YouTube y otras apps como un reproductor pequeño en la barra superior, con reproducir, pausar y siguiente.\n\nAcceso a notificaciones: %1$s\n\nAndroid solo deja ver el contenido multimedia de otras apps a las apps con acceso a notificaciones, y Android TV no tiene una pantalla para activarlo. Ejecuta esto una vez desde Termux:\n\nadb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService\n\nPara desactivarlo, ejecuta lo mismo con disallow_listener.</string>
     <string name="open_notification_access">Probar la pantalla de acceso a notificaciones</string>
 
-    <!-- Show artwork -->
-    <string name="tvmaze_credit">Información de series de TVmaze</string>
-    <!-- Temporada y episodio, como en "T2 E5". -->
-    <string name="episode_label">T%1$d E%2$d</string>
+    <!-- The hero -->
     <string name="recently_played">Reproducido hace poco</string>
-    <string name="option_show_art">Imágenes de series: %1$s</string>
-    <string name="show_art_on">Imágenes de series activadas. Selecciona Netflix, Disney+ u otra app de streaming.</string>
-    <string name="show_art_off">Imágenes de series desactivadas</string>
+    <string name="kind_tv_app">App de TV</string>
+    <string name="kind_app">App</string>
 
     <!-- Cards and hero -->
     <string name="moving">Moviendo · OK para soltar</string>

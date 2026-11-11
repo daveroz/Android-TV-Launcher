@@ -1,13 +1,13 @@
 # Deco Launcher
 
 A lightweight home screen for the Chromecast with Google TV and other Android TV
-devices. No ads, no sponsored rows, no accounts. The only thing it fetches from the internet
-is public show info and artwork from TVmaze (see [Show artwork](#show-artwork)), which you can
-turn off. The APK is about 400 KB.
+devices. No ads, no sponsored rows, no accounts, and no internet: it doesn't even ask for
+internet access. The APK is about 400 KB.
 
 ![Deco Launcher home screen](docs/preview-home.jpg)
 
-*Previews rendered with made-up apps. On your TV, each card and the hero show the app's own banner.*
+*Previews rendered with made-up apps. On your TV, each card shows the app's own banner, and the
+light takes each app's own colours.*
 
 ## Design
 
@@ -22,33 +22,33 @@ turn off. The APK is about 400 KB.
 - **Two colours and white, never more.** Each screen has a *key* light, taken from what's in focus
   (the album cover playing, or the focused app's own colour), and a *fill* that answers it low
   from the opposite corner: cyan meets magenta, red meets blue, amber meets teal, green meets
-  violet. Grey art gets cyan and magenta. The Apps page has its own house light: amber street
-  lamps with a teal neon.
-- **The background is a quiet light show.** Two big washes of the key and fill drift slowly and
-  swell a little with the bass. On Home a row of small lamps far overhead runs a slow chase, like
-  a lighting rig seen through haze; on Apps three street lamps recede into the fog, their light
-  streaking down a wet floor.
-- **Layout after the Apple TV app.** The focused app fills the hero: streaming apps show their
-  shows full-screen with a big title on the left; music shows its album cover as an LP on the
-  right with the visualizer beside it; videos show their thumbnail full-screen. A glass pill of
+  violet. Grey art gets cyan and magenta.
+- **The background is a quiet light show,** the same on Home and Apps. Two big washes of the key
+  and fill drift slowly and swell a little with the bass, and a row of small lamps far overhead
+  runs a slow chase, like a lighting rig seen through haze.
+- **Layout after the Apple TV app.** The focused app fills the hero: its name on the left and a
+  wall of lamps on the right; music shows its album cover as an LP on the right with the
+  visualizer beside it; a playing video shows its thumbnail full-screen. A glass pill of
   tabs sits at the top, the DECO mark on the left and the clock on the right. Rows of glass cards
   run along the bottom, and the next row peeks in.
-- **Apps with nothing else to show** get a wall of square lamps in their own light behind their
-  banner: a slow sweep in the key colour crosses a slower wave in the fill, and now and then a lamp
-  flares white. Only lit lamps show, and the wall fades in from the left, clear of the text.
+- **Every app gets a wall of lamps** in its own light, where an album cover would be: a slow
+  sweep in the key colour crosses a slower wave in the fill, and now and then a lamp flares white.
+  Each lamp is sharp with a soft round glow, the bottom row shows faintly on the floor, and the
+  wall fades in from the left, clear of the text. Streaming apps get it too, instead of show
+  previews.
 - **Small labels** say what the hero shows, in spaced-out capitals with a hairline:
-  NOW PLAYING — SPOTIFY, RECENTLY PLAYED — YOUTUBE, or the app's name. Row titles have a hairline
+  NOW PLAYING — SPOTIFY, RECENTLY PLAYED — SPOTIFY, or TV APP above an app's name. Row titles have a hairline
   that fades out to the right, and light up in the key colour while one of their cards has focus.
-- **Focus is the brightest thing on screen.** The focused card lifts a little and shows a thin
-  edge in the key colour with four corner brackets just outside it; the other cards step back to
-  half strength. In the top bar and menus, focus is a touch of light on the glass with a thin
-  cyan edge.
+- **Focus is the brightest thing on screen.** The focused card lifts a little, with a thin edge
+  in the key colour and a glow of the key above it and the fill below; the other cards step back
+  to half strength. In the top bar and menus, focus is a touch of light on the glass with a thin
+  cyan edge; the current tab is simply the brighter one.
 - **Icons are thin lines** (1.6 on a 24 grid, rounded joins); only the play controls are filled.
 - **Type is Carbon+**, the same as Worldly and SAB Monitor: bold for titles, labels and the clock.
   Colours: night `#05070B`, panels `#0B1220`, text `#EEF4F8` / `#C9D4DD` / `#8FA0B3`, hairlines at
   12% cyan, LED cores `#ECF6FF`.
 
-| An app with nothing else to show | Apps page | Settings |
+| An app in focus | Apps page | Settings |
 |---|---|---|
 | ![Light wall](docs/preview-app.jpg) | ![Apps page](docs/preview-apps.jpg) | ![Settings menu](docs/preview-menu.png) |
 
@@ -73,24 +73,20 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 - **Home tab:** two rows of cards, **TV apps** and **Other apps** (phone apps), with nothing
   written under them. The Apps tab names each app.
 - **Mini player** in the top bar while something plays (see [Now playing](#now-playing))
-- **Streaming apps show their shows:** focus Netflix, Disney+, Prime Video, HBO Max, Hulu,
-  Apple TV, Paramount+ or Peacock and the hero fills with that service's shows, changing every
-  8 seconds (see [Show artwork](#show-artwork))
 - **Apps tab:** every app in a 5-column grid. The order you set here is used everywhere.
 - **Hold OK on a card** (or press Menu on remotes that have one):
   - **Move** (Apps tab): use the arrows to slide the card, then press OK
   - **Hide**, **App info**, **Uninstall**
 - **Play Store** (the bag icon) opens Google Play; it only shows when the Play Store is
   installed. **⚙ Settings** has the TV's own settings first, then hidden apps, Now playing setup,
-  show artwork and the audio visualizer on/off, and Home button setup.
+  the audio visualizer on/off, and Home button setup.
 - **Up** from the top row, or **Back** from anywhere, goes to the tabs. Back on the Apps tab goes
   to Home. Focus coming up from the cards always lands on the current tab.
 - **Home** while already home jumps back to the top.
 - **Play/pause** on the remote controls what's playing.
 - **Updates by itself** when apps are installed, removed, updated or disabled.
 - **English and Spanish:** it follows the TV's language (Settings → System → Language) and
-  switches by itself when you change it. Show titles and descriptions come from TVmaze, which only
-  has them in English.
+  switches by itself when you change it.
 
 ## Now playing
 
@@ -100,9 +96,9 @@ and next. OK on the cover opens the player. On the player, and on the playing ap
 hero shows what's playing: Spotify's cover as an LP lit in its own colours, with how far through the song it is, or a
 YouTube video's thumbnail full-screen.
 
-**Recently played.** When nothing is playing, Spotify's, YouTube's (and any media app's) card shows
-what you last played in it, taking turns like the streaming apps' shows: cover, title, artist and
-when. The launcher notes each track or video as it plays, even while you're in another app, and
+**Recently played.** When nothing is playing, Spotify's (and any music app's) card shows what you
+last played in it, taking turns every 8 seconds: the cover as an LP in its sleeve, title, artist
+and when. Video thumbnails aren't shown, so video apps keep their wall of lamps. The launcher notes each track or video as it plays, even while you're in another app, and
 keeps the last 8 per app with their covers on the TV only (nothing is sent anywhere). It needs the
 same notification access as the mini player, and fills up as you play things.
 
@@ -138,11 +134,10 @@ columns, from the bass on the left (40 Hz) through voices in the middle to the t
 and runs from the screen margin to the cover, trailing off as it passes behind the record. Only
 cells with sound light up; they're see-through, so the cover's glow shows through them, fade more
 toward the top so the text stays easy to read, and each bar's top cell is a little softer still. Each column rises with its part of the music and settles back gently, and the top
-cell of a column fades in and out, so the heights change smoothly. The colours say which part of
-the music is playing: the bass wears the scene's fill colour, the treble its key colour (both from
-the album cover), and voices the blend between, going round the colour wheel so it never turns
-grey. Cells are a little whiter at the bottom, have no glow of their own so they never blow out
-over the haze, and go dark on pause.
+cell of a column fades in and out, so the heights change smoothly. The cells take the album
+cover's colours: bands of its key and fill colour drift slowly across the panel, blending round
+the colour wheel between them so they never turn grey. Cells are a little whiter at the bottom,
+have no glow of their own so they never blow out over the haze, and go dark on pause.
 
 All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher columns get lifted to make up for music naturally carrying far more energy in
@@ -166,18 +161,6 @@ adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
 
 The same menu turns the visualizer off. It only runs while it's on screen, so it costs nothing
 otherwise.
-
-## Show artwork
-
-Netflix, Disney+ and the other services only share their own recommendations with Google's
-built-in launcher. So instead, Deco Launcher uses [TVmaze](https://www.tvmaze.com)'s free public
-API (no account or key): twice a day it fetches the past week's new streaming episodes, keeps each
-service's most popular shows, and downloads their backgrounds once (shrunk to TV size, about 40 MB
-of cache at most). The hero then shows the show's name, genres, latest episode and summary, with
-"Show info from TVmaze" as credit (TVmaze's data is CC BY-SA).
-
-It covers TV shows with new episodes that week, not films. Turn it off with **⚙ Settings → Show artwork**;
-then streaming apps show their own banner like every other app and nothing is downloaded.
 
 ## Install
 

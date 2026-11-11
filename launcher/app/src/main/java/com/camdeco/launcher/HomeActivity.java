@@ -35,7 +35,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -66,29 +65,13 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
     /** Wait for the remote to settle before swapping the big hero art. */
     private static final long HERO_DELAY_MS = 120;
 
-    /** Tests swap the network out; null means the real one. */
-    static ShowArt.Fetcher fetcherForTests;
-
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
-    private final ExecutorService network = Executors.newSingleThreadExecutor();
     private final ExecutorService imageLoader = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
-    /** An app's sharp banner (or icon) for the hero, with its colours. */
-    private static final class AppArt {
-        final Drawable art;
-        final AppColors colours;
-
-        AppArt(Drawable art, AppColors colours) {
-            this.art = art;
-            this.colours = colours;
-        }
-    }
-
-    private final LruCache<String, AppArt> artCache = new LruCache<>(8);
-    private final Set<String> updatingChannels = new HashSet<>();
+    /** Each app's colours, from its banner or icon: they light the stage while it has focus. */
+    private final LruCache<String, AppColors> colourCache = new LruCache<>(32);
 
     private AppRepository repo;
-    private ShowArt showArt;
     private ImageCache images;
     private NowPlaying nowPlaying;
     Hero hero;
@@ -172,9 +155,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         repo = new AppRepository(this);
-        ShowArt.Fetcher fetcher = fetcherForTests != null ? fetcherForTests : ImageCache::httpOpen;
-        showArt = new ShowArt(this, fetcher);
-        images = new ImageCache(this, fetcher);
+        images = new ImageCache(this);
         nowPlaying = new NowPlaying(this, main, this::onNowPlayingChanged);
         hero = new Hero(this, main);
         soundWave = new SoundWave(this);
@@ -284,7 +265,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         unregisterReceiver(packageReceiver);
         soundWave.stop();
         loader.shutdownNow();
-        network.shutdownNow();
         imageLoader.shutdownNow();
         main.removeCallbacksAndMessages(null);
         super.onDestroy();
@@ -316,7 +296,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
                 if (movingPackage != null) endMove();
                 repo.sort(apps);
                 allApps = apps;
-                artCache.evictAll(); // an update may have brought new art
+                colourCache.evictAll(); // an update may have brought new art
                 showApps(true);
             });
         });
@@ -375,9 +355,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         rows.setVisibility(home ? View.VISIBLE : View.GONE);
         appsPage.setVisibility(home ? View.GONE : View.VISIBLE);
         hero.setVisible(home);
-        // Home is lit by what's in focus; Apps by the house light, with the street behind it.
-        stage.setMode(home ? StageView.HOME : StageView.APPS);
-        applyScene(home ? homeScene : Scene.house());
         syncWave();
     }
 
@@ -485,73 +462,47 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
             return;
         }
         heroShowsTrack = false;
-        hero.showApp(app.label);
+        hero.showApp(getString(app.leanback ? R.string.kind_tv_app : R.string.kind_app), app.label);
         syncWave();
 
-        AppArt cached = artCache.get(app.packageName);
+        // The app's own colours light the stage and its wall of lamps.
+        AppColors cached = colourCache.get(app.packageName);
         if (cached != null) {
-            setHomeScene(Scene.from(cached.colours));
-            hero.setAppArt(cached.art, app.banner != null);
+            setHomeScene(Scene.from(cached));
         } else if (!loader.isShutdown()) {
             loader.execute(() -> {
-                Drawable art = repo.loadHeroArt(app);
-                AppColors colours = AppColors.from(art != null ? art : app.banner != null ? app.banner : app.icon);
+                AppColors colours = AppColors.from(app.banner != null ? app.banner : app.icon);
                 main.post(() -> {
-                    if (isDestroyed() || art == null) return;
-                    artCache.put(app.packageName, new AppArt(art, colours));
+                    if (isDestroyed()) return;
+                    colourCache.put(app.packageName, colours);
                     if (heroApp == app && !heroShowsTrack) setHomeScene(Scene.from(colours));
-                    // Shows may have taken over the hero meanwhile; they win.
-                    if (heroApp == app && hero.currentFeature() == null && !heroShowsTrack) {
-                        hero.setAppArt(art, app.banner != null);
-                    }
                 });
             });
         }
 
-        // Streaming apps: their shows take over the hero, like the Apple TV home screen.
-        String channel = repo.showArtEnabled() ? ShowArt.channelFor(app) : null;
-        List<ShowArt.Feature> shows = channel != null ? showArt.ready(channel) : new ArrayList<>();
-        if (!shows.isEmpty()) {
-            hero.showFeatures(shows, heroImages, getString(R.string.tvmaze_credit), app.label, null);
-        } else {
-            // Media apps (Spotify, YouTube...) when nothing of theirs is playing: what you played last.
-            List<ShowArt.Feature> recent = recentlyPlayed(app);
-            if (!recent.isEmpty()) hero.showFeatures(recent, heroImages, null, getString(R.string.recently_played), app.label);
-        }
-        if (channel != null) updateShowArt(app, channel);
+        // Music apps (Spotify...) when nothing of theirs is playing: the covers of what you played last.
+        List<Hero.Feature> recent = recentlyPlayed(app);
+        if (!recent.isEmpty()) hero.showFeatures(recent, heroImages, getString(R.string.recently_played), app.label);
     }
 
-    /** What was played in this app, newest first, as items that take turns in the hero. */
-    private List<ShowArt.Feature> recentlyPlayed(AppEntry app) {
-        List<ShowArt.Feature> list = new ArrayList<>();
+    /**
+     * What was played in this app, newest first, as covers that take turns in the hero. Only album
+     * covers: a video's thumbnail isn't shown, so video apps keep their wall of lamps.
+     */
+    private List<Hero.Feature> recentlyPlayed(AppEntry app) {
+        List<Hero.Feature> list = new ArrayList<>();
         long now = System.currentTimeMillis();
         for (MediaHistory.Item item : MediaHistory.withCovers(this, app.packageName)) {
+            java.io.File cover = MediaHistory.coverFile(this, item);
+            if (!ImageCache.isCover(cover)) continue;
             String detail = item.subtitle != null && item.album != null ? item.subtitle + " · " + item.album
                     : item.subtitle != null ? item.subtitle : item.album;
             String when = android.text.format.DateUtils.getRelativeTimeSpanString(
                     item.time, now, android.text.format.DateUtils.MINUTE_IN_MILLIS).toString();
             // The label above says "Recently played · Spotify"; under the title, who and when.
-            list.add(new ShowArt.Feature(item.key().hashCode(), item.title, detail, null, null, when, 0,
-                    "file:" + MediaHistory.coverFile(this, item).getPath()));
+            list.add(new Hero.Feature(item.key().hashCode(), item.title, detail, when, "file:" + cover.getPath()));
         }
         return list;
-    }
-
-    /** Fetches or refreshes a service's shows in the background, then shows them if still relevant. */
-    private void updateShowArt(AppEntry app, String channel) {
-        if (network.isShutdown() || !updatingChannels.add(channel)) return;
-        network.execute(() -> {
-            showArt.update(channel, System.currentTimeMillis());
-            List<ShowArt.Feature> ready = showArt.ready(channel);
-            if (!ready.isEmpty()) images.load(ready.get(0).background); // first picture ready to go
-            main.post(() -> {
-                updatingChannels.remove(channel);
-                if (isDestroyed() || ready.isEmpty() || !repo.showArtEnabled()) return;
-                if (heroApp == app && !heroShowsTrack && page == PAGE_HOME) {
-                    hero.showFeatures(ready, heroImages, getString(R.string.tvmaze_credit), app.label, null);
-                }
-            });
-        });
     }
 
     private void showTrackHero(NowPlaying.Track track) {
@@ -598,8 +549,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         sceneArt = track.art;
         Bitmap art = track.art;
         if (art == null) {
-            AppArt app = artCache.get(track.packageName);
-            setHomeScene(app != null ? Scene.from(app.colours) : Scene.promise());
+            AppColors app = colourCache.get(track.packageName);
+            setHomeScene(app != null ? Scene.from(app) : Scene.promise());
             return;
         }
         if (loader.isShutdown()) return;
@@ -857,7 +808,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         items.add(getString(R.string.option_tv_settings));
         items.add(getString(R.string.option_hidden_apps, hiddenApps.size()));
         items.add(getString(R.string.option_now_playing, getString(nowPlaying.hasAccess() ? R.string.on : R.string.off)));
-        items.add(getString(R.string.option_show_art, getString(repo.showArtEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_sound_wave, getString(repo.soundWaveEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_home_setup));
         Sheet.pick(this, getString(R.string.settings), null, items, which -> {
@@ -872,9 +822,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
                     showNowPlayingSetup();
                     break;
                 case 3:
-                    toggleShowArt();
-                    break;
-                case 4:
                     showSoundWaveSetup();
                     break;
                 default:
@@ -882,13 +829,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
                     break;
             }
         });
-    }
-
-    private void toggleShowArt() {
-        boolean on = !repo.showArtEnabled();
-        repo.setShowArtEnabled(on);
-        if (heroApp != null) showHero(heroApp); // swap between shows and the plain banner now
-        showHint(on ? R.string.show_art_on : R.string.show_art_off);
     }
 
     private void showNowPlayingSetup() {

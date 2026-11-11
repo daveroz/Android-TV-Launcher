@@ -16,11 +16,11 @@ import android.view.animation.AnimationUtils;
  * top so the text stays easy to read, and each bar's top is a little softer still.
  *
  * Each column rises with its part of the music and settles back gently; the top cell of a column
- * fades in and out, so heights change smoothly rather than a whole cell at a time. The colours say
- * which part of the music is playing: the bass wears the scene's fill colour, the treble its key
- * colour, and voices the blend between; every cell is a little whiter toward the bottom. The cells
- * have no glow of their own, so they never blow out over the haze, and the grid goes dark when the
- * music stops.
+ * fades in and out, so heights change smoothly rather than a whole cell at a time. The cells take
+ * the scene's colours, from the album cover: bands of its key and fill colour drift slowly across
+ * the panel, blending round the colour wheel between them, and every cell is a little whiter
+ * toward the bottom. The cells have no glow of their own, so they never blow out over the haze,
+ * and the grid goes dark when the music stops.
  */
 public class SoundWaveView extends View {
     private static final int COLUMNS = SoundWave.COLUMNS;
@@ -47,8 +47,11 @@ public class SoundWaveView extends View {
     private long lastFrame;
     private double time;
     private Scene scene = Scene.promise();
-    /** Per column and row (bottom first), the lit colour; per row, its opacity. Sized with the view. */
-    private int[] cellColours = new int[0];
+    /** Steps from the fill to the key colour (33 of them), each per row (bottom first). */
+    private static final int STEPS = 32;
+    private int[] palette = new int[0];
+    /** How long one band takes to drift across, in seconds, and how many bands fit across. */
+    private static final float BAND_SECONDS = 9f, BANDS = 1.1f;
     private float[] rowOpacity = new float[0];
     /** Per column: 1, then fading to nothing across the tail. */
     private final float[] columnFade = new float[ALL];
@@ -65,16 +68,27 @@ public class SoundWaveView extends View {
         source = wave;
     }
 
-    /** The cells' colours: the scene's fill for the bass, its key for the treble. */
+    /** The cells' colours: bands of the scene's key and fill colours. */
     void setScene(Scene newScene) {
         scene = newScene;
         updateRows();
         invalidate();
     }
 
-    /** The colour of a lit cell (for tests). */
+    /** The colour of a lit cell right now (for tests). */
     int cellColour(int column, int row) {
-        return cellColours[column * rows + row];
+        return palette[step(column) * rows + row];
+    }
+
+    /** Moves the bands on by this many seconds (for tests). */
+    void advanceForTests(float seconds) {
+        time += seconds;
+    }
+
+    /** Which step between fill and key this column wears now: bands drifting left to right. */
+    private int step(int column) {
+        double phase = 2 * Math.PI * (column / (double) ALL * BANDS - time / BAND_SECONDS);
+        return (int) Math.round((0.5 + 0.5 * Math.sin(phase)) * STEPS);
     }
 
     /** How loud the bass is right now, 0 to 1: the stage's washes swell with it. */
@@ -123,7 +137,7 @@ public class SoundWaveView extends View {
         cell = pitch * (1 - GAP);
         radius = cell * 0.08f;
         rows = pitch > 0 ? Math.max(1, (int) ((h + pitch * GAP) / pitch)) : 0;
-        cellColours = new int[ALL * rows];
+        palette = new int[(STEPS + 1) * rows];
         rowOpacity = new float[rows];
         updateRows();
     }
@@ -133,12 +147,11 @@ public class SoundWaveView extends View {
             float f = rows > 1 ? r / (float) (rows - 1) : 0f;
             rowOpacity[r] = BOTTOM_OPACITY + (TOP_OPACITY - BOTTOM_OPACITY) * f;
         }
-        for (int c = 0; c < ALL; c++) {
-            // The tail echoes the treble, so it keeps the key colour.
-            int hue = Scene.blend(scene.fill, scene.key, Math.min(1f, c / (float) (COLUMNS - 1)));
+        for (int s = 0; s <= STEPS; s++) {
+            int hue = Scene.blend(scene.fill, scene.key, s / (float) STEPS);
             for (int r = 0; r < rows; r++) {
                 float f = rows > 1 ? r / (float) (rows - 1) : 0f;
-                cellColours[c * rows + r] = Scene.mix(hue, scene.led, 0.22f * (1 - f));
+                palette[s * rows + r] = Scene.mix(hue, scene.led, 0.22f * (1 - f));
             }
         }
     }
@@ -168,6 +181,7 @@ public class SoundWaveView extends View {
         }
 
         for (int c = 0; c < ALL; c++) {
+            int colours = step(c) * rows;
             // The tail echoes the treble columns, last first.
             float level = c < COLUMNS ? shown[c] : shown[Math.max(0, COLUMNS - 2 - (c - COLUMNS))];
             float lit = level * rows;
@@ -181,7 +195,7 @@ public class SoundWaveView extends View {
                 float opacity = rowOpacity[r] * strength * tip * columnFade[c];
                 if (opacity < 0.01f) continue;
                 cellRect(c, r, 0);
-                cellPaint.setColor(cellColours[c * rows + r]);
+                cellPaint.setColor(palette[colours + r]);
                 cellPaint.setAlpha(Math.round(255 * opacity));
                 canvas.drawRoundRect(rect, radius, radius, cellPaint);
             }

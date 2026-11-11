@@ -31,11 +31,6 @@ final class Scene {
         return new Scene(0xFF3FC6E8, 0xFFFF4FA3, 0xFFECF6FF);
     }
 
-    /** Amber street light with a teal neon: the house light of the Apps screen. */
-    static Scene house() {
-        return new Scene(0xFFFFB04A, 0xFF2EC4B6, 0xFFFFF3DE);
-    }
-
     /**
      * The scene for an app's or a cover's colours: the vivid one becomes the key, lifted so it
      * reads as light, and the fill is the colour that answers it. Grey art gets the default.

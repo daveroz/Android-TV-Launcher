@@ -3,8 +3,6 @@
 
     <!-- Lets "Uninstall" in a tile's menu open the system uninstall prompt. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-    <!-- Only for show artwork from TVmaze (api.tvmaze.com, static.tvmaze.com); can be turned off. -->
-    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Only for the sound wave: Android's audio visualizer reads what the TV plays (at low detail)
          and needs this permission for that. Deco never opens a microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

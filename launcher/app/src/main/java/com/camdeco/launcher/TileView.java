@@ -14,8 +14,8 @@ import android.widget.FrameLayout;
 
 /**
  * A tile that is always 16:9, the shape of Android TV app banners. Focused, it shows a thin edge
- * in the scene's key colour and four corner brackets just outside it, lit by the key above and the
- * fill below. While its app is being moved, the edge is dashed instead.
+ * in the scene's key colour (its lifted shadow glows in the scene's colours, see CardAdapter).
+ * While its app is being moved, the edge is dashed instead.
  */
 public class TileView extends FrameLayout {
     private static final int[] FOCUSED = {android.R.attr.state_focused};
@@ -25,8 +25,6 @@ public class TileView extends FrameLayout {
     private final float radius;
     private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint dashed = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint bracket = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint bracketGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
 
     public TileView(Context context, AttributeSet attrs) {
@@ -39,13 +37,7 @@ public class TileView extends FrameLayout {
         dashed.setStyle(Paint.Style.STROKE);
         dashed.setStrokeWidth(2 * density);
         dashed.setPathEffect(new DashPathEffect(new float[]{8 * density, 5 * density}, 0));
-        bracket.setStyle(Paint.Style.STROKE);
-        bracket.setStrokeWidth(1.5f * density);
-        bracket.setStrokeCap(Paint.Cap.SQUARE);
-        bracketGlow.setStyle(Paint.Style.STROKE);
-        bracketGlow.setStrokeWidth(4 * density);
-        bracketGlow.setStrokeCap(Paint.Cap.ROUND);
-        // Not clipped, so the brackets can sit outside; the banner is rounded on its own.
+        // The banner is rounded on its own, so the edge can be drawn over it.
         setOutlineProvider(rounded(radius));
     }
 
@@ -73,7 +65,7 @@ public class TileView extends FrameLayout {
         invalidate();
     }
 
-    /** Whether the card shows its focus brackets (it takes its focus from the card around it). */
+    /** Whether the card shows its focus edge (it takes its focus from the card around it). */
     boolean showsFocus() {
         return StateSet.stateSetMatches(FOCUSED, getDrawableState()) && !moving();
     }
@@ -97,21 +89,8 @@ public class TileView extends FrameLayout {
         if (!showsFocus()) return;
         float inset = density / 2;
         rect.set(inset, inset, w - inset, h - inset);
-        edge.setColor(Scene.alpha(scene.key, 0.6f));
+        edge.setColor(Scene.alpha(scene.key, 0.7f));
         canvas.drawRoundRect(rect, radius, radius, edge);
-
-        float out = 6 * density, arm = 10 * density;
-        bracket.setColor(scene.led);
-        for (int corner = 0; corner < 4; corner++) {
-            boolean right = corner % 2 == 1, bottom = corner >= 2;
-            float x = right ? w + out : -out, y = bottom ? h + out : -out;
-            float dx = right ? -arm : arm, dy = bottom ? -arm : arm;
-            bracketGlow.setColor(Scene.alpha(bottom ? scene.fill : scene.key, 0.35f));
-            canvas.drawLine(x, y, x + dx, y, bracketGlow);
-            canvas.drawLine(x, y, x, y + dy, bracketGlow);
-            canvas.drawLine(x, y, x + dx, y, bracket);
-            canvas.drawLine(x, y, x, y + dy, bracket);
-        }
     }
 
     private static ViewOutlineProvider rounded(float radius) {

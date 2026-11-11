@@ -7,7 +7,6 @@
 <resources>
     <!-- night and glass -->
     <color name="bg">#05070B</color>
-    <color name="deep">#0B1220</color>
     <color name="panel">#F20B1220</color>
     <color name="panel_glass">#B8080C12</color>
     <color name="glass">#B80A0F16</color>
@@ -21,14 +20,12 @@
     <color name="text">#EEF4F8</color>
     <color name="text_soft">#C9D4DD</color>
     <color name="muted">#8FA0B3</color>
-    <color name="dim">#6F8091</color>
     <color name="icon_soft">#A7B6C6</color>
     <!-- the core of a light -->
     <color name="led">#ECF6FF</color>
     <color name="led_half">#80ECF6FF</color>
     <!-- house accents -->
     <color name="accent">#3FC6E8</color>
-    <color name="accent_fill">#FF4FA3</color>
     <color name="accent_soft">#4D3FC6E8</color>
     <color name="accent_edge">#993FC6E8</color>
     <color name="focus_glass">#1AECF6FF</color>

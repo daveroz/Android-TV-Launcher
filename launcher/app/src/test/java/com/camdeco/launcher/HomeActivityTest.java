@@ -57,17 +57,11 @@ public class HomeActivityTest {
     private static final String VLC = "org.videolan.vlc";
 
     private ShadowPackageManager packages;
-    private TestNet net;
 
     @Before
     public void installApps() throws Exception {
         // A TV driven by a remote is never in touch mode, so D-pad focus is visible.
         ShadowInstrumentation.getInstrumentation().setInTouchMode(false);
-        // No real network in tests: TVmaze answers come from saved responses when a test wants them.
-        net = new TestNet();
-        net.offline = true;
-        HomeActivity.fetcherForTests = net;
-        ShowArt.requestGapMs = 0;
         MediaHistory.resetCache();
         packages = shadowOf(RuntimeEnvironment.getApplication().getPackageManager());
         installApp(NETFLIX, "Netflix", Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -91,11 +85,12 @@ public class HomeActivityTest {
         HomeActivity home = start().get();
         assertEquals(List.of("TV apps: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
                 "Other apps: [" + VLC + "]"), rows(home));
-        // The first card has focus and fills the hero: just its banner and its name as the label.
+        // The first card has focus and fills the hero: its name, and its wall of lamps.
         assertEquals(card(home, 0, 0), focus(home));
         assertEquals(NETFLIX, home.heroApp.packageName);
-        assertEquals("Netflix", home.hero.eyebrowText());
-        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
+        assertEquals("TV app", home.hero.eyebrowText());
+        assertEquals("Netflix", text(home, R.id.hero_title));
+        assertTrue(home.hero.showsLightWall());
         assertEquals(View.GONE, home.findViewById(R.id.hero_version).getVisibility());
         assertEquals(View.GONE, home.findViewById(R.id.hero_desc).getVisibility());
         // Cards keep the 16:9 banner shape.
@@ -180,15 +175,11 @@ public class HomeActivityTest {
     @Test
     @Config(qualifiers = "+es")
     public void followsTheTvLanguage() throws Exception {
-        net.offline = false;
         HomeActivity home = start().get(); // the TV is set to Spanish
         assertEquals("Inicio", text(home, R.id.tab_home));
         assertEquals(List.of("Apps de TV: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
                 "Otras apps: [" + VLC + "]"), rows(home));
-        // Shows from TVmaze: season and episode in Spanish (temporada, episodio).
-        waitFor(() -> "Black Doves".equals(text(home, R.id.hero_title)));
-        assertEquals("T9 E99", text(home, R.id.hero_version));
-        assertEquals("Información de series de TVmaze", text(home, R.id.hero_credit));
+        assertEquals("App de TV", home.hero.eyebrowText());
 
         card(home, 0, 0).performLongClick();
         assertEquals(List.of("Ocultar", "Información de la app", "Desinstalar"), sheetItems());
@@ -321,35 +312,27 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void streamingAppsFillTheHeroWithTheirShows() throws Exception {
-        net.offline = false;
+    public void streamingAppsGlowInTheirOwnLightWithNoPreviews() throws Exception {
+        android.graphics.Bitmap red = android.graphics.Bitmap.createBitmap(160, 90, android.graphics.Bitmap.Config.ARGB_8888);
+        red.eraseColor(0xFFE50914); // Netflix red
+        ActivityInfo info = packages.addActivityIfNotPresent(new ComponentName(NETFLIX, NETFLIX + ".Main"));
+        info.banner = 0x7f990001;
+        packages.addDrawableResolution(NETFLIX, info.banner,
+                new android.graphics.drawable.BitmapDrawable(RuntimeEnvironment.getApplication().getResources(), red));
         HomeActivity home = start().get(); // Netflix is the first card and has focus
-        waitFor(() -> "Black Doves".equals(text(home, R.id.hero_title)));
-        assertEquals("S9 E99", text(home, R.id.hero_version));
-        assertTrue(text(home, R.id.hero_kind).endsWith("Netflix"));
-        assertEquals(View.VISIBLE, home.findViewById(R.id.hero_credit).getVisibility());
-        assertEquals(2, ((android.view.ViewGroup) home.findViewById(R.id.hero_dots)).getChildCount());
-
-        // Every few seconds the next show takes over.
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(9));
-        waitFor(() -> "Love Is Blind".equals(text(home, R.id.hero_title)));
-
-        // Apps that aren't streaming services just show their banner.
-        card(home, 0, 2).requestFocus(); // YouTube
-        idle();
-        assertEquals(YOUTUBE, home.heroApp.packageName);
-        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
-        assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
-
-        // Turned off in the menu: Netflix shows its banner again.
-        home.findViewById(R.id.tab_settings).performClick();
-        idle();
-        choose("Show artwork: On");
-        card(home, 0, 0).requestFocus();
-        idle();
-        assertEquals(NETFLIX, home.heroApp.packageName);
-        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
-        assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
+        waitFor(() -> hue(home.scene().key) < 10 || hue(home.scene().key) > 350);
+        // No shows from the internet: its name, and a wall of lamps in red with a blue fill.
+        assertEquals("Netflix", text(home, R.id.hero_title));
+        assertTrue(home.hero.showsLightWall());
+        assertFalse(home.hero.showsPhoto());
+        assertFalse(home.hero.showsRecord());
+        assertEquals(home.scene().key, home.hero.wallColour());
+        assertEquals(225f, hue(home.scene().fill), 3f);
+        // The launcher doesn't use the internet at all.
+        String[] permissions = RuntimeEnvironment.getApplication().getPackageManager()
+                .getPackageInfo(RuntimeEnvironment.getApplication().getPackageName(), android.content.pm.PackageManager.GET_PERMISSIONS)
+                .requestedPermissions;
+        assertFalse(java.util.Arrays.asList(permissions).contains(android.Manifest.permission.INTERNET));
     }
 
     @Test
@@ -376,7 +359,8 @@ public class HomeActivityTest {
         assertEquals("Midnight City", text(home, R.id.hero_title));
         card(home, 0, 3).requestFocus();
         idle();
-        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
+        assertEquals("YouTube", text(home, R.id.hero_title));
+        assertTrue(home.hero.showsLightWall());
 
         // Paused: still there. Stopped: gone.
         shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PAUSED));
@@ -432,19 +416,15 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void theAppsPageIsLitByHouseLight() throws Exception {
+    public void theAppsPageKeepsHomesLight() throws Exception {
         HomeActivity home = start().get();
         StageView stage = home.findViewById(R.id.stage);
-        assertEquals(StageView.HOME, stage.mode());
+        idle();
+        Scene before = stage.scene();
         home.findViewById(R.id.tab_apps).requestFocus();
         idle();
-        assertEquals(StageView.APPS, stage.mode());
-        assertTrue(Scene.house().sameAs(stage.scene()));
+        assertTrue("the same background", before.sameAs(stage.scene()));
         assertEquals("4 apps", text(home, R.id.apps_count));
-        home.findViewById(R.id.tab_home).requestFocus();
-        idle();
-        assertEquals(StageView.HOME, stage.mode());
-        assertFalse(Scene.house().sameAs(stage.scene()));
     }
 
     @Test
@@ -572,7 +552,7 @@ public class HomeActivityTest {
 
         card(home, 1, 0).requestFocus(); // VLC: no shows, nothing playing
         waitFor(() -> VLC.equals(home.heroApp.packageName) && home.hero.showsLightWall());
-        assertTrue(home.hero.showsCover()); // its icon as a card on top
+        assertEquals("App", home.hero.eyebrowText()); // not a TV app
         float[] hsv = new float[3];
         android.graphics.Color.colorToHSV(home.hero.wallColour(), hsv);
         assertTrue("glows orange, not " + hsv[0], hsv[0] > 20 && hsv[0] < 45 && hsv[1] > 0.5f);
@@ -587,32 +567,32 @@ public class HomeActivityTest {
     }
 
     @Test
-    public void theCardSitsBetweenTheTopBarAndTheRowsAtTheScreenMargin() throws Exception {
-        HomeActivity home = start().get(); // Netflix: an icon card, the first row in place
-        waitFor(() -> home.hero.showsCover());
+    public void theWallSitsBetweenTheTopBarAndTheRowsAtTheScreenMargin() throws Exception {
+        HomeActivity home = start().get(); // Netflix, the first row in place
         float dp = home.getResources().getDisplayMetrics().density;
-        View cover = home.findViewById(R.id.hero_cover);
+        LightWallView wall = home.findViewById(R.id.hero_wall);
         View topBar = (View) home.findViewById(R.id.tabs).getParent();
         View title = home.findViewById(R.id.hero_text);
         RecyclerView rows = home.findViewById(R.id.rows);
         int screenWidth = home.findViewById(R.id.root).getWidth();
 
         int[] at = new int[2];
-        cover.getLocationInWindow(at);
-        int coverTop = at[1];
-        int coverBottom = at[1] + cover.getHeight();
-        int coverRight = at[0] + cover.getWidth();
+        wall.getLocationInWindow(at);
+        float[] bounds = wall.wallBounds();
+        float wallLeft = at[0] + bounds[0], wallTop = at[1] + bounds[1];
+        float wallRight = at[0] + bounds[2], wallBottom = at[1] + bounds[3];
         topBar.getLocationInWindow(at);
         int barBottom = at[1] + topBar.getHeight();
         title.getLocationInWindow(at);
-        int titleTop = at[1];
+        int titleTop = at[1], titleRight = at[0] + title.getWidth();
         rows.getChildAt(0).getLocationInWindow(at);
         int rowsTop = at[1];
 
-        assertTrue("clear of the top bar", coverTop - barBottom >= 16 * dp);
-        assertEquals("lines up with the title", titleTop, coverTop);
-        assertEquals("ends at the screen margin", screenWidth - Math.round(48 * dp), coverRight);
-        assertTrue("ends above the rows", rowsTop - coverBottom >= 16 * dp);
+        assertTrue("clear of the top bar", wallTop - barBottom >= 16 * dp);
+        assertEquals("lines up with the text", titleTop, wallTop, 1f);
+        assertEquals("ends at the screen margin", screenWidth - 48 * dp, wallRight, 1f);
+        assertTrue("ends above the rows", rowsTop - wallBottom >= 16 * dp);
+        assertTrue("clear of the text", wallLeft > titleRight);
     }
 
     @Test
@@ -631,16 +611,38 @@ public class HomeActivityTest {
 
         // Nothing playing: Spotify's card shows what was played, with its cover, instead of the logo.
         card(home, 0, 2).requestFocus();
-        waitFor(() -> "Midnight City".equals(text(home, R.id.hero_title)) && home.hero.showsCover());
+        waitFor(() -> "Midnight City".equals(text(home, R.id.hero_title)) && home.hero.showsRecord());
         assertEquals("Recently played · Spotify", home.hero.eyebrowText());
         assertEquals("M83", text(home, R.id.hero_kind));
         assertEquals(View.GONE, home.findViewById(R.id.hero_desc).getVisibility());
-        assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
 
-        // Apps with no history keep their banner.
+        // Apps with no history keep their wall of lamps.
         card(home, 0, 0).requestFocus(); // Netflix
         idle();
-        assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
+        assertEquals("Netflix", text(home, R.id.hero_title));
+        assertTrue(home.hero.showsLightWall());
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void aVideosThumbnailIsNotShownOnceItStops() throws Exception {
+        HomeActivity home = start().get();
+        Context app = RuntimeEnvironment.getApplication();
+        android.graphics.Bitmap thumbnail = android.graphics.Bitmap.createBitmap(320, 180, android.graphics.Bitmap.Config.ARGB_8888);
+        thumbnail.eraseColor(0xFF2266AA);
+        MediaController youtube = play(YOUTUBE, "Lofi Hip Hop Radio", "Lofi Girl", thumbnail);
+        waitFor(() -> !MediaHistory.withCovers(app, YOUTUBE).isEmpty());
+        shadowOf(youtube).setPlaybackState(state(PlaybackState.STATE_STOPPED));
+        shadowOf(youtube).executeOnPlaybackStateChanged(youtube.getPlaybackState());
+        afterTheGrace();
+
+        // No previews: YouTube's card shows its name and wall, not the video it played.
+        card(home, 0, 2).requestFocus();
+        idle();
+        assertEquals("YouTube", text(home, R.id.hero_title));
+        assertNull(home.hero.currentFeature());
+        assertTrue(home.hero.showsLightWall());
+        assertFalse(home.hero.showsPhoto());
     }
 
     private static android.graphics.Bitmap cover() {
