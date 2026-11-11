@@ -135,20 +135,20 @@ mini player.
 
 ### Audio visualizer
 
-While the hero shows what's playing, light cells show the music, like a hi-fi spectrum display: 48
-columns, from the bass on the left (40 Hz) through voices in the middle to the treble on the right
-(16 kHz). The grid is level with the album cover (same top and bottom), sits behind the song's text,
-and runs from the screen margin to the cover, trailing off as it passes behind the record. Only
-cells with sound light up; they're see-through, so the cover's glow shows through them, fade more
-toward the top so the text stays easy to read, and each bar's top cell is a little softer still. Each column rises with its part of the music and settles back gently, and the top
-cell of a column fades in and out, so the heights change smoothly. The cells take the album
-cover's primary colour, one colour only, with brighter bands of it drifting slowly across the
-panel. Cells are a little whiter at the bottom,
-each has the same soft round glow as an app's light show (gentle, so they never blow out over the
-haze), and they go dark on pause.
+While the hero shows what's playing, the music plays on LED panels like an app's light show: the
+same square lamps, in strips three wide with a dark column between them, level with the album
+cover (same top and bottom), behind the song's text, from the screen margin to the cover. Each
+lamp column is a part of the music, from the bass on the left (40 Hz) through voices in the middle
+to the treble on the right (16 kHz), and fills up from the bottom with it, rising quickly and
+settling back gently; its top lamp fades in and out, so the heights change smoothly. Unlit lamps
+keep a faint ember, so the panels still read when it's quiet; lit ones glow, whiter toward the
+bottom, and each strip throws a soft beam down into the haze as loud as it is. The last strip
+trails off as it passes behind the record, the lamps behind the song's text are a little dimmer so
+it stays easy to read, and everything is in the album cover's primary colour. The lamps go dark on
+pause.
 
-All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly
-the middle. Higher columns get lifted to make up for music naturally carrying far more energy in
+All the music shares one volume scale, so a bassy song lights mostly the left and a sung part mostly
+the middle. Higher parts get lifted to make up for music naturally carrying far more energy in
 the bass.
 
 To follow the real song, Deco listens to what the TV plays through Android's audio visualizer.
@@ -160,11 +160,11 @@ TV asks once), or from Termux:
 adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
 ```
 
-**⚙ Settings → Audio visualizer** says what the cells are doing on your TV:
+**⚙ Settings → Audio visualizer** says what the lamps are doing on your TV:
 
 - **it follows the music**: Deco hears the TV's sound.
 - **it moves on its own**: Deco isn't allowed to listen, or the TV keeps its sound private (some
-  TVs give apps only silence). The cells still move while music plays and go dark on pause, but
+  TVs give apps only silence). The lamps still move while music plays and go dark on pause, but
   they don't follow the song.
 
 The same menu turns the visualizer off. It only runs while it's on screen, so it costs nothing

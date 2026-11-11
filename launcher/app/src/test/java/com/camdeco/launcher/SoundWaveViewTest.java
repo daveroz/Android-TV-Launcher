@@ -87,18 +87,21 @@ public class SoundWaveViewTest {
     }
 
     /**
-     * How many rows of cells are lit, at most, in the columns between these frequencies. The ranges
-     * the tests use stay clear of the 250 Hz and 4 kHz edges, where a column holds a bit of both.
+     * How many rows of lamps are lit, at most, in the music's columns between these frequencies.
+     * The ranges the tests use stay clear of the 250 Hz and 4 kHz edges, where a column holds a bit
+     * of both.
      */
     private int litRows(double fromHz, double toHz) {
         float pitch = view.pitch();
         int from = SoundWave.columnOf(fromHz * 1.01), to = SoundWave.columnOf(toHz * 0.99);
         int top = frame.getHeight();
-        for (int c = from; c <= to; c++) {
-            int x = Math.round(c * pitch + pitch * 0.42f); // the middle of the column's cells
+        for (int c = 0; c < view.columns(); c++) {
+            int band = view.bandOfColumn(c);
+            if (band < from || band > to || view.tailColumn(c)) continue;
+            int x = Math.round(c * pitch + pitch / 2); // the middle of the column's lamps
             for (int y = 0; y < frame.getHeight(); y++) {
                 int p = frame.getPixel(x, y);
-                // Lit cells are see-through but bright; the unlit grid and the glow are far fainter.
+                // Lit lamps are bright; the unlit embers and the glow are far fainter.
                 boolean lit = Color.alpha(p) > 60 && (Color.red(p) + Color.green(p) + Color.blue(p)) / 3 > 110;
                 if (lit) {
                     top = Math.min(top, y);
@@ -111,21 +114,39 @@ public class SoundWaveViewTest {
     }
 
     @Test
-    public void theGridTrailsOffAsItReachesTheCover() {
+    public void theLampsAreTheLightShowsSquaresInStrips() {
         play(60, 30, 30, 45);
         float dp = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics().density;
-        assertTrue("about 14 rows, as tall as the cover: " + view.rows(), view.rows() >= 13);
-        assertTrue("square cells of about 10dp: " + view.pitch() / dp, view.pitch() / dp > 11.5 && view.pitch() / dp < 13);
-        int lastMusic = brightest(SoundWave.COLUMNS - 1);
-        int tailMiddle = brightest(SoundWave.COLUMNS + 3);
-        int tailEnd = brightest(SoundWave.COLUMNS + 7);
-        assertTrue("the music's own columns are see-through, not solid: " + lastMusic, lastMusic > 60 && lastMusic < 200);
-        assertTrue("then fading: " + lastMusic + " > " + tailMiddle + " > " + tailEnd, tailMiddle < lastMusic && tailEnd < tailMiddle);
-        assertTrue("almost gone at the cover: " + tailEnd, tailEnd < 25);
+        assertTrue("10 rows, as tall as the cover", view.rows() == 10);
+        assertTrue("squares of 17.6dp: " + view.pitch() / dp, Math.abs(view.pitch() / dp - 17.6f) < 0.1f);
+        for (int c = 0; c < view.columns(); c++) {
+            if (c % 4 == 3) assertTrue("a dark column between strips", view.bandOfColumn(c) < 0);
+            else assertTrue(view.bandOfColumn(c) >= 0);
+        }
+        // Bass on the left, treble on the right.
+        int first = view.bandOfColumn(0), lastMusic = 0;
+        for (int c = 0; c < view.columns(); c++) if (view.bandOfColumn(c) >= 0 && !view.tailColumn(c)) lastMusic = view.bandOfColumn(c);
+        assertTrue(first == 0 && lastMusic == SoundWave.COLUMNS - 1);
     }
 
     @Test
-    public void eachBarsTopIsALittleSofter() {
+    public void theLastStripTrailsOffAsItReachesTheCover() {
+        play(60, 30, 30, 45);
+        int lastMusic = -1;
+        java.util.List<Integer> tail = new java.util.ArrayList<>();
+        for (int c = 0; c < view.columns(); c++) {
+            if (view.bandOfColumn(c) < 0) continue;
+            if (view.tailColumn(c)) tail.add(c);
+            else lastMusic = c;
+        }
+        assertTrue("one strip of tail", tail.size() == 3);
+        int music = brightest(lastMusic), t0 = brightest(tail.get(0)), t2 = brightest(tail.get(2));
+        assertTrue("then fading: " + music + " > " + t0 + " > " + t2, t0 < music && t2 < t0);
+        assertTrue("nearly just an ember at the cover: " + t2, t2 < 120);
+    }
+
+    @Test
+    public void eachColumnsTopIsALittleSofter() {
         Context app = RuntimeEnvironment.getApplication();
         view = new SoundWaveView(app, null);
         float dp = app.getResources().getDisplayMetrics().density;
@@ -133,35 +154,37 @@ public class SoundWaveViewTest {
         view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, w, h);
-        // Two bars: one exactly 5 cells tall, one 10. Row 4 is the top of the first, the middle of the second.
-        view.showForTests(5, 5f / view.rows());
-        view.showForTests(20, 10f / view.rows());
+        // Two columns, both behind the text: one exactly 5 lamps tall, one 9. Row 4 is the top of
+        // the first, the middle of the second.
+        int a = 4, b = 8; // the first column of the second and third strips
+        view.showForTests(view.bandOfColumn(a), 5f / view.rows());
+        view.showForTests(view.bandOfColumn(b), 9f / view.rows());
         frame = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         view.draw(new Canvas(frame));
         float pitch = view.pitch();
-        int y = Math.round(h - pitch * 4 - pitch * 0.42f);
-        int tip = Color.alpha(frame.getPixel(Math.round(5 * pitch + pitch * 0.42f), y));
-        int middle = Color.alpha(frame.getPixel(Math.round(20 * pitch + pitch * 0.42f), y));
-        assertTrue("the same cell is softer at the top of a bar: " + tip + " vs " + middle,
-                middle > 60 && tip > 0.5f * middle && tip < 0.7f * middle);
+        int y = Math.round(h - pitch * 4 - pitch / 2);
+        int tip = Color.alpha(frame.getPixel(Math.round(a * pitch + pitch / 2), y));
+        int middle = Color.alpha(frame.getPixel(Math.round(b * pitch + pitch / 2), y));
+        assertTrue("the same lamp is softer at the top of a column: " + tip + " vs " + middle,
+                middle > 100 && tip > 0.45f * middle && tip < 0.8f * middle);
     }
 
     @Test
-    public void oneColourWithBrighterBandsDriftingAcross() {
-        play(30, 30, 30, 2);
-        view.setScene(new Scene(0xFFFF3B2F)); // a red cover
-        int top = view.rows() - 1;
-        view.advanceForTests(2.25f); // a quarter of the way: the first column is out of the band
-        int dim = view.cellColour(0, top);
-        view.advanceForTests(4.5f); // half a band later, the band has drifted over it
-        int bright = view.cellColour(0, top);
-        assertTrue("brighter in the band", Scene.luminance(bright) > Scene.luminance(dim) + 0.1f);
-        float[] a = new float[3], b = new float[3];
-        Color.colorToHSV(dim, a);
-        Color.colorToHSV(bright, b);
-        assertTrue("the same red: " + a[0] + " " + b[0], Math.abs(a[0] - b[0]) < 6 || Math.abs(a[0] - b[0]) > 354);
-        int base = view.cellColour(0, 0);
-        assertTrue("whiter at the bottom", Scene.luminance(base) > Scene.luminance(bright));
+    public void unlitLampsKeepAFaintEmber() {
+        Context app = RuntimeEnvironment.getApplication();
+        view = new SoundWaveView(app, null);
+        float dp = app.getResources().getDisplayMetrics().density;
+        int w = Math.round(688 * dp), h = Math.round(176 * dp);
+        view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
+        view.layout(0, 0, w, h);
+        frame = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        view.draw(new Canvas(frame)); // silence
+        float pitch = view.pitch();
+        int lampAlpha = Color.alpha(frame.getPixel(Math.round(pitch / 2), Math.round(h - pitch / 2)));
+        int gapAlpha = Color.alpha(frame.getPixel(Math.round(3 * pitch + pitch / 2), Math.round(h - pitch / 2)));
+        assertTrue("a faint ember: " + lampAlpha, lampAlpha > 5 && lampAlpha < 30);
+        assertTrue("the gap between strips is dark: " + gapAlpha, gapAlpha < lampAlpha);
     }
 
     /** The strongest opacity anywhere in this column. */
