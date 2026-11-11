@@ -137,7 +137,8 @@ toward the top so the text stays easy to read, and each bar's top cell is a litt
 cell of a column fades in and out, so the heights change smoothly. The cells take the album
 cover's colours: bands of its key and fill colour drift slowly across the panel, blending round
 the colour wheel between them so they never turn grey. Cells are a little whiter at the bottom,
-have no glow of their own so they never blow out over the haze, and go dark on pause.
+each has the same soft round glow as the wall of lamps (gentle, so they never blow out over the
+haze), and they go dark on pause.
 
 All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher columns get lifted to make up for music naturally carrying far more energy in

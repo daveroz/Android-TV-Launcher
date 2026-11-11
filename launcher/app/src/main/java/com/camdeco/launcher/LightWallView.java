@@ -34,8 +34,7 @@ public class LightWallView extends View {
     private final Paint softPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private final Rect softBounds = new Rect();
     private final RectF glowRect = new RectF();
-    /** One round, soft glow, drawn in each lamp's colour (an alpha-only picture takes the paint's colour). */
-    private final Bitmap glowSprite = sprite();
+    private final Bitmap glowSprite = Glow.sprite();
     private final float[] seeds = new float[ROWS * COLUMNS];
     /** This frame's strength, colour and flare for each lamp. */
     private final float[] values = new float[ROWS * COLUMNS];
@@ -155,22 +154,5 @@ public class LightWallView extends View {
             }
         }
         if (running) postInvalidateDelayed(FRAME_MS);
-    }
-
-    /** A soft round spot: full in the middle, fading to nothing at the edge. */
-    private static Bitmap sprite() {
-        int size = 32;
-        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ALPHA_8);
-        int[] pixels = new int[size * size];
-        float r = size / 2f;
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                float d = (float) Math.hypot(x + 0.5f - r, y + 0.5f - r) / r;
-                float a = d >= 1f ? 0f : (1 - d) * (1 - d);
-                pixels[y * size + x] = Math.round(a * 255) << 24;
-            }
-        }
-        bitmap.setPixels(pixels, 0, size, 0, 0, size, size);
-        return bitmap;
     }
 }

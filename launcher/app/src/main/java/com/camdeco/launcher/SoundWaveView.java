@@ -1,8 +1,12 @@
 package com.camdeco.launcher;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.View;
@@ -19,8 +23,9 @@ import android.view.animation.AnimationUtils;
  * fades in and out, so heights change smoothly rather than a whole cell at a time. The cells take
  * the scene's colours, from the album cover: bands of its key and fill colour drift slowly across
  * the panel, blending round the colour wheel between them, and every cell is a little whiter
- * toward the bottom. The cells have no glow of their own, so they never blow out over the haze,
- * and the grid goes dark when the music stops.
+ * toward the bottom. Each lit cell has a soft round glow, like the wall of lamps: drawn small and
+ * stretched, and gentle enough that the cells never blow out over the haze. The grid goes dark
+ * when the music stops.
  */
 public class SoundWaveView extends View {
     private static final int COLUMNS = SoundWave.COLUMNS;
@@ -40,6 +45,20 @@ public class SoundWaveView extends View {
 
     private final Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
+    /** How strong a cell's glow is, for its opacity. */
+    private static final float GLOW = 0.38f;
+    /** The glow layer is drawn at this fraction of the panel's size, spreading a little past it. */
+    private static final float SOFT = 1 / 8f;
+    private final Bitmap glowSprite = Glow.sprite();
+    private final Paint glowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private final Paint softPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
+    private final Rect softBounds = new Rect();
+    private Bitmap soft;
+    private Canvas softCanvas;
+    /** This frame's lit cells: where (column, row), how opaque, and what colour. */
+    private int[] litCell = new int[0];
+    private float[] litOpacity = new float[0];
+    private int[] litColour = new int[0];
     private final float[] target = new float[COLUMNS];
     private final float[] shown = new float[COLUMNS];
     private SoundWave source;
@@ -62,6 +81,7 @@ public class SoundWaveView extends View {
 
     public SoundWaveView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        glowPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD)); // light adds up
     }
 
     void setSource(SoundWave wave) {
@@ -139,7 +159,22 @@ public class SoundWaveView extends View {
         rows = pitch > 0 ? Math.max(1, (int) ((h + pitch * GAP) / pitch)) : 0;
         palette = new int[(STEPS + 1) * rows];
         rowOpacity = new float[rows];
+        litCell = new int[ALL * rows];
+        litOpacity = new float[ALL * rows];
+        litColour = new int[ALL * rows];
         updateRows();
+        // The glow spreads a little past the panel (the hero doesn't clip it).
+        int margin = Math.round(pitch * 2);
+        softBounds.set(-margin, -margin, w + margin, h + margin);
+        if (soft != null) soft.recycle();
+        soft = null;
+        if (w > 0 && h > 0) {
+            soft = Bitmap.createBitmap(Math.max(1, Math.round(softBounds.width() * SOFT)),
+                    Math.max(1, Math.round(softBounds.height() * SOFT)), Bitmap.Config.ARGB_8888);
+            softCanvas = new Canvas(soft);
+            softCanvas.scale(SOFT, SOFT);
+            softCanvas.translate(margin, margin);
+        }
     }
 
     private void updateRows() {
@@ -180,6 +215,7 @@ public class SoundWaveView extends View {
             shown[c] = goal > shown[c] ? shown[c] + (goal - shown[c]) * rise : goal + (shown[c] - goal) * settle;
         }
 
+        int count = 0;
         for (int c = 0; c < ALL; c++) {
             int colours = step(c) * rows;
             // The tail echoes the treble columns, last first.
@@ -194,11 +230,30 @@ public class SoundWaveView extends View {
                 float tip = fromTop < TIP.length ? TIP[fromTop] : 1f;
                 float opacity = rowOpacity[r] * strength * tip * columnFade[c];
                 if (opacity < 0.01f) continue;
-                cellRect(c, r, 0);
-                cellPaint.setColor(palette[colours + r]);
-                cellPaint.setAlpha(Math.round(255 * opacity));
-                canvas.drawRoundRect(rect, radius, radius, cellPaint);
+                litCell[count] = c * rows + r;
+                litOpacity[count] = opacity;
+                litColour[count] = palette[colours + r];
+                count++;
             }
+        }
+
+        // The glows first, into the small layer, stretched behind the sharp cells.
+        if (soft != null) {
+            soft.eraseColor(0);
+            for (int i = 0; i < count; i++) {
+                cellRect(litCell[i] / rows, litCell[i] % rows, 0);
+                float spread = cell * 1.6f;
+                rect.inset(-spread, -spread);
+                glowPaint.setColor(Scene.alpha(litColour[i], litOpacity[i] * GLOW));
+                softCanvas.drawBitmap(glowSprite, null, rect, glowPaint);
+            }
+            canvas.drawBitmap(soft, null, softBounds, softPaint);
+        }
+        for (int i = 0; i < count; i++) {
+            cellRect(litCell[i] / rows, litCell[i] % rows, 0);
+            cellPaint.setColor(litColour[i]);
+            cellPaint.setAlpha(Math.round(255 * litOpacity[i]));
+            canvas.drawRoundRect(rect, radius, radius, cellPaint);
         }
         if (running) postInvalidateOnAnimation();
     }

@@ -20,10 +20,12 @@
         android:importantForAccessibility="no" />
 
     <!-- ===== Hero: the focused app, its shows, or what's playing ===== -->
+    <!-- Not clipped, so the visualizer's glow can spread a little past its panel. -->
     <FrameLayout
         android:id="@+id/hero"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:clipChildren="false">
 
         <!-- A video's thumbnail across the screen, faded into the night behind the text and rows. -->
         <FrameLayout
