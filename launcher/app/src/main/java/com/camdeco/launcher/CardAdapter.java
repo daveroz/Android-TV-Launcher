@@ -12,7 +12,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
-/** App cards, used both in the Home rows and in the Apps grid. */
+/**
+ * App cards, used both in the Home rows and in the Apps grid. The focused card lifts and brightens
+ * with its brackets on; the others step back to half strength, so focus is the brightest thing on
+ * screen.
+ */
 final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
 
     interface Listener {
@@ -23,7 +27,9 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         void onCardFocused(View card, AppEntry app, boolean focused);
     }
 
-    private static final float FOCUS_SCALE = 1.1f;
+    private static final float FOCUS_SCALE = 1.06f;
+    /** How strong the cards without focus are: Home's rows, and the Apps grid with its names. */
+    private static final float ROW_DIM = 0.55f, GRID_DIM = 0.65f;
 
     private final List<AppEntry> apps = new ArrayList<>();
     private final Listener listener;
@@ -83,12 +89,6 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_card, parent, false);
         if (fillWidth) view.getLayoutParams().width = ViewGroup.LayoutParams.MATCH_PARENT;
         Holder holder = new Holder(view);
-        if (Build.VERSION.SDK_INT >= 28) {
-            // A warm amber glow under the lifted card instead of a grey shadow.
-            int amber = parent.getContext().getColor(R.color.amber);
-            holder.card.setOutlineSpotShadowColor(amber);
-            holder.card.setOutlineAmbientShadowColor(amber);
-        }
         view.setOnClickListener(v -> {
             AppEntry app = holder.app();
             if (app != null) listener.onOpen(app);
@@ -98,14 +98,20 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
             if (app != null) listener.onOptions(app);
             return true;
         });
-        float lift = parent.getResources().getDisplayMetrics().density * 14;
+        float density = parent.getResources().getDisplayMetrics().density;
+        float lift = density * 12, rise = density * 4;
+        float dim = fillWidth ? GRID_DIM : ROW_DIM;
+        view.setAlpha(dim);
         view.setOnFocusChangeListener((v, focused) -> {
+            if (focused) glow(holder.card);
             holder.card.animate()
                     .scaleX(focused ? FOCUS_SCALE : 1f)
                     .scaleY(focused ? FOCUS_SCALE : 1f)
+                    .translationY(focused ? -rise : 0f)
                     .translationZ(focused ? lift : 0f)
-                    .setDuration(160)
+                    .setDuration(150)
                     .start();
+            v.animate().alpha(focused ? 1f : dim).setDuration(150).start();
             AppEntry app = holder.app();
             if (app != null) listener.onCardFocused(v, app, focused);
         });
@@ -137,11 +143,26 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         holder.subtitle.setText(R.string.moving);
         // A recycled view may still carry the focus lift of the app it showed before.
         boolean focused = view.isFocused();
+        float density = view.getResources().getDisplayMetrics().density;
         holder.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         holder.card.setScaleY(focused ? FOCUS_SCALE : 1f);
+        holder.card.setTranslationY(focused ? -4 * density : 0f);
+        view.setAlpha(focused ? 1f : fillWidth ? GRID_DIM : ROW_DIM);
         // The focused card can be given a different app when the rows refresh (hiding an
         // app, say). Focus doesn't move, so tell the listener; else the hero shows the old app.
         if (focused) listener.onCardFocused(view, app, true);
+    }
+
+    /**
+     * The lifted card's shadow becomes a glow in the scene's colours: the key all around, the fill
+     * where the shadow falls, below it.
+     */
+    static void glow(View card) {
+        if (Build.VERSION.SDK_INT < 28 || !(card.getContext() instanceof Scene.Holder)) return;
+        Scene scene = ((Scene.Holder) card.getContext()).scene();
+        card.setOutlineAmbientShadowColor(scene.key);
+        card.setOutlineSpotShadowColor(scene.fill);
+        card.invalidate();
     }
 
     final class Holder extends RecyclerView.ViewHolder {

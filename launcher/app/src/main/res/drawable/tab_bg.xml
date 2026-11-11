@@ -1,17 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Focused tab: Worldly's amber button gradient. Current tab: raised graphite. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_focused="true">
-        <shape android:shape="rectangle">
-            <corners android:radius="999dp" />
-            <gradient android:angle="0" android:centerColor="@color/amber_mid" android:endColor="@color/amber_deep" android:startColor="@color/amber" />
-        </shape>
+    <item android:state_focused="true" android:state_selected="true">
+        <layer-list>
+            <item android:drawable="@drawable/tab_focus" />
+            <item android:drawable="@drawable/tab_underline" />
+        </layer-list>
     </item>
-    <item android:state_selected="true">
-        <shape android:shape="rectangle">
-            <corners android:radius="999dp" />
-            <solid android:color="@color/surface_hi" />
-        </shape>
-    </item>
+    <item android:drawable="@drawable/tab_focus" android:state_focused="true" />
+    <item android:drawable="@drawable/tab_underline" android:state_selected="true" />
     <item android:drawable="@android:color/transparent" />
 </selector>

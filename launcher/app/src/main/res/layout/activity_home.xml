@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Layout after the Apple TV app: full-screen art for the focused app with a big title on the left,
-  a centred pill tab bar, and rows of cards along the bottom. Colours and type are Worldly's.
+  Light in fog. A dark stage in haze behind everything (StageView), the focused app or the song on
+  the left with its cover on the right, a glass pill of tabs on top, and rows of glass cards along
+  the bottom. Text is Carbon throughout; small labels are spaced-out capitals with a hairline.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -11,51 +12,59 @@
     android:background="@drawable/background"
     android:clipChildren="false">
 
-    <!-- ===== Hero: the focused app ===== -->
+    <!-- ===== The stage: haze, colour washes, and the lights far behind ===== -->
+    <com.camdeco.launcher.StageView
+        android:id="@+id/stage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no" />
+
+    <!-- ===== Hero: the focused app, its shows, or what's playing ===== -->
     <FrameLayout
         android:id="@+id/hero"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- Apps with nothing else to show: glows of the app's own colours and the icons' grid. -->
-        <com.camdeco.launcher.ColorFieldView
-            android:id="@+id/hero_field"
+        <!-- A show's artwork across the screen, faded into the night behind the text and rows. -->
+        <FrameLayout
+            android:id="@+id/hero_photo"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:alpha="0">
+
+            <com.camdeco.launcher.HeroArtView
+                android:id="@+id/hero_art"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop" />
+
+            <View
+                android:layout_width="@dimen/hero_scrim_width"
+                android:layout_height="match_parent"
+                android:background="@drawable/scrim_left" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/scrim_bottom" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:background="@drawable/scrim_top" />
+        </FrameLayout>
+
+        <!-- Apps with nothing else to show: a wall of lamps in the app's own light, behind its card. -->
+        <com.camdeco.launcher.LightWallView
+            android:id="@+id/hero_wall"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/hero_card_height"
+            android:layout_marginStart="@dimen/overscan_h"
+            android:layout_marginTop="@dimen/hero_top"
+            android:layout_marginEnd="@dimen/overscan_h"
             android:alpha="0"
             android:importantForAccessibility="no" />
-
-        <!-- Blurred, full-screen copy of the art: gives the whole screen the app's colours. -->
-        <ImageView
-            android:id="@+id/hero_ambient"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:alpha="0.4"
-            android:importantForAccessibility="no"
-            android:scaleType="centerCrop" />
-
-        <com.camdeco.launcher.HeroArtView
-            android:id="@+id/hero_art"
-            android:layout_width="@dimen/hero_art_width"
-            android:layout_height="@dimen/hero_art_height"
-            android:layout_gravity="end|top"
-            android:importantForAccessibility="no"
-            android:scaleType="centerCrop" />
-
-        <View
-            android:layout_width="@dimen/hero_scrim_width"
-            android:layout_height="match_parent"
-            android:background="@drawable/scrim_left" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/scrim_bottom" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:background="@drawable/scrim_top" />
 
         <!-- What's playing: the audio visualizer, behind the song's text and ending before the cover card. -->
         <com.camdeco.launcher.SoundWaveView
@@ -69,9 +78,8 @@
             android:importantForAccessibility="no"
             android:visibility="gone" />
 
-        <!-- The card on the right: an album cover, or an app's banner. Its top lines up with the
-             title on the left, its right edge with the screen margin (like the clock and rows), and
-             it ends well above the rows. -->
+        <!-- The card on the right: an app's banner. Its top lines up with the text on the left, its
+             right edge with the screen margin (like the clock and rows), and it ends above the rows. -->
         <ImageView
             android:id="@+id/hero_cover"
             android:layout_width="@dimen/hero_card_height"
@@ -81,7 +89,7 @@
             android:layout_marginEnd="@dimen/overscan_h"
             android:alpha="0"
             android:background="@drawable/cover_bg"
-            android:elevation="18dp"
+            android:elevation="16dp"
             android:importantForAccessibility="no"
             android:scaleType="centerCrop" />
 
@@ -105,30 +113,77 @@
             android:layout_marginTop="@dimen/hero_top"
             android:orientation="vertical">
 
+            <!-- NOW PLAYING — SPOTIFY: what this is, in the scene's colour, then where it's from. -->
+            <LinearLayout
+                android:id="@+id/hero_eyebrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/hero_label"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="8"
+                    style="@style/SectionLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:textColor="@color/accent" />
+
+                <View
+                    android:id="@+id/hero_label_line"
+                    android:layout_width="24dp"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@color/hairline_strong" />
+
+                <TextView
+                    android:id="@+id/hero_source"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="8"
+                    style="@style/SectionLabel.Quiet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="240dp"
+                    android:maxLines="1" />
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/hero_title"
+                android:shadowColor="@color/halo"
+                android:shadowRadius="10"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:includeFontPadding="false"
+                android:letterSpacing="0.01"
                 android:maxLines="1"
                 android:textColor="@color/text"
-                android:textSize="42sp"
+                android:textSize="46sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="10dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/hero_kind"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="10"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="320dp"
+                    android:maxLines="1"
                     android:textColor="@color/text_soft"
-                    android:textSize="15sp" />
+                    android:textSize="16sp" />
 
                 <TextView
                     android:id="@+id/hero_version"
@@ -136,12 +191,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
                     android:background="@drawable/chip_bg"
+                    android:ellipsize="end"
+                    android:letterSpacing="0.08"
                     android:maxWidth="200dp"
                     android:maxLines="1"
-                    android:ellipsize="end"
-                    android:paddingStart="7dp"
+                    android:paddingStart="6dp"
                     android:paddingTop="2dp"
-                    android:paddingEnd="7dp"
+                    android:paddingEnd="6dp"
                     android:paddingBottom="2dp"
                     android:textColor="@color/muted"
                     android:textSize="11sp" />
@@ -149,16 +205,68 @@
 
             <TextView
                 android:id="@+id/hero_desc"
+                android:shadowColor="@color/halo"
+                android:shadowRadius="10"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="6dp"
                 android:ellipsize="end"
                 android:lineSpacingExtra="2dp"
                 android:maxLines="2"
-                android:textColor="@color/text_soft"
-                android:textSize="14sp" />
+                android:textColor="@color/muted"
+                android:textSize="13sp" />
+
+            <!-- How far through the song: play state, time, a lit line, length. -->
+            <LinearLayout
+                android:id="@+id/hero_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/hero_play_state"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_pause"
+                    android:tint="@color/text" />
+
+                <TextView
+                    android:id="@+id/hero_elapsed"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="10"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:letterSpacing="0.12"
+                    android:minWidth="34dp"
+                    android:textColor="@color/text_soft"
+                    android:textSize="11sp" />
+
+                <com.camdeco.launcher.ProgressLineView
+                    android:id="@+id/hero_bar"
+                    android:layout_width="196dp"
+                    android:layout_height="8dp"
+                    android:layout_marginStart="8dp"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:id="@+id/hero_duration"
+                    android:shadowColor="@color/halo"
+                    android:shadowRadius="10"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:letterSpacing="0.12"
+                    android:textColor="@color/muted"
+                    android:textSize="11sp" />
+            </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/hero_hints"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -169,12 +277,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/key_ok_bg"
-                    android:paddingStart="8dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="3dp"
+                    android:letterSpacing="0.12"
+                    android:paddingStart="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="2dp"
                     android:text="@string/key_ok"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/led"
                     android:textSize="11sp"
                     android:textStyle="bold" />
 
@@ -182,22 +291,25 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
+                    android:letterSpacing="0.16"
                     android:text="@string/key_ok_action"
+                    android:textAllCaps="true"
                     android:textColor="@color/text_soft"
-                    android:textSize="13sp" />
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/hero_hold_key"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
-                    android:background="@drawable/chip_bg"
-                    android:paddingStart="8dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="3dp"
+                    android:background="@drawable/key_ok_bg"
+                    android:letterSpacing="0.12"
+                    android:paddingStart="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="2dp"
                     android:text="@string/key_hold"
-                    android:textColor="@color/text_soft"
+                    android:textColor="@color/led"
                     android:textSize="11sp"
                     android:textStyle="bold" />
 
@@ -206,9 +318,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
+                    android:letterSpacing="0.16"
                     android:text="@string/key_hold_action"
+                    android:textAllCaps="true"
                     android:textColor="@color/text_soft"
-                    android:textSize="13sp" />
+                    android:textSize="11sp" />
 
                 <LinearLayout
                     android:id="@+id/hero_dots"
@@ -253,13 +367,44 @@
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="vertical"
-        android:paddingTop="96dp"
+        android:paddingTop="@dimen/hero_top"
         android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/overscan_h"
+            android:layout_marginBottom="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/apps_label"
+                style="@style/SectionLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/apps_label"
+                android:textColor="@color/accent" />
+
+            <View
+                android:layout_width="24dp"
+                android:layout_height="1dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:background="@color/hairline_strong" />
+
+            <TextView
+                android:id="@+id/apps_count"
+                style="@style/SectionLabel.Quiet"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/overscan_h"
+            android:includeFontPadding="false"
             android:text="@string/apps_title"
             android:textColor="@color/text"
             android:textSize="30sp"
@@ -270,10 +415,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/overscan_h"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="8dp"
             android:text="@string/apps_subtitle"
             android:textColor="@color/muted"
-            android:textSize="14sp" />
+            android:textSize="13sp" />
 
         <androidx.leanback.widget.VerticalGridView
             android:id="@+id/apps_grid"
@@ -283,7 +428,7 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             android:paddingStart="@dimen/overscan_h"
-            android:paddingTop="20dp"
+            android:paddingTop="24dp"
             android:paddingEnd="@dimen/overscan_h"
             android:paddingBottom="32dp" />
     </LinearLayout>
@@ -297,16 +442,40 @@
         android:gravity="center"
         android:text="@string/no_apps"
         android:textColor="@color/muted"
-        android:textSize="18sp"
+        android:textSize="16sp"
         android:visibility="gone" />
 
-    <!-- ===== Top bar: tabs in a pill, clock on the right ===== -->
+    <!-- ===== Top bar: the mark on the left, tabs in a glass pill, the clock on the right ===== -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingStart="@dimen/overscan_h"
         android:paddingTop="@dimen/overscan_v"
         android:paddingEnd="@dimen/overscan_h">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|center_vertical"
+            android:gravity="center_vertical"
+            android:importantForAccessibility="noHideDescendants"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:background="@drawable/led_square" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:letterSpacing="0.36"
+                android:text="@string/app_mark"
+                android:textColor="@color/muted"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
         <com.camdeco.launcher.TabBar
             android:id="@+id/tabs"
@@ -328,6 +497,13 @@
                 style="@style/Tab"
                 android:text="@string/tab_apps" />
 
+            <View
+                android:layout_width="1dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="4dp"
+                android:background="@color/hairline_strong" />
+
             <!-- Google Play Store: shown only when it's installed. -->
             <ImageButton
                 android:id="@+id/tab_store"
@@ -336,17 +512,12 @@
                 android:src="@drawable/ic_store"
                 android:visibility="gone" />
 
+            <!-- Settings: Deco's own options, with the TV's settings first. -->
             <ImageButton
                 android:id="@+id/tab_settings"
                 style="@style/TabIcon"
-                android:contentDescription="@string/option_tv_settings"
+                android:contentDescription="@string/settings"
                 android:src="@drawable/ic_settings" />
-
-            <ImageButton
-                android:id="@+id/tab_options"
-                style="@style/TabIcon"
-                android:contentDescription="@string/launcher_options"
-                android:src="@drawable/ic_more" />
 
             <!-- Mini player: appears while music or video plays in another app. -->
             <LinearLayout
@@ -359,10 +530,10 @@
 
                 <View
                     android:layout_width="1dp"
-                    android:layout_height="22dp"
+                    android:layout_height="18dp"
                     android:layout_marginStart="6dp"
                     android:layout_marginEnd="6dp"
-                    android:background="@color/night" />
+                    android:background="@color/hairline_strong" />
 
                 <LinearLayout
                     android:id="@+id/np_open"
@@ -374,13 +545,13 @@
                     android:focusable="true"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingStart="5dp"
+                    android:paddingStart="6dp"
                     android:paddingEnd="14dp">
 
                     <ImageView
                         android:id="@+id/np_art"
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
                         android:background="@drawable/np_art_bg"
                         android:importantForAccessibility="no"
                         android:scaleType="centerCrop" />
@@ -392,11 +563,10 @@
                         android:layout_marginStart="9dp"
                         android:duplicateParentState="true"
                         android:ellipsize="end"
-                        android:maxWidth="200dp"
+                        android:maxWidth="180dp"
                         android:maxLines="1"
-                        android:textColor="@color/on_amber"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:textColor="@color/chrome_text"
+                        android:textSize="13sp" />
                 </LinearLayout>
 
                 <ImageButton
@@ -427,6 +597,9 @@
                 android:format12Hour="h:mm"
                 android:format24Hour="HH:mm"
                 android:includeFontPadding="false"
+                android:letterSpacing="0.06"
+                android:shadowColor="@color/accent_soft"
+                android:shadowRadius="18"
                 android:textColor="@color/text"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -435,14 +608,17 @@
                 android:id="@+id/date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:format12Hour="EEE d MMM"
                 android:format24Hour="EEE d MMM"
+                android:letterSpacing="0.22"
+                android:textAllCaps="true"
                 android:textColor="@color/muted"
-                android:textSize="13sp" />
+                android:textSize="11sp" />
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Short messages, in a Worldly pill at the bottom. -->
+    <!-- Short messages, in a glass pill at the bottom. -->
     <TextView
         android:id="@+id/hint"
         android:layout_width="wrap_content"

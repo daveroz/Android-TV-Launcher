@@ -24,7 +24,8 @@ import android.view.animation.AnimationUtils;
  * cover, and the new record slides out and spins.
  *
  * The record is tinted from the cover, with fine grooves, and has the cover art on its label, so
- * the spin shows; a fixed sheen of light across it makes it read as vinyl.
+ * the spin shows; a fixed sheen of light across it makes it read as vinyl. The sleeve glows softly
+ * in the scene's key colour, like a cover lit on a stage.
  */
 public class RecordView extends View {
     static final float RPM = 100f / 3; // 33⅓
@@ -33,6 +34,8 @@ public class RecordView extends View {
     private static final float FADE_SECONDS = 0.35f;
     /** The record's size, as a share of the sleeve's. */
     private static final float DISC = 0.94f;
+    /** The sleeve's corners: nearly square, like a real LP. */
+    private static final float CORNER_DP = 3f;
 
     private final float density;
     private final Paint sleevePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -65,8 +68,8 @@ public class RecordView extends View {
     public RecordView(Context context, AttributeSet attrs) {
         super(context, attrs);
         density = context.getResources().getDisplayMetrics().density;
-        sleevePaint.setColor(0xFF1C2230);
-        sleevePaint.setShadowLayer(18 * density, 0, 8 * density, 0x99000000);
+        sleevePaint.setColor(0xFF0B1220);
+        setGlow(Scene.promise().key);
         edgePaint.setStyle(Paint.Style.STROKE);
         edgePaint.setStrokeWidth(density);
         edgePaint.setColor(0x1AFFFFFF);
@@ -93,6 +96,12 @@ public class RecordView extends View {
             pendingSong = songKey;
         }
         start();
+    }
+
+    /** The sleeve's glow, in the scene's key colour. */
+    void setGlow(int colour) {
+        sleevePaint.setShadowLayer(24 * density, 0, 6 * density, Scene.alpha(colour, 0.32f));
+        invalidate();
     }
 
     /** Play or pause: the record spins, or slows to a stop. */
@@ -203,7 +212,7 @@ public class RecordView extends View {
         float s = h;
         sleeve.set(w - s, 0, w, s);
         sleeveClip.rewind();
-        sleeveClip.addRoundRect(sleeve, 6 * density, 6 * density, Path.Direction.CW);
+        sleeveClip.addRoundRect(sleeve, CORNER_DP * density, CORNER_DP * density, Path.Direction.CW);
         // A fixed sheen: two soft bands of light across the record, opposite each other.
         sheenPaint.setShader(new SweepGradient(0, 0,
                 new int[]{0x00FFFFFF, 0x24FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x1AFFFFFF, 0x00FFFFFF, 0x00FFFFFF},
@@ -256,7 +265,7 @@ public class RecordView extends View {
         c.drawCircle(cx, cx, label, p);
         // The spindle hole.
         p.setStyle(Paint.Style.FILL);
-        p.setColor(0xFF0B1322);
+        p.setColor(0xFF05070B);
         c.drawCircle(cx, cx, Math.max(2 * density, r * 0.03f), p);
     }
 
@@ -284,13 +293,13 @@ public class RecordView extends View {
         }
 
         // The sleeve, with its shadow, on top of the record.
-        canvas.drawRoundRect(sleeve, 6 * density, 6 * density, sleevePaint);
+        canvas.drawRoundRect(sleeve, CORNER_DP * density, CORNER_DP * density, sleevePaint);
         canvas.save();
         canvas.clipPath(sleeveClip);
         if (previous != null && fade < 1f) drawArt(canvas, previous, sleeve, Math.round(255 * (1 - fade)));
         if (cover != null) drawArt(canvas, cover, sleeve, Math.round(255 * fade));
         canvas.restore();
-        canvas.drawRoundRect(sleeve, 6 * density, 6 * density, edgePaint);
+        canvas.drawRoundRect(sleeve, CORNER_DP * density, CORNER_DP * density, edgePaint);
 
         if (moving() && getVisibility() == VISIBLE) {
             postInvalidateOnAnimation();

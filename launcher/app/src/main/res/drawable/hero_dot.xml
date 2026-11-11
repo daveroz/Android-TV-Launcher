@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Which show is on: LED dashes, the current one long and lit. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_activated="true">
         <shape android:shape="rectangle">
-            <corners android:radius="3dp" />
-            <size android:width="18dp" android:height="6dp" />
-            <solid android:color="@color/amber" />
+            <solid android:color="@color/led" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <corners android:radius="3dp" />
-            <size android:width="6dp" android:height="6dp" />
-            <solid android:color="@color/night" />
+            <solid android:color="@color/hairline_strong" />
         </shape>
     </item>
 </selector>

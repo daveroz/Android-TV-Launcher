@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The current tab: a short LED dash under its name, fading from the fill to the key colour. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="18dp"
+        android:height="2dp"
+        android:bottom="5dp"
+        android:gravity="bottom|center_horizontal">
+        <shape android:shape="rectangle">
+            <gradient android:angle="0" android:endColor="@color/accent" android:startColor="@color/accent_fill" />
+        </shape>
+    </item>
+</layer-list>

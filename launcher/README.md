@@ -5,34 +5,52 @@ devices. No ads, no sponsored rows, no accounts. The only thing it fetches from 
 is public show info and artwork from TVmaze (see [Show artwork](#show-artwork)), which you can
 turn off. The APK is about 400 KB.
 
-![Deco Launcher home screen](docs/preview-home.png)
+![Deco Launcher home screen](docs/preview-home.jpg)
 
 *Previews rendered with made-up apps. On your TV, each card and the hero show the app's own banner.*
 
 ## Design
 
-- **Layout after the Apple TV app.** The focused app fills the screen as the hero. Streaming apps
-  show their shows full-screen with a big title on the left. Music shows its album cover as a
-  rounded card on the right with the cover's blur across the whole screen; videos show their
-  thumbnail full-screen. A pill of tabs sits at the top with the clock on the right. Rows of cards
-  run along the bottom, and the next row peeks in. Moving down scrolls the rows up and fades the
-  hero away.
-- **Apps with nothing else to show glow in their own colours.** The launcher picks the app's
-  two most characteristic colours from its banner or icon: a bright one glows behind the card on
-  the right, a deep one washes in from the top, and the slanted street-map grid of the icon
-  family (Worldly, SAB Monitor, Deco) is drawn faintly over them. Moving between apps blends one
-  app's colours into the next. Grey or white logos get Worldly's amber and slate instead.
-- **The card on the right** (a banner, an icon or an album cover) lines up with the title on the
-  left, keeps clear of the top bar, ends at the same screen margin as the clock, and stops above
-  the first row.
-- **Look from Worldly.** Graphite surfaces (`#0B1322`, `#11141E`, `#1C2230`), thin slate borders
-  (`#252C3C`), and one amber accent (`#DF8B35`) for focus rings, the focused tab and menu rows
-  (as Worldly's amber gradient) and the active row title. The type is Worldly's Carbon+:
-  regular for text, bold for titles and the clock. Corner radii are 12 for cards and 28 for menus.
+**Light in fog.** The whole launcher sits on a dark stage in haze, after Justice's IRIS light shows
+(sharp lights cutting through heavy fog) with the restraint of Blade Runner 2049's screens
+(hairlines, few elements, a lot of empty space).
 
-| Apps page | App menu |
-|---|---|
-| ![Apps page](docs/preview-apps.png) | ![App menu](docs/preview-menu.png) |
+- **Every light has two parts:** a sharp core drawn at full detail, and a soft glow drawn at 1/8
+  of the screen's size and stretched across it, so it spreads like light in fog. Fog banks drift
+  slowly behind everything and keep moving even when the music stops. A fine grain keeps the haze
+  smooth.
+- **Two colours and white, never more.** Each screen has a *key* light, taken from what's in focus
+  (the album cover playing, or the focused app's own colour), and a *fill* that answers it low
+  from the opposite corner: cyan meets magenta, red meets blue, amber meets teal, green meets
+  violet. Grey art gets cyan and magenta. The Apps page has its own house light: amber street
+  lamps with a teal neon.
+- **The background is a quiet light show.** Two big washes of the key and fill drift slowly and
+  swell a little with the bass. On Home a row of small lamps far overhead runs a slow chase, like
+  a lighting rig seen through haze; on Apps three street lamps recede into the fog, their light
+  streaking down a wet floor.
+- **Layout after the Apple TV app.** The focused app fills the hero: streaming apps show their
+  shows full-screen with a big title on the left; music shows its album cover as an LP on the
+  right with the visualizer beside it; videos show their thumbnail full-screen. A glass pill of
+  tabs sits at the top, the DECO mark on the left and the clock on the right. Rows of glass cards
+  run along the bottom, and the next row peeks in.
+- **Apps with nothing else to show** get a wall of square lamps in their own light behind their
+  banner: a slow sweep in the key colour crosses a slower wave in the fill, and now and then a lamp
+  flares white. Only lit lamps show, and the wall fades in from the left, clear of the text.
+- **Small labels** say what the hero shows, in spaced-out capitals with a hairline:
+  NOW PLAYING — SPOTIFY, RECENTLY PLAYED — YOUTUBE, or the app's name. Row titles have a hairline
+  that fades out to the right, and light up in the key colour while one of their cards has focus.
+- **Focus is the brightest thing on screen.** The focused card lifts a little and shows a thin
+  edge in the key colour with four corner brackets just outside it; the other cards step back to
+  half strength. In the top bar and menus, focus is a touch of light on the glass with a thin
+  cyan edge.
+- **Icons are thin lines** (1.6 on a 24 grid, rounded joins); only the play controls are filled.
+- **Type is Carbon+**, the same as Worldly and SAB Monitor: bold for titles, labels and the clock.
+  Colours: night `#05070B`, panels `#0B1220`, text `#EEF4F8` / `#C9D4DD` / `#8FA0B3`, hairlines at
+  12% cyan, LED cores `#ECF6FF`.
+
+| An app with nothing else to show | Apps page | Settings |
+|---|---|---|
+| ![Light wall](docs/preview-app.jpg) | ![Apps page](docs/preview-apps.jpg) | ![Settings menu](docs/preview-menu.png) |
 
 ### Icon
 
@@ -63,8 +81,8 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
   - **Move** (Apps tab): use the arrows to slide the card, then press OK
   - **Hide**, **App info**, **Uninstall**
 - **Play Store** (the bag icon) opens Google Play; it only shows when the Play Store is
-  installed. **⚙** opens Android TV settings. **⋮** has hidden apps, Now playing setup, show artwork on/off
-  and Home button setup.
+  installed. **⚙ Settings** has the TV's own settings first, then hidden apps, Now playing setup,
+  show artwork and the audio visualizer on/off, and Home button setup.
 - **Up** from the top row, or **Back** from anywhere, goes to the tabs. Back on the Apps tab goes
   to Home. Focus coming up from the cards always lands on the current tab.
 - **Home** while already home jumps back to the top.
@@ -77,9 +95,9 @@ family's white ring, and the cyan, green and yellow dots are the family's accent
 ## Now playing
 
 While Spotify, YouTube (or any app with standard media controls) is playing or paused, a small
-player appears in the top bar, after Home / Apps / Play Store / ⚙ / ⋮: the cover, "title · artist", play/pause
+player appears in the top bar, after Home / Apps / Play Store / ⚙: the cover, "title · artist", play/pause
 and next. OK on the cover opens the player. On the player, and on the playing app's own card, the
-hero shows what's playing: Spotify's cover as a large card with its blur filling the screen, or a
+hero shows what's playing: Spotify's cover as an LP lit in its own colours, with how far through the song it is, or a
 YouTube video's thumbnail full-screen.
 
 **Recently played.** When nothing is playing, Spotify's, YouTube's (and any media app's) card shows
@@ -95,7 +113,7 @@ screen to turn that on, so do it once from Termux:
 adb shell cmd notification allow_listener com.camdeco.launcher/com.camdeco.launcher.MediaListenerService
 ```
 
-Go back to Home and start some music. **⋮ → Now playing** shows whether access is on. To turn it
+Go back to Home and start some music. **⚙ Settings → Now playing** shows whether access is on. To turn it
 off, run the same command with `disallow_listener`.
 
 ### The record
@@ -120,8 +138,11 @@ columns, from the bass on the left (40 Hz) through voices in the middle to the t
 and runs from the screen margin to the cover, trailing off as it passes behind the record. Only
 cells with sound light up; they're see-through, so the cover's glow shows through them, fade more
 toward the top so the text stays easy to read, and each bar's top cell is a little softer still. Each column rises with its part of the music and settles back gently, and the top
-cell of a column fades in and out, so the heights change smoothly. The cells take the album cover's
-colours, whiter at the bottom, and go dark on pause.
+cell of a column fades in and out, so the heights change smoothly. The colours say which part of
+the music is playing: the bass wears the scene's fill colour, the treble its key colour (both from
+the album cover), and voices the blend between, going round the colour wheel so it never turns
+grey. Cells are a little whiter at the bottom, have no glow of their own so they never blow out
+over the haze, and go dark on pause.
 
 All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher columns get lifted to make up for music naturally carrying far more energy in
@@ -129,14 +150,14 @@ the bass.
 
 To follow the real song, Deco listens to what the TV plays through Android's audio visualizer.
 Android files that under the microphone permission ("record audio"), but Deco only reads the TV's
-own sound, at low detail, and never opens a microphone. Allow it from **⋮ → Audio visualizer** (the
+own sound, at low detail, and never opens a microphone. Allow it from **⚙ Settings → Audio visualizer** (the
 TV asks once), or from Termux:
 
 ```bash
 adb shell pm grant com.camdeco.launcher android.permission.RECORD_AUDIO
 ```
 
-**⋮ → Audio visualizer** says what the cells are doing on your TV:
+**⚙ Settings → Audio visualizer** says what the cells are doing on your TV:
 
 - **it follows the music**: Deco hears the TV's sound.
 - **it moves on its own**: Deco isn't allowed to listen, or the TV keeps its sound private (some
@@ -155,7 +176,7 @@ service's most popular shows, and downloads their backgrounds once (shrunk to TV
 of cache at most). The hero then shows the show's name, genres, latest episode and summary, with
 "Show info from TVmaze" as credit (TVmaze's data is CC BY-SA).
 
-It covers TV shows with new episodes that week, not films. Turn it off with **⋮ → Show artwork**;
+It covers TV shows with new episodes that week, not films. Turn it off with **⚙ Settings → Show artwork**;
 then streaming apps show their own banner like every other app and nothing is downloaded.
 
 ## Install

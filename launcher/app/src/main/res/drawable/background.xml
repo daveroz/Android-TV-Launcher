@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The night behind the stage (StageView draws the light on top). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <gradient android:angle="270" android:endColor="@color/deep" android:startColor="@color/bg" />
+    <solid android:color="@color/bg" />
 </shape>

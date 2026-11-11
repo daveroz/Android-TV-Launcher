@@ -3,9 +3,9 @@
     <!-- Android TV overscan-safe margins (5% of 960x540dp). -->
     <dimen name="overscan_h">48dp</dimen>
     <dimen name="overscan_v">24dp</dimen>
-    <!-- Worldly radii: 12 for small cards, 14 for buttons, 28 for big panels. -->
-    <dimen name="card_radius">12dp</dimen>
-    <dimen name="sheet_radius">28dp</dimen>
+    <!-- Nearly square corners for cards and covers; a softer one for menus. -->
+    <dimen name="card_radius">5dp</dimen>
+    <dimen name="sheet_radius">20dp</dimen>
     <dimen name="card_width">176dp</dimen>
     <dimen name="card_gap">16dp</dimen>
     <!-- Where the first row of cards starts, under the hero. -->
@@ -13,8 +13,6 @@
     <!-- How far the rows scroll before the hero has fully faded. -->
     <dimen name="hero_fade_range">160dp</dimen>
     <dimen name="hero_scrim_width">660dp</dimen>
-    <dimen name="hero_art_width">620dp</dimen>
-    <dimen name="hero_art_height">349dp</dimen>
     <!-- The hero's top line (title and card), clear of the top bar, which ends at about 72dp. -->
     <dimen name="hero_top">96dp</dimen>
     <!-- Card height: from hero_top to 24dp above the rows (rows_top). Covers are square,

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One app: a 16:9 card. On the Apps page its name sits under it, and "Moving" while it moves. -->
+<!-- One app: a 16:9 glass card. On the Apps page its name sits under it, and "Moving" while it
+     moves. The card draws its own focus brackets (TileView). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="@dimen/card_width"
     android:layout_height="wrap_content"
@@ -17,8 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/card_bg"
-        android:duplicateParentState="true"
-        android:foreground="@drawable/card_ring">
+        android:duplicateParentState="true">
 
         <ImageView
             android:id="@+id/banner"
@@ -46,7 +46,7 @@
         android:importantForAccessibility="no"
         android:maxLines="1"
         android:textColor="@color/card_title"
-        android:textSize="14sp" />
+        android:textSize="13sp" />
 
     <TextView
         android:id="@+id/subtitle"
@@ -58,5 +58,5 @@
         android:importantForAccessibility="no"
         android:maxLines="1"
         android:textColor="@color/card_subtitle"
-        android:textSize="12sp" />
+        android:textSize="11sp" />
 </LinearLayout>

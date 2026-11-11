@@ -2,7 +2,6 @@ package com.camdeco.launcher;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
@@ -17,8 +16,11 @@ import android.view.animation.AnimationUtils;
  * top so the text stays easy to read, and each bar's top is a little softer still.
  *
  * Each column rises with its part of the music and settles back gently; the top cell of a column
- * fades in and out, so heights change smoothly rather than a whole cell at a time. Cells take the
- * album cover's colours, whiter at the bottom, and the grid goes dark when the music stops.
+ * fades in and out, so heights change smoothly rather than a whole cell at a time. The colours say
+ * which part of the music is playing: the bass wears the scene's fill colour, the treble its key
+ * colour, and voices the blend between; every cell is a little whiter toward the bottom. The cells
+ * have no glow of their own, so they never blow out over the haze, and the grid goes dark when the
+ * music stops.
  */
 public class SoundWaveView extends View {
     private static final int COLUMNS = SoundWave.COLUMNS;
@@ -36,9 +38,7 @@ public class SoundWaveView extends View {
     /** How see-through the lit cells are: opacity at the bottom row and at the top row. */
     private static final float BOTTOM_OPACITY = 0.62f, TOP_OPACITY = 0.3f;
 
-    private final float density;
     private final Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
     private final float[] target = new float[COLUMNS];
     private final float[] shown = new float[COLUMNS];
@@ -46,10 +46,9 @@ public class SoundWaveView extends View {
     private boolean running;
     private long lastFrame;
     private double time;
-    private int topColour;
-    private int bottomColour;
-    /** Per row, bottom first: the lit colour and its opacity. Sized when the view gets its size. */
-    private int[] rowColours = new int[0];
+    private Scene scene = Scene.promise();
+    /** Per column and row (bottom first), the lit colour; per row, its opacity. Sized with the view. */
+    private int[] cellColours = new int[0];
     private float[] rowOpacity = new float[0];
     /** Per column: 1, then fading to nothing across the tail. */
     private final float[] columnFade = new float[ALL];
@@ -60,20 +59,29 @@ public class SoundWaveView extends View {
 
     public SoundWaveView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        density = context.getResources().getDisplayMetrics().density;
-        setColours(AppColors.worldly());
     }
 
     void setSource(SoundWave wave) {
         source = wave;
     }
 
-    /** The cells' colours, from the album cover: nearly white at the bottom, the cover's colour on top. */
-    void setColours(AppColors cover) {
-        topColour = atLeastBrightness(cover.vivid, 0.85f);
-        bottomColour = mix(topColour, Color.WHITE, 0.6f);
+    /** The cells' colours: the scene's fill for the bass, its key for the treble. */
+    void setScene(Scene newScene) {
+        scene = newScene;
         updateRows();
         invalidate();
+    }
+
+    /** The colour of a lit cell (for tests). */
+    int cellColour(int column, int row) {
+        return cellColours[column * rows + row];
+    }
+
+    /** How loud the bass is right now, 0 to 1: the stage's washes swell with it. */
+    float bass() {
+        float sum = 0f;
+        for (int c = 0; c < 8; c++) sum += shown[c];
+        return sum / 8;
     }
 
     /** Starts or stops the animation (it only runs while the grid is on screen). */
@@ -113,9 +121,9 @@ public class SoundWaveView extends View {
             columnFade[c] = 1f - t * t * (3 - 2 * t);
         }
         cell = pitch * (1 - GAP);
-        radius = cell * 0.22f;
+        radius = cell * 0.08f;
         rows = pitch > 0 ? Math.max(1, (int) ((h + pitch * GAP) / pitch)) : 0;
-        rowColours = new int[rows];
+        cellColours = new int[ALL * rows];
         rowOpacity = new float[rows];
         updateRows();
     }
@@ -123,8 +131,15 @@ public class SoundWaveView extends View {
     private void updateRows() {
         for (int r = 0; r < rows; r++) {
             float f = rows > 1 ? r / (float) (rows - 1) : 0f;
-            rowColours[r] = mix(bottomColour, topColour, f);
             rowOpacity[r] = BOTTOM_OPACITY + (TOP_OPACITY - BOTTOM_OPACITY) * f;
+        }
+        for (int c = 0; c < ALL; c++) {
+            // The tail echoes the treble, so it keeps the key colour.
+            int hue = Scene.blend(scene.fill, scene.key, Math.min(1f, c / (float) (COLUMNS - 1)));
+            for (int r = 0; r < rows; r++) {
+                float f = rows > 1 ? r / (float) (rows - 1) : 0f;
+                cellColours[c * rows + r] = Scene.mix(hue, scene.led, 0.22f * (1 - f));
+            }
         }
     }
 
@@ -152,7 +167,6 @@ public class SoundWaveView extends View {
             shown[c] = goal > shown[c] ? shown[c] + (goal - shown[c]) * rise : goal + (shown[c] - goal) * settle;
         }
 
-        float glow = 2 * density;
         for (int c = 0; c < ALL; c++) {
             // The tail echoes the treble columns, last first.
             float level = c < COLUMNS ? shown[c] : shown[Math.max(0, COLUMNS - 2 - (c - COLUMNS))];
@@ -166,32 +180,12 @@ public class SoundWaveView extends View {
                 float tip = fromTop < TIP.length ? TIP[fromTop] : 1f;
                 float opacity = rowOpacity[r] * strength * tip * columnFade[c];
                 if (opacity < 0.01f) continue;
-                int colour = rowColours[r];
-                cellRect(c, r, glow);
-                glowPaint.setColor(colour);
-                glowPaint.setAlpha(Math.round(70 * opacity));
-                canvas.drawRoundRect(rect, radius + glow, radius + glow, glowPaint);
                 cellRect(c, r, 0);
-                cellPaint.setColor(colour);
+                cellPaint.setColor(cellColours[c * rows + r]);
                 cellPaint.setAlpha(Math.round(255 * opacity));
                 canvas.drawRoundRect(rect, radius, radius, cellPaint);
             }
         }
         if (running) postInvalidateOnAnimation();
-    }
-
-    private static int mix(int from, int to, float f) {
-        int r = Math.round(Color.red(from) + (Color.red(to) - Color.red(from)) * f);
-        int g = Math.round(Color.green(from) + (Color.green(to) - Color.green(from)) * f);
-        int b = Math.round(Color.blue(from) + (Color.blue(to) - Color.blue(from)) * f);
-        return Color.rgb(r, g, b);
-    }
-
-    /** Lifts a colour's brightness to at least {@code min}, so dark cover tones still glow. */
-    private static int atLeastBrightness(int colour, float min) {
-        float[] hsv = new float[3];
-        Color.colorToHSV(colour, hsv);
-        hsv[2] = Math.max(hsv[2], min);
-        return Color.HSVToColor(hsv);
     }
 }

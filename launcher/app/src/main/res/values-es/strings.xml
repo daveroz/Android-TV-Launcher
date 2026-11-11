@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Spanish. Android uses these when the TV's language is Spanish; commands stay as they are. -->
 <resources>
-    <string name="launcher_options">Opciones del launcher</string>
-    <string name="no_apps">No hay apps para mostrar. Vuelve a mostrar alguna desde el menú ⋮.</string>
+    <string name="settings">Ajustes</string>
+    <string name="no_apps">No hay apps para mostrar. Vuelve a mostrar alguna desde Ajustes → Apps ocultas.</string>
     <string name="cannot_open">No se puede abrir</string>
 
     <!-- Top bar -->
@@ -25,7 +25,7 @@
     <string name="tvmaze_credit">Información de series de TVmaze</string>
     <!-- Temporada y episodio, como en "T2 E5". -->
     <string name="episode_label">T%1$d E%2$d</string>
-    <string name="recently_played_on">Reproducido recientemente en %1$s</string>
+    <string name="recently_played">Reproducido hace poco</string>
     <string name="option_show_art">Imágenes de series: %1$s</string>
     <string name="show_art_on">Imágenes de series activadas. Selecciona Netflix, Disney+ u otra app de streaming.</string>
     <string name="show_art_off">Imágenes de series desactivadas</string>
@@ -37,6 +37,12 @@
     <string name="key_hold_action">Opciones</string>
 
     <!-- Apps page -->
+    <string name="apps_label">Biblioteca</string>
+    <plurals name="app_count">
+        <item quantity="one">%d app</item>
+        <item quantity="many">%d apps</item>
+        <item quantity="other">%d apps</item>
+    </plurals>
     <string name="apps_title">Todas las apps</string>
     <string name="apps_subtitle">Mantén presionado OK en una app para moverla, ocultarla o desinstalarla. Este orden se usa en todas partes.</string>
 
@@ -46,7 +52,7 @@
     <string name="option_app_info">Información de la app</string>
     <string name="option_uninstall">Desinstalar</string>
     <string name="move_hint">Usa las flechas para moverla y luego presiona OK</string>
-    <string name="hidden_hint">App oculta. Puedes volver a mostrarla desde ⋮ → Apps ocultas.</string>
+    <string name="hidden_hint">App oculta. Puedes volver a mostrarla desde Ajustes → Apps ocultas.</string>
 
     <!-- Launcher menu -->
     <string name="option_hidden_apps">Apps ocultas (%1$d)</string>

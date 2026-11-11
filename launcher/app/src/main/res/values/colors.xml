@@ -1,30 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Worldly's visual language: graphite surfaces, thin slate borders, one amber accent. -->
+<!--
+  Light in fog: a night stage with glass panels and hairlines. The light itself comes from the
+  scene (Scene.java): a key colour from what's in focus and a fill that answers it. The fixed
+  accents here are the house scene, Promise: cyan with a magenta fill.
+-->
 <resources>
-    <!-- surfaces, darkest to lightest -->
-    <color name="bg">#0B1322</color>
-    <color name="deep">#0B0E15</color>
-    <color name="header">#0E111A</color>
-    <color name="panel">#11141E</color>
-    <color name="panel_glass">#E011141E</color>
-    <color name="surface">#151922</color>
-    <color name="surface_hi">#1C2230</color>
-    <!-- borders -->
-    <color name="border_soft">#1F2636</color>
-    <color name="border">#252C3C</color>
-    <color name="night">#3A4560</color>
+    <!-- night and glass -->
+    <color name="bg">#05070B</color>
+    <color name="deep">#0B1220</color>
+    <color name="panel">#F20B1220</color>
+    <color name="panel_glass">#B8080C12</color>
+    <color name="glass">#B80A0F16</color>
+    <color name="surface_hi">#121B28</color>
+    <!-- hairlines: thin cool lines instead of boxes -->
+    <color name="hairline">#1FAADCFF</color>
+    <color name="hairline_soft">#10AADCFF</color>
+    <color name="hairline_strong">#4DAADCFF</color>
+    <color name="hairline_clear">#00AADCFF</color>
     <!-- text -->
-    <color name="text">#F1F5F9</color>
-    <color name="text_soft">#CBD5E1</color>
-    <color name="muted">#8A9BB2</color>
-    <color name="dim">#718096</color>
-    <!-- accent -->
-    <color name="amber">#DF8B35</color>
-    <color name="amber_mid">#D6802A</color>
-    <color name="amber_deep">#C57220</color>
-    <color name="amber_light">#F0A04B</color>
-    <!-- hero scrims: the background colour at different strengths -->
-    <color name="bg_0">#000B1322</color>
-    <color name="bg_60">#990B1322</color>
-    <color name="bg_85">#D90B1322</color>
+    <color name="text">#EEF4F8</color>
+    <color name="text_soft">#C9D4DD</color>
+    <color name="muted">#8FA0B3</color>
+    <color name="dim">#6F8091</color>
+    <color name="icon_soft">#A7B6C6</color>
+    <!-- the core of a light -->
+    <color name="led">#ECF6FF</color>
+    <color name="led_half">#80ECF6FF</color>
+    <!-- house accents -->
+    <color name="accent">#3FC6E8</color>
+    <color name="accent_fill">#FF4FA3</color>
+    <color name="accent_soft">#4D3FC6E8</color>
+    <color name="accent_edge">#993FC6E8</color>
+    <color name="focus_glass">#1AECF6FF</color>
+    <!-- a dark halo behind text that sits over the visualizer's lights -->
+    <color name="halo">#E605070B</color>
+    <!-- hero scrims over full-screen show art: the night at different strengths -->
+    <color name="bg_0">#0005070B</color>
+    <color name="bg_60">#9905070B</color>
+    <color name="bg_85">#D905070B</color>
 </resources>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Text and icons: white on the amber focus fill, otherwise Worldly's soft text. -->
+<!-- Top bar and menus: white with focus, light for the current tab, otherwise quiet. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="#FFFFFF" android:state_focused="true" />
     <item android:color="@color/text" android:state_selected="true" />
-    <item android:color="@color/text_soft" />
+    <item android:color="@color/icon_soft" />
 </selector>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The hairline after a section label, fading out to the right. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="0" android:endColor="@color/hairline_clear" android:startColor="@color/hairline" />
+</shape>

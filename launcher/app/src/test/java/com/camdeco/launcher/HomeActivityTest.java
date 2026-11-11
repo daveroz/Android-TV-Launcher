@@ -91,9 +91,10 @@ public class HomeActivityTest {
         HomeActivity home = start().get();
         assertEquals(List.of("TV apps: [" + NETFLIX + ", " + PRIME + ", " + YOUTUBE + "]",
                 "Other apps: [" + VLC + "]"), rows(home));
-        // The first card has focus and fills the hero: just its banner, no name or version text.
+        // The first card has focus and fills the hero: just its banner and its name as the label.
         assertEquals(card(home, 0, 0), focus(home));
         assertEquals(NETFLIX, home.heroApp.packageName);
+        assertEquals("Netflix", home.hero.eyebrowText());
         assertEquals(View.GONE, home.findViewById(R.id.hero_title).getVisibility());
         assertEquals(View.GONE, home.findViewById(R.id.hero_version).getVisibility());
         assertEquals(View.GONE, home.findViewById(R.id.hero_desc).getVisibility());
@@ -225,7 +226,7 @@ public class HomeActivityTest {
         assertEquals("TV apps: [" + PRIME + ", " + YOUTUBE + "]", rows(home).get(0));
         assertFalse(grid(home).contains(NETFLIX));
 
-        home.findViewById(R.id.tab_options).performClick();
+        home.findViewById(R.id.tab_settings).performClick();
         idle();
         choose("Hidden apps (1)");
         choose("Netflix"); // tick it
@@ -282,7 +283,8 @@ public class HomeActivityTest {
         home.findViewById(R.id.tab_home).requestFocus();
         targets.clear();
         tabs.addFocusables(targets, View.FOCUS_RIGHT);
-        assertEquals(4, targets.size());
+        assertEquals(List.of(home.findViewById(R.id.tab_home), home.findViewById(R.id.tab_apps),
+                home.findViewById(R.id.tab_settings)), targets); // the Play Store isn't installed
     }
 
     @Test
@@ -340,7 +342,7 @@ public class HomeActivityTest {
         assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
 
         // Turned off in the menu: Netflix shows its banner again.
-        home.findViewById(R.id.tab_options).performClick();
+        home.findViewById(R.id.tab_settings).performClick();
         idle();
         choose("Show artwork: On");
         card(home, 0, 0).requestFocus();
@@ -389,15 +391,93 @@ public class HomeActivityTest {
 
     @Test
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
-    public void squareCoversBecomeACardWithTheirBlurBehind() throws Exception {
+    public void squareCoversBecomeAnLpLitInTheirOwnColours() throws Exception {
         installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
         HomeActivity home = start().get();
         play("com.spotify.tv.android", "Midnight City", "M83", cover());
         card(home, 0, 2).requestFocus(); // Spotify
+        waitFor(() -> home.hero.showsRecord() && hue(home.scene().key) > 300);
+        assertFalse(home.hero.showsPhoto());
+        assertEquals("Now playing · Spotify", home.hero.eyebrowText());
+        // The pink cover keys the light; its fill is the colour that answers pink: cyan.
+        float fill = hue(home.scene().fill);
+        assertTrue("fill " + fill, fill > 170 && fill < 210);
+        StageView stage = home.findViewById(R.id.stage);
+        assertTrue(home.scene().sameAs(stage.scene()));
+    }
+
+    @Test
+    public void aSongShowsHowFarThroughItIs() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        play("com.spotify.tv.android", "Midnight City", "M83", null); // a minute into four
+        card(home, 0, 2).requestFocus();
         idle();
-        assertTrue(home.hero.showsCover());
-        assertEquals(0f, home.findViewById(R.id.hero_art).getAlpha(), 0.01f);
-        assertTrue(home.findViewById(R.id.hero_ambient).getAlpha() > 0.8f);
+        assertEquals("4:00", text(home, R.id.hero_duration));
+        assertTrue(home.hero.elapsedText(), home.hero.elapsedText().startsWith("1:0"));
+        ProgressLineView bar = home.findViewById(R.id.hero_bar);
+        assertTrue("about a quarter: " + bar.progress(), bar.progress() > 0.24f && bar.progress() < 0.3f);
+        // The song's progress takes the place of the remote's hints.
+        assertEquals(View.GONE, home.findViewById(R.id.hero_hints).getVisibility());
+
+        // It keeps counting while it plays.
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(10));
+        assertTrue(home.hero.elapsedText(), home.hero.elapsedText().startsWith("1:1"));
+
+        // An app's card: the hints are back, the progress gone.
+        card(home, 0, 0).requestFocus();
+        idle();
+        assertEquals(View.VISIBLE, home.findViewById(R.id.hero_hints).getVisibility());
+        assertNull(home.hero.elapsedText());
+    }
+
+    @Test
+    public void theAppsPageIsLitByHouseLight() throws Exception {
+        HomeActivity home = start().get();
+        StageView stage = home.findViewById(R.id.stage);
+        assertEquals(StageView.HOME, stage.mode());
+        home.findViewById(R.id.tab_apps).requestFocus();
+        idle();
+        assertEquals(StageView.APPS, stage.mode());
+        assertTrue(Scene.house().sameAs(stage.scene()));
+        assertEquals("4 apps", text(home, R.id.apps_count));
+        home.findViewById(R.id.tab_home).requestFocus();
+        idle();
+        assertEquals(StageView.HOME, stage.mode());
+        assertFalse(Scene.house().sameAs(stage.scene()));
+    }
+
+    @Test
+    public void theFocusedCardIsTheBrightest() throws Exception {
+        HomeActivity home = start().get();
+        idle();
+        View focused = card(home, 0, 0), other = card(home, 0, 1);
+        assertEquals(1f, focused.getAlpha(), 0.01f);
+        assertTrue("others step back: " + other.getAlpha(), other.getAlpha() < 0.7f);
+        assertTrue(((TileView) focused.findViewById(R.id.card)).showsFocus());
+        assertFalse(((TileView) other.findViewById(R.id.card)).showsFocus());
+        // The row's title lights up in the scene's colour.
+        TextView title = ((View) focused.getParent().getParent()).findViewById(R.id.row_title);
+        assertEquals(home.scene().label, title.getCurrentTextColor());
+    }
+
+    @Test
+    public void theCogOpensSettingsWithTheTvsOwnFirst() throws Exception {
+        HomeActivity home = start().get();
+        home.findViewById(R.id.tab_settings).performClick();
+        List<String> items = sheetItems();
+        assertEquals("TV settings", items.get(0));
+        assertTrue(items.contains("Hidden apps (0)"));
+        choose("TV settings");
+        Intent started = shadowOf(home).getNextStartedActivity();
+        assertNotNull(started);
+        assertEquals(Settings.ACTION_SETTINGS, started.getAction());
+    }
+
+    private static float hue(int colour) {
+        float[] hsv = new float[3];
+        android.graphics.Color.colorToHSV(colour, hsv);
+        return hsv[0];
     }
 
     @Test
@@ -491,18 +571,19 @@ public class HomeActivityTest {
         HomeActivity home = start().get();
 
         card(home, 1, 0).requestFocus(); // VLC: no shows, nothing playing
-        waitFor(() -> VLC.equals(home.heroApp.packageName) && home.hero.showsColourField());
+        waitFor(() -> VLC.equals(home.heroApp.packageName) && home.hero.showsLightWall());
         assertTrue(home.hero.showsCover()); // its icon as a card on top
-        assertEquals(0f, home.findViewById(R.id.hero_ambient).getAlpha(), 0.01f);
         float[] hsv = new float[3];
-        android.graphics.Color.colorToHSV(home.hero.fieldColour(), hsv);
+        android.graphics.Color.colorToHSV(home.hero.wallColour(), hsv);
         assertTrue("glows orange, not " + hsv[0], hsv[0] > 20 && hsv[0] < 45 && hsv[1] > 0.5f);
+        // The orange keys the light, with a teal fill.
+        assertTrue("teal fill, not " + hue(home.scene().fill), hue(home.scene().fill) > 160 && hue(home.scene().fill) < 190);
 
-        // Something playing in it: the cover's blur replaces the colours.
+        // Something playing in it: the LP, lit by the cover's colours, replaces the wall.
         play(VLC, "Midnight City", "M83", cover());
-        idle();
-        assertFalse(home.hero.showsColourField());
-        assertTrue(home.findViewById(R.id.hero_ambient).getAlpha() > 0.8f);
+        waitFor(() -> hue(home.scene().key) > 300);
+        assertFalse(home.hero.showsLightWall());
+        assertTrue(home.hero.showsRecord());
     }
 
     @Test
@@ -551,8 +632,9 @@ public class HomeActivityTest {
         // Nothing playing: Spotify's card shows what was played, with its cover, instead of the logo.
         card(home, 0, 2).requestFocus();
         waitFor(() -> "Midnight City".equals(text(home, R.id.hero_title)) && home.hero.showsCover());
-        assertEquals("Recently played on Spotify", text(home, R.id.hero_kind));
-        assertEquals("M83", text(home, R.id.hero_desc));
+        assertEquals("Recently played · Spotify", home.hero.eyebrowText());
+        assertEquals("M83", text(home, R.id.hero_kind));
+        assertEquals(View.GONE, home.findViewById(R.id.hero_desc).getVisibility());
         assertEquals(View.GONE, home.findViewById(R.id.hero_credit).getVisibility());
 
         // Apps with no history keep their banner.
@@ -605,7 +687,7 @@ public class HomeActivityTest {
         assertTrue("treble leads: " + bass + " " + voice + " " + treble, treble > bass && treble > voice);
 
         // The menu says so.
-        home.findViewById(R.id.tab_options).performClick();
+        home.findViewById(R.id.tab_settings).performClick();
         choose("Audio visualizer: On");
         assertTrue(sheetMessage().contains("it follows the music."));
         choose("Close");
@@ -660,13 +742,13 @@ public class HomeActivityTest {
         assertTrue(max(levels) > 0.2f);
 
         // The menu offers to allow it, and to turn the wave off.
-        home.findViewById(R.id.tab_options).performClick();
+        home.findViewById(R.id.tab_settings).performClick();
         choose("Audio visualizer: On");
         assertTrue(sheetMessage().contains("Deco isn't allowed to hear the TV's sound"));
         assertEquals(List.of("Let Deco hear the TV's sound", "Turn off the visualizer", "Close"), sheetItems());
         choose("Turn off the visualizer");
         assertFalse(home.hero.showsWave());
-        home.findViewById(R.id.tab_options).performClick();
+        home.findViewById(R.id.tab_settings).performClick();
         assertTrue(sheetItems().contains("Audio visualizer: Off"));
     }
 
@@ -745,7 +827,7 @@ public class HomeActivityTest {
     @Test
     public void withoutNotificationAccessThereIsNoPlayerRow() throws Exception {
         HomeActivity home = start().get();
-        home.findViewById(R.id.tab_options).performClick();
+        home.findViewById(R.id.tab_settings).performClick();
         idle();
         assertTrue(sheetItems().contains("Now playing: Off"));
         assertEquals(View.GONE, home.findViewById(R.id.np_bar).getVisibility());

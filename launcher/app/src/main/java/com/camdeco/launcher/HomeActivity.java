@@ -14,8 +14,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.Bitmap;
-import android.graphics.RenderEffect;
-import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
@@ -49,8 +47,11 @@ import java.util.function.Consumer;
  * a pill of tabs sits on top, and rows of cards run along the bottom. Streaming apps fill the hero
  * with their shows, and whatever is playing gets its own row. The Apps tab shows every app in a
  * grid, where the order can be changed.
+ *
+ * Everything sits on a stage in haze (StageView), lit by a scene: on Home, the colours of the
+ * focused app or of the album cover playing; on Apps, amber house light.
  */
-public class HomeActivity extends Activity implements CardAdapter.Listener {
+public class HomeActivity extends Activity implements CardAdapter.Listener, Scene.Holder {
     static final int COLUMNS = 5;
     /** Google Play Store, opened from the top bar. */
     static final String PLAY_STORE = "com.android.vending";
@@ -99,6 +100,13 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private View empty;
     private TextView hint;
     private TabBar tabs;
+    private StageView stage;
+    private TextView appsCount;
+    /** The light on screen, and Home's light (kept while the Apps page shows house light). */
+    private Scene scene = Scene.promise();
+    private Scene homeScene = Scene.promise();
+    /** The title of the row whose card has focus, lit in the scene's colour. */
+    private TextView activeRowTitle;
     private View tabHome;
     private View tabApps;
     private View npBar;
@@ -109,7 +117,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
     private View storeButton;
     /** What the TV is playing, for the sound wave under the song. */
     SoundWave soundWave;
-    private Bitmap waveArt;
+    /** The cover whose colours light the stage while it plays. */
+    private Bitmap sceneArt;
     private boolean resumed;
     /** The song in the mini player, so a moment without its cover doesn't swap in the app icon. */
     private String playerSong;
@@ -171,7 +180,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         soundWave = new SoundWave(this);
         hero.setWaveSource(soundWave);
 
+        stage = findViewById(R.id.stage);
+        stage.setLevelSource(findViewById(R.id.hero_wave));
         appsPage = findViewById(R.id.apps_page);
+        appsCount = findViewById(R.id.apps_count);
         empty = findViewById(R.id.empty);
         hint = findViewById(R.id.hint);
         tabs = findViewById(R.id.tabs);
@@ -192,14 +204,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
             NowPlaying.Track track = nowPlaying.track();
             if (focused && track != null && page == PAGE_HOME) showTrackHero(track);
         });
-
-        ImageView heroAmbient = findViewById(R.id.hero_ambient);
-        if (Build.VERSION.SDK_INT >= 31) {
-            float blur = 48 * getResources().getDisplayMetrics().density;
-            heroAmbient.setRenderEffect(RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP));
-        } else {
-            heroAmbient.setVisibility(View.GONE); // no cheap blur before Android 12
-        }
 
         // Home: the focused row always sits just under the hero's text; rows above it scroll up
         // over the hero, which fades away.
@@ -235,8 +239,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         tabApps.setOnClickListener(v -> focusContent());
         storeButton = findViewById(R.id.tab_store);
         storeButton.setOnClickListener(v -> openPackage(PLAY_STORE));
-        findViewById(R.id.tab_settings).setOnClickListener(v -> open(new Intent(Settings.ACTION_SETTINGS)));
-        findViewById(R.id.tab_options).setOnClickListener(v -> showLauncherOptions());
+        findViewById(R.id.tab_settings).setOnClickListener(v -> showLauncherOptions());
 
         // Refresh when apps are installed, removed, updated, enabled or disabled.
         IntentFilter filter = new IntentFilter();
@@ -260,6 +263,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         super.onResume();
         nowPlaying.start(); // also picks up notification access granted while we were away
         hero.resume();
+        stage.setRunning(true);
         resumed = true;
         syncWave();
     }
@@ -269,6 +273,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         if (movingPackage != null) endMove();
         nowPlaying.stop();
         hero.pause();
+        stage.setRunning(false);
         resumed = false;
         syncWave();
         super.onPause();
@@ -336,6 +341,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         String focusedPackage = focusedPackage();
         rowsAdapter.submit(list);
         appsAdapter.submit(visible);
+        appsCount.setText(getResources().getQuantityString(R.plurals.app_count, visible.size(), visible.size()));
         empty.setVisibility(visible.isEmpty() ? View.VISIBLE : View.GONE);
 
         if (!loaded) {
@@ -369,6 +375,9 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         rows.setVisibility(home ? View.VISIBLE : View.GONE);
         appsPage.setVisibility(home ? View.GONE : View.VISIBLE);
         hero.setVisible(home);
+        // Home is lit by what's in focus; Apps by the house light, with the street behind it.
+        stage.setMode(home ? StageView.HOME : StageView.APPS);
+        applyScene(home ? homeScene : Scene.house());
         syncWave();
     }
 
@@ -447,10 +456,14 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
 
     @Override
     public void onCardFocused(View card, AppEntry app, boolean focused) {
-        // The row title turns amber while one of its cards has focus.
+        // The row title lights up in the scene's colour while one of its cards has focus.
         for (View v = card; v != null && v.getParent() instanceof View; v = (View) v.getParent()) {
             if (v.getId() == R.id.row_root) {
-                v.findViewById(R.id.row_title).setActivated(focused);
+                TextView title = v.findViewById(R.id.row_title);
+                title.setActivated(focused);
+                title.setTextColor(focused ? scene.label : getColor(R.color.muted));
+                if (focused) activeRowTitle = title;
+                else if (activeRowTitle == title) activeRowTitle = null;
                 break;
             }
         }
@@ -467,16 +480,18 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
             // Spotify, YouTube...: while they play, their card shows what's playing.
             heroShowsTrack = true;
             hero.showTrack(track, appIcon(track.packageName));
+            updateTrackScene(track);
             syncWave();
             return;
         }
         heroShowsTrack = false;
-        hero.showApp();
+        hero.showApp(app.label);
         syncWave();
 
         AppArt cached = artCache.get(app.packageName);
         if (cached != null) {
-            hero.setAppArt(cached.art, app.banner != null, cached.colours);
+            setHomeScene(Scene.from(cached.colours));
+            hero.setAppArt(cached.art, app.banner != null);
         } else if (!loader.isShutdown()) {
             loader.execute(() -> {
                 Drawable art = repo.loadHeroArt(app);
@@ -484,9 +499,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                 main.post(() -> {
                     if (isDestroyed() || art == null) return;
                     artCache.put(app.packageName, new AppArt(art, colours));
+                    if (heroApp == app && !heroShowsTrack) setHomeScene(Scene.from(colours));
                     // Shows may have taken over the hero meanwhile; they win.
                     if (heroApp == app && hero.currentFeature() == null && !heroShowsTrack) {
-                        hero.setAppArt(art, app.banner != null, colours);
+                        hero.setAppArt(art, app.banner != null);
                     }
                 });
             });
@@ -496,11 +512,11 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         String channel = repo.showArtEnabled() ? ShowArt.channelFor(app) : null;
         List<ShowArt.Feature> shows = channel != null ? showArt.ready(channel) : new ArrayList<>();
         if (!shows.isEmpty()) {
-            hero.showFeatures(shows, heroImages, getString(R.string.tvmaze_credit));
+            hero.showFeatures(shows, heroImages, getString(R.string.tvmaze_credit), app.label, null);
         } else {
             // Media apps (Spotify, YouTube...) when nothing of theirs is playing: what you played last.
             List<ShowArt.Feature> recent = recentlyPlayed(app);
-            if (!recent.isEmpty()) hero.showFeatures(recent, heroImages, null);
+            if (!recent.isEmpty()) hero.showFeatures(recent, heroImages, null, getString(R.string.recently_played), app.label);
         }
         if (channel != null) updateShowArt(app, channel);
     }
@@ -514,8 +530,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                     : item.subtitle != null ? item.subtitle : item.album;
             String when = android.text.format.DateUtils.getRelativeTimeSpanString(
                     item.time, now, android.text.format.DateUtils.MINUTE_IN_MILLIS).toString();
-            list.add(new ShowArt.Feature(item.key().hashCode(), item.title,
-                    getString(R.string.recently_played_on, app.label), null, detail, when, 0,
+            // The label above says "Recently played · Spotify"; under the title, who and when.
+            list.add(new ShowArt.Feature(item.key().hashCode(), item.title, detail, null, null, when, 0,
                     "file:" + MediaHistory.coverFile(this, item).getPath()));
         }
         return list;
@@ -532,7 +548,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
                 updatingChannels.remove(channel);
                 if (isDestroyed() || ready.isEmpty() || !repo.showArtEnabled()) return;
                 if (heroApp == app && !heroShowsTrack && page == PAGE_HOME) {
-                    hero.showFeatures(ready, heroImages, getString(R.string.tvmaze_credit));
+                    hero.showFeatures(ready, heroImages, getString(R.string.tvmaze_credit), app.label, null);
                 }
             });
         });
@@ -543,7 +559,56 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         main.removeCallbacks(heroUpdate);
         heroShowsTrack = true;
         hero.showTrack(track, appIcon(track.packageName));
+        updateTrackScene(track);
         syncWave();
+    }
+
+    // ---- Light ----
+
+    @Override
+    public Scene scene() {
+        return scene;
+    }
+
+    /** Home's light: shown now if Home is on screen, kept for later if not. */
+    private void setHomeScene(Scene newScene) {
+        homeScene = newScene;
+        if (page == PAGE_HOME) applyScene(newScene);
+    }
+
+    /** Lights the stage, the hero, the focused card and its row title in this scene. */
+    private void applyScene(Scene newScene) {
+        if (newScene.sameAs(scene)) return;
+        scene = newScene;
+        stage.setScene(newScene);
+        hero.setScene(newScene);
+        ((TextView) findViewById(R.id.apps_label)).setTextColor(newScene.label);
+        if (activeRowTitle != null) activeRowTitle.setTextColor(newScene.label);
+        View focused = getWindow().getDecorView().findFocus();
+        View card = focused == null ? null : focused.findViewById(R.id.card);
+        if (card != null) {
+            CardAdapter.glow(card);
+            card.invalidate();
+        }
+    }
+
+    /** While a song shows, its cover's colours light the stage, worked out in the background. */
+    private void updateTrackScene(NowPlaying.Track track) {
+        if (track.art == sceneArt && sceneArt != null) return;
+        sceneArt = track.art;
+        Bitmap art = track.art;
+        if (art == null) {
+            AppArt app = artCache.get(track.packageName);
+            setHomeScene(app != null ? Scene.from(app.colours) : Scene.promise());
+            return;
+        }
+        if (loader.isShutdown()) return;
+        loader.execute(() -> {
+            AppColors colours = AppColors.from(new BitmapDrawable(getResources(), art));
+            main.post(() -> {
+                if (!isDestroyed() && sceneArt == art && heroShowsTrack) setHomeScene(Scene.from(colours));
+            });
+        });
     }
 
     // ---- Sound wave ----
@@ -556,29 +621,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         if (show) {
             soundWave.start();
             soundWave.setPlaying(track.playing);
-            updateWaveColours(track);
         } else {
             soundWave.stop();
         }
         hero.showWave(show);
-    }
-
-    /** The line takes the album cover's colours, worked out in the background. */
-    private void updateWaveColours(NowPlaying.Track track) {
-        if (track.art == waveArt && waveArt != null) return;
-        waveArt = track.art;
-        Bitmap art = track.art;
-        if (art == null) {
-            hero.setWaveColours(AppColors.worldly());
-            return;
-        }
-        if (loader.isShutdown()) return;
-        loader.execute(() -> {
-            AppColors colours = AppColors.from(new BitmapDrawable(getResources(), art));
-            main.post(() -> {
-                if (!isDestroyed() && waveArt == art) hero.setWaveColours(colours);
-            });
-        });
     }
 
     private void showSoundWaveSetup() {
@@ -643,7 +689,10 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         bindPlayer(track);
         MediaHistory.record(this, track); // for "Recently played" on the app's card later
         if (heroApp == null) {
-            if (heroShowsTrack) hero.showTrack(track, appIcon(track.packageName)); // mini player focused
+            if (heroShowsTrack) { // mini player focused
+                hero.showTrack(track, appIcon(track.packageName));
+                updateTrackScene(track);
+            }
         } else if (heroShowsTrack || heroApp.packageName.equals(track.packageName)) {
             showHero(heroApp); // the player's card has focus: show (or stop showing) the cover
         }
@@ -803,32 +852,33 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
 
     private void showLauncherOptions() {
         List<AppEntry> hiddenApps = hiddenApps();
+        // The cog in the top bar: the TV's own settings first, then Deco's.
         List<String> items = new ArrayList<>();
+        items.add(getString(R.string.option_tv_settings));
         items.add(getString(R.string.option_hidden_apps, hiddenApps.size()));
         items.add(getString(R.string.option_now_playing, getString(nowPlaying.hasAccess() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_show_art, getString(repo.showArtEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_sound_wave, getString(repo.soundWaveEnabled() ? R.string.on : R.string.off)));
         items.add(getString(R.string.option_home_setup));
-        items.add(getString(R.string.option_tv_settings));
-        Sheet.pick(this, getString(R.string.app_name), null, items, which -> {
+        Sheet.pick(this, getString(R.string.settings), null, items, which -> {
             switch (which) {
                 case 0:
-                    showHiddenApps(hiddenApps);
+                    open(new Intent(Settings.ACTION_SETTINGS));
                     break;
                 case 1:
-                    showNowPlayingSetup();
+                    showHiddenApps(hiddenApps);
                     break;
                 case 2:
-                    toggleShowArt();
+                    showNowPlayingSetup();
                     break;
                 case 3:
-                    showSoundWaveSetup();
+                    toggleShowArt();
                     break;
                 case 4:
-                    showHomeSetup();
+                    showSoundWaveSetup();
                     break;
                 default:
-                    open(new Intent(Settings.ACTION_SETTINGS));
+                    showHomeSetup();
                     break;
             }
         });
@@ -1001,7 +1051,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener {
         return Uri.fromParts("package", app.packageName, null);
     }
 
-    /** A short message in a Worldly pill at the bottom of the screen. */
+    /** A short message in a glass pill at the bottom of the screen. */
     private void showHint(int message) {
         hint.setText(message);
         hint.animate().cancel();

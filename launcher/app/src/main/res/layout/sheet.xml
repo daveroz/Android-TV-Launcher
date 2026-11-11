@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Worldly's floating card: used for every menu and question. -->
+<!-- A glass panel: used for every menu and question. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="520dp"
     android:layout_height="wrap_content"
@@ -15,7 +15,7 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:textColor="@color/text"
-        android:textSize="22sp"
+        android:textSize="20sp"
         android:textStyle="bold" />
 
     <TextView

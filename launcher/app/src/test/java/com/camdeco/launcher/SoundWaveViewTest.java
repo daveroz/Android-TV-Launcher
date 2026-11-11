@@ -146,6 +146,21 @@ public class SoundWaveViewTest {
                 middle > 60 && tip > 0.5f * middle && tip < 0.7f * middle);
     }
 
+    @Test
+    public void bassWearsTheFillColourAndTrebleTheKey() {
+        play(30, 30, 30, 2);
+        Scene signal = new Scene(0xFFFF3B2F, 0xFF3A6BFF, 0xFFFFEAE4); // red key, blue fill
+        view.setScene(signal);
+        int top = view.rows() - 1;
+        assertTrue("bass is blue", Color.blue(view.cellColour(0, top)) > 200 && Color.red(view.cellColour(0, top)) < 90);
+        int treble = view.cellColour(SoundWave.COLUMNS - 1, top);
+        assertTrue("treble is red", Color.red(treble) > 230 && Color.blue(treble) < 90);
+        int voice = view.cellColour(SoundWave.COLUMNS / 2, top);
+        assertTrue("voices blend between", Color.red(voice) > 100 && Color.blue(voice) > 100);
+        int base = view.cellColour(SoundWave.COLUMNS - 1, 0);
+        assertTrue("whiter at the bottom", Color.blue(base) > Color.blue(treble) + 20);
+    }
+
     /** The strongest opacity anywhere in this column. */
     private int brightest(int column) {
         int x = Math.round(column * view.pitch() + view.pitch() * 0.42f);
