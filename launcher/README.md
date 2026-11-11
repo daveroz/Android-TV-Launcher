@@ -135,11 +135,15 @@ show their LP with the record in the sleeve.
 
 Players often resend the song they're playing, sometimes with a new copy of the cover or for a
 moment without one, some drop out for a split second between songs, and many send the next song's
-title a moment before its cover. Deco goes by the song itself (app, title, artist and album), not
-the picture, waits 1.5 seconds before deciding something has stopped, and waits up to 1.5 seconds
-for a new song's cover (keeping the LP and its light as they are until it comes), so none of that
-sends the record back into its sleeve, flashes the app's icon or colour, or flickers the mini
-player.
+title a moment before its cover. Skipping to another part of a song, Spotify sends it again for a
+moment without its cover, or with its logo while the cover loads. Deco goes by the song itself (app,
+title, artist and album, allowing for one of those missing for a moment), not the picture, waits 1.5
+seconds before deciding something has stopped, keeps a song's cover through a moment without it and
+only takes up a different picture for the same song once it has stayed 1.5 seconds, and waits up to
+1.5 seconds for a new song's cover (keeping the LP and its light as they are until it comes). A
+player pausing for an instant doesn't let another app's paused media take the LP away either. So
+none of that sends the record back into its sleeve, flashes the app's icon, logo or colour, or
+flickers the mini player.
 
 ### Audio visualizer
 

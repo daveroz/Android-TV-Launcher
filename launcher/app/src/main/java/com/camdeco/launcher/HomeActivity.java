@@ -102,9 +102,21 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
     /** The app whose cover lit the stage last, and the app's own colour to fall back to if a cover doesn't come. */
     private String sceneApp;
     private final Runnable sceneWithoutCover = this::lightWithoutCover;
+    /** Another app's media stayed in front: the player's card stops showing its song. */
+    private final Runnable otherPlayerCheck = this::checkOtherPlayer;
     private boolean resumed;
     /** The song in the mini player, so a moment without its cover doesn't swap in the app icon. */
     private String playerSong;
+    /** Whether the mini player shows a cover (not the app's icon), and from which app. */
+    private boolean playerHasCover;
+    private String playerApp;
+    /** No cover came for the mini player's new song: the app's icon stands in. */
+    private final Runnable playerIconInstead = () -> {
+        NowPlaying.Track now = nowPlaying.track();
+        if (isDestroyed() || now == null || now.art != null || !now.song().equals(playerSong)) return;
+        npArt.setImageDrawable(appIcon(now.packageName));
+        playerHasCover = false;
+    };
     private boolean trackGoneSoon;
     private final Runnable trackGone = this::onTrackGone;
 
@@ -658,13 +670,23 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
                 hero.showTrack(track, appIcon(track.packageName));
                 updateTrackScene(track);
             }
-        } else if (heroShowsTrack || heroApp.packageName.equals(track.packageName)) {
-            showHero(heroApp); // the player's card has focus: show (or stop showing) the cover
+        } else if (heroApp.packageName.equals(track.packageName)) {
+            main.removeCallbacks(otherPlayerCheck);
+            showHero(heroApp); // the player's card has focus: show its cover
+        } else if (heroShowsTrack) {
+            // The player's card shows its song, and another app's media is in front now: maybe only for a
+            // moment. Look again shortly rather than taking the LP away and bringing it straight back.
+            main.removeCallbacks(otherPlayerCheck);
+            main.postDelayed(otherPlayerCheck, TRACK_GONE_MS);
         }
         syncWave(); // play and pause
     }
 
     /** Nothing has played for a moment: hide the player and show the focused app again. */
+    private void checkOtherPlayer() {
+        if (heroApp != null && heroShowsTrack) showHero(heroApp);
+    }
+
     private void onTrackGone() {
         trackGoneSoon = false;
         if (nowPlaying.track() != null) return;
@@ -682,16 +704,28 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         if (track == null) {
             npBar.setVisibility(View.GONE);
             playerSong = null;
+            main.removeCallbacks(playerIconInstead);
             return;
         }
         npBar.setVisibility(View.VISIBLE);
         npTitle.setText(track.artist != null ? track.title + " · " + track.artist : track.title);
         if (track.art != null) {
+            main.removeCallbacks(playerIconInstead);
             npArt.setImageBitmap(track.art);
+            playerHasCover = true;
         } else if (!track.song().equals(playerSong)) {
-            npArt.setImageDrawable(appIcon(track.packageName)); // a song without a cover
+            if (playerHasCover && track.packageName.equals(playerApp)) {
+                // The next song's title came before its cover: keep the last cover a moment rather than
+                // putting the app's icon in and swapping it straight out again.
+                main.removeCallbacks(playerIconInstead);
+                main.postDelayed(playerIconInstead, Hero.COVER_WAIT_MS);
+            } else {
+                npArt.setImageDrawable(appIcon(track.packageName)); // a song without a cover
+                playerHasCover = false;
+            }
         }
         playerSong = track.song();
+        playerApp = track.packageName;
         npPlay.setImageResource(track.playing ? R.drawable.ic_pause : R.drawable.ic_play);
     }
 

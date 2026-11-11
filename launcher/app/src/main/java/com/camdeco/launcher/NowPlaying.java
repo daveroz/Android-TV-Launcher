@@ -79,6 +79,19 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
     private MediaController current;
     private boolean listening;
 
+    /**
+     * How long a song's cover must stay changed before it's taken up. Players send the song's details again when
+     * you skip to another part of it, often without the cover for a moment or with a stand-in (the app's logo)
+     * until it's loaded again: the cover on show stays rather than blinking away and back.
+     */
+    static final long COVER_SETTLE_MS = 1500;
+    /** The song last shown and the cover kept for it, and a different picture waiting to settle, since when. */
+    private Track steady;
+    private Bitmap steadyArt;
+    private boolean pictureChanging;
+    private long pictureChangingSince;
+    private final Runnable pictureSettled = this::pictureSettled;
+
     private final MediaController.Callback callback = new MediaController.Callback() {
         @Override
         public void onPlaybackStateChanged(PlaybackState state) {
@@ -147,6 +160,13 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
                 if (best == null) best = c;
             }
         }
+        // Nothing playing this instant (the player buffering or between states for a moment, or
+        // paused): stay with the player being followed while it's still worth showing, rather than
+        // jumping to some other app's paused session that happens to come first. Only a player
+        // that's actually playing takes over.
+        if ((best == null || !isPlaying(best)) && sameAsCurrent != null && worthShowing(sameAsCurrent)) {
+            best = sameAsCurrent;
+        }
         // Nothing worth showing right now, but the last player is still around (stopped for a
         // moment between songs, say): keep following it so it's heard the moment it plays again.
         // track() is null meanwhile.
@@ -176,7 +196,66 @@ final class NowPlaying implements MediaSessionManager.OnActiveSessionsChangedLis
     Track track() {
         MediaController c = current;
         if (c == null || !worthShowing(c)) return null;
-        return snapshot(context, c);
+        Track now = snapshot(context, c);
+        return now == null ? null : steadied(now, now());
+    }
+
+    /**
+     * The track with a steady cover. While it's the same song, a moment without its cover or with another picture
+     * (skipping to another part of the song, players resend its details without the cover or with their logo until
+     * it's loaded again) keeps the cover on show; a different picture is only taken up once it has stayed for
+     * {@link #COVER_SETTLE_MS}. Details that drop out for a moment (the artist, the album) are kept too, so it's
+     * still the same song. A new song is taken as it comes.
+     */
+    Track steadied(Track now, long at) {
+        Track last = steady;
+        if (last == null || !sameSong(last, now)) {
+            steady = now;
+            steadyArt = now.art;
+            stopPictureChange();
+            return now;
+        }
+        String artist = now.artist != null ? now.artist : last.artist;
+        String album = now.album != null ? now.album : last.album;
+        Bitmap art = now.art;
+        if (art == null || art == steadyArt) {
+            stopPictureChange(); // a moment without it, or the same picture: the cover stays
+            art = steadyArt;
+        } else if (steadyArt == null) {
+            steadyArt = art; // the song's first picture: no waiting
+            stopPictureChange();
+        } else if (!pictureChanging) {
+            pictureChanging = true;
+            pictureChangingSince = at;
+            handler.removeCallbacks(pictureSettled);
+            handler.postDelayed(pictureSettled, COVER_SETTLE_MS);
+            art = steadyArt;
+        } else if (at - pictureChangingSince >= COVER_SETTLE_MS) {
+            steadyArt = art; // still a different picture: it's the song's cover now
+            stopPictureChange();
+        } else {
+            art = steadyArt;
+        }
+        Track kept = new Track(now.packageName, now.app, now.title, artist, album, art, now.playing, now.position,
+                now.duration, now.updatedAt, now.speed);
+        steady = kept;
+        return kept;
+    }
+
+    private void pictureSettled() {
+        listener.onNowPlayingChanged();
+    }
+
+    private void stopPictureChange() {
+        pictureChanging = false;
+        handler.removeCallbacks(pictureSettled);
+    }
+
+    /** The same song from the same app, allowing for the artist or album missing from one of them. */
+    private static boolean sameSong(Track a, Track b) {
+        return a.packageName.equals(b.packageName) && a.title.equals(b.title)
+                && (a.artist == null || b.artist == null || a.artist.equals(b.artist))
+                && (a.album == null || b.album == null || a.album.equals(b.album));
     }
 
     /** A session's current track whatever its state (for the history), or null without a title. */

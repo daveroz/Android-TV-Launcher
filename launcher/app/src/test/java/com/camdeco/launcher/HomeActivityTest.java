@@ -592,6 +592,83 @@ public class HomeActivityTest {
                 record.songChanging() || !home.hero.showsRecord());
     }
 
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void aHiccupInThePlayerDoesNotLetAnotherAppsPausedMediaTakeTheLpAway() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        // A video paused earlier in YouTube, listed first, and a song playing in Spotify.
+        MediaController youtube = play(YOUTUBE, "A video", "A channel", null);
+        shadowOf(youtube).setPlaybackState(state(PlaybackState.STATE_PAUSED));
+        shadowOf(youtube).executeOnPlaybackStateChanged(youtube.getPlaybackState());
+        MediaController spotify = play("com.spotify.tv.android", "Speed", "Bad Colours", cover());
+        card(home, 0, 2).requestFocus(); // Spotify
+        idle();
+        assertTrue(home.hero.showsRecord());
+        RecordView record = home.hero.recordForTests();
+        android.graphics.drawable.Drawable shown = record.shownCover();
+
+        // Spotify stalls for an instant (paused while it buffers), then plays on.
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PAUSED));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(300));
+        assertTrue("the LP stays", home.hero.showsRecord());
+        org.junit.Assert.assertSame("with its cover", shown, record.shownCover());
+        shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PLAYING));
+        shadowOf(spotify).executeOnPlaybackStateChanged(spotify.getPlaybackState());
+        afterTheGrace();
+        assertTrue(home.hero.showsRecord());
+        assertTrue(record.isPlaying());
+        assertFalse("still the same song", record.songChanging());
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void skippingWithinASongKeepsItsCoverRatherThanTheAppsLogo() throws Exception {
+        installApp("com.spotify.tv.android", "Spotify", Intent.CATEGORY_LEANBACK_LAUNCHER);
+        HomeActivity home = start().get();
+        MediaController spotify = play("com.spotify.tv.android", "Speed", "Bad Colours", cover());
+        card(home, 0, 2).requestFocus(); // Spotify
+        idle();
+        RecordView record = home.hero.recordForTests();
+        android.widget.ImageView miniCover = home.findViewById(R.id.np_art);
+        assertEquals(0xFFDB2777, coverColour(record.shownCover()));
+
+        // Skipping to another part of the song, the player sends its details again: for a moment without
+        // the cover, then with its logo while the cover loads, without the album, then with the cover again.
+        android.graphics.Bitmap logo = android.graphics.Bitmap.createBitmap(96, 96, android.graphics.Bitmap.Config.ARGB_8888);
+        logo.eraseColor(0xFF1DB954);
+        resend(spotify, "Speed", "Bad Colours", null);
+        assertEquals("the cover stays", 0xFFDB2777, coverColour(record.shownCover()));
+        resend(spotify, "Speed", "Bad Colours", logo);
+        assertEquals("not the logo", 0xFFDB2777, coverColour(record.shownCover()));
+        assertEquals("nor in the mini player", 0xFFDB2777, coverColour(miniCover.getDrawable()));
+        resend(spotify, "Speed", null, logo);
+        assertEquals(0xFFDB2777, coverColour(record.shownCover()));
+        assertFalse("the same song", record.songChanging());
+        resend(spotify, "Speed", "Bad Colours", cover());
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(NowPlaying.COVER_SETTLE_MS + 100));
+        assertTrue(home.hero.showsRecord());
+        assertEquals(0xFFDB2777, coverColour(record.shownCover()));
+        assertEquals(0xFFDB2777, coverColour(miniCover.getDrawable()));
+        assertFalse(record.songChanging());
+
+        // A new picture that stays is the song's cover now.
+        android.graphics.Bitmap better = android.graphics.Bitmap.createBitmap(300, 300, android.graphics.Bitmap.Config.ARGB_8888);
+        better.eraseColor(0xFF1E40AF);
+        resend(spotify, "Speed", "Bad Colours", better);
+        assertEquals(0xFFDB2777, coverColour(record.shownCover()));
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(NowPlaying.COVER_SETTLE_MS + 100));
+        assertEquals(0xFF1E40AF, coverColour(record.shownCover()));
+        assertEquals(0xFF1E40AF, coverColour(miniCover.getDrawable()));
+        assertFalse(record.songChanging());
+    }
+
+    private static int coverColour(android.graphics.drawable.Drawable d) {
+        android.graphics.Bitmap b = ((android.graphics.drawable.BitmapDrawable) d).getBitmap();
+        return b.getPixel(b.getWidth() / 2, b.getHeight() / 2);
+    }
+
     /** The player sends the song's details again, as players do. */
     private static void resend(MediaController controller, String title, String artist, android.graphics.Bitmap art) {
         MediaMetadata.Builder metadata = new MediaMetadata.Builder()
