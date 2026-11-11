@@ -13,50 +13,49 @@ import android.view.View;
 import android.view.animation.AnimationUtils;
 
 /**
- * The hero for an app: a small light show in its colour, on the right, after Justice's stage. Up
- * top, angled panels of small lamps hang in a fan and twinkle, with chases running down them. Below,
- * clusters of tall bar lights stand at different depths in the haze, each fading up and down in its
- * own time and now and then flashing; a few bright points pop on and fade. Every light has a sharp
- * core, white-hot when it's brightest, and a soft round glow, drawn small and stretched like light
- * in fog. One colour only: the app's own.
+ * The hero for an app: a wall of square lamps in its colour, on the right where an album cover
+ * would be, played like the LED panels on Justice's stage. The lamps stand in strips three wide,
+ * split into an upper and a lower panel, and each panel runs its own pattern for a couple of
+ * seconds before switching: filling down or up, a band running down it, a flickering pixel pattern,
+ * a flash that fades, all on at once, or dark. Dark lamps keep a faint ember, so the panels still
+ * read. Each lit lamp is sharp, white-hot at full strength, with a soft round glow, and lit panels
+ * throw soft beams down into the haze. One colour only: the app's own.
  */
 public class LightShowView extends View {
-    private static final long FRAME_MS = 33;
-    /** The glow layer is drawn at this fraction of the show's size. */
+    private static final int ROWS = 10, COLUMNS = 22;
+    /** Strips are this many lamps wide, with a dark column between them. */
+    private static final int STRIP = 3;
+    private static final int PANEL_ROWS = ROWS / 2;
+    private static final int STRIPS = (COLUMNS + 1) / (STRIP + 1) + 1;
+    /** Each lamp's size, as a share of the pitch. */
+    private static final float LAMP = 0.7f;
+    /** How long a panel keeps one pattern, in seconds, and how long it takes to switch. */
+    private static final float PATTERN_SECONDS = 2.2f, SWITCH_SECONDS = 0.12f;
+    private static final int OFF = 0, FILL_DOWN = 1, FILL_UP = 2, CHASE = 3, PIXELS = 4, FLASH = 5, FULL = 6;
+    /** How often each pattern comes up, out of 20. */
+    private static final int[] PATTERN_WEIGHTS = {4, 3, 2, 3, 4, 2, 2};
     private static final float SOFT = 1 / 8f;
-
-    /** Overhead panels: where (share of the width), and how far each one tilts. */
-    private static final float[] PANEL_X = {0.16f, 0.39f, 0.62f, 0.86f};
-    private static final float[] PANEL_TILT = {-24f, -9f, 9f, 24f};
-    private static final int PANEL_COLS = 4, PANEL_ROWS = 7;
-    /** Bar clusters: x and the bars' foot (shares of the area), nearness, how many bars, timing. */
-    private static final float[][] CLUSTERS = {
-            {0.08f, 0.60f, 0.70f, 3, 0.0f},
-            {0.24f, 0.86f, 0.95f, 4, 1.7f},
-            {0.40f, 0.52f, 0.60f, 2, 3.1f},
-            {0.55f, 0.95f, 1.10f, 3, 4.6f},
-            {0.70f, 0.66f, 0.75f, 4, 2.3f},
-            {0.85f, 0.90f, 1.00f, 2, 5.4f},
-            {0.96f, 0.56f, 0.65f, 3, 0.9f},
-    };
-    /** Points that pop on and fade: x, y (shares of the area), and timing. */
-    private static final float[][] FLARES = {{0.78f, 0.30f, 0.3f}, {0.95f, 0.45f, 0.7f}, {0.60f, 0.24f, 0.1f}};
+    private static final long FRAME_MS = 33;
 
     private final float density;
-    private final Paint core = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint lamp = new Paint();
     private final Paint glowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint softPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private final Bitmap sprite = Glow.sprite();
+    private final Bitmap beam = beamSprite();
     private final RectF rect = new RectF();
     private final Rect softBounds = new Rect();
+    /** This frame's strength for each lamp, and each panel's average. */
+    private final float[] values = new float[ROWS * COLUMNS];
+    private final float[] panelLight = new float[STRIPS * 2];
     private Bitmap soft;
     private Canvas softCanvas;
     private Scene scene = Scene.promise();
     private boolean running;
     private long lastFrame;
     private float time;
-    /** The area the show fills, in the view. */
-    private float left, top, right, bottom;
+    /** The wall's top-left lamp space, and the pitch and size of the lamps. */
+    private float left, top, pitch, cell;
 
     public LightShowView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -82,21 +81,32 @@ public class LightShowView extends View {
         if (run) invalidate();
     }
 
-    /** The area the show fills: left, top, right, bottom in the view (for tests). */
+    /** The wall's left, top, right and bottom in the view, around its lamps' spaces (for tests). */
     float[] showBounds() {
-        return new float[]{left, top, right, bottom};
+        return new float[]{left, top, left + COLUMNS * pitch, top + ROWS * pitch};
+    }
+
+    /** Moves the show on by this many seconds (for tests). */
+    void advanceForTests(float seconds) {
+        time += seconds;
+    }
+
+    /** How lit a lamp is right now, 0 to 1, after the last frame drawn (for tests). */
+    float lampForTests(int column, int row) {
+        return values[row * COLUMNS + column];
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        // Right of the text, from under the top bar to just above the rows, out to the screen margin.
-        float margin = getResources().getDimension(R.dimen.overscan_h);
-        left = Math.max(margin + 464 * density, w * 0.53f);
-        right = w - margin;
-        top = 80 * density;
-        bottom = getResources().getDimension(R.dimen.hero_top) + getResources().getDimension(R.dimen.hero_card_height);
-        int spread = Math.round(48 * density);
-        softBounds.set(Math.round(left) - spread, Math.round(top) - spread, Math.round(right) + spread, Math.round(bottom) + spread);
+        // As tall as the cover would be, level with the text, its right edge at the screen margin.
+        float height = getResources().getDimension(R.dimen.hero_card_height);
+        pitch = height / ROWS;
+        cell = pitch * LAMP;
+        left = w - getResources().getDimension(R.dimen.overscan_h) - COLUMNS * pitch;
+        top = getResources().getDimension(R.dimen.hero_top);
+        // The glow spreads around the wall, and the beams fall well below it, behind the rows.
+        softBounds.set(Math.round(left - 64 * density), Math.round(top - 40 * density),
+                Math.round(left + COLUMNS * pitch + 40 * density), Math.round(top + height + 150 * density));
         if (soft != null) soft.recycle();
         soft = null;
         if (softBounds.width() > 0 && softBounds.height() > 0) {
@@ -115,133 +125,154 @@ public class LightShowView extends View {
         float dt = lastFrame == 0 ? 0f : Math.min(0.1f, (now - lastFrame) / 1000f);
         lastFrame = now;
         time += dt;
+        light();
+
         soft.eraseColor(0);
-        float w = right - left, h = bottom - top;
+        float gap = (pitch - cell) / 2;
+        // Beams from the lit panels, falling down and a little to the left into the haze.
+        for (int s = 0; s < STRIPS; s++) {
+            for (int p = 0; p < 2; p++) {
+                float b = panelLight[s * 2 + p];
+                if (b < 0.15f) continue;
+                int first = s * (STRIP + 1);
+                int width = Math.min(STRIP, COLUMNS - first);
+                if (width <= 0) continue;
+                float x = left + (first + width / 2f) * pitch;
+                float y = top + (p + 1) * PANEL_ROWS * pitch - gap;
+                drawBeam(x, y, width * pitch * 2.4f, 140 * density, 0.4f * b);
+            }
+        }
+        // A soft round glow around every lit lamp.
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLUMNS; c++) {
+                float v = values[r * COLUMNS + c];
+                if (v < 0.08f) continue;
+                float x = left + c * pitch + gap, y = top + r * pitch + gap;
+                glowPaint.setColor(Scene.alpha(scene.key, v * 0.5f));
+                rect.set(x - 1.6f * cell, y - 1.6f * cell, x + 2.6f * cell, y + 2.6f * cell);
+                softCanvas.drawBitmap(sprite, null, rect, glowPaint);
+            }
+        }
+        canvas.drawBitmap(soft, null, softBounds, softPaint);
 
-        // A warm haze over the whole area, brighter while the clusters are up.
-        float lit = 0f;
-        for (float[] c : CLUSTERS) lit += cluster(c[4]) / CLUSTERS.length;
-        glow(left + w * 0.55f, top + h * 0.6f, w * 0.7f, 0.10f + 0.12f * lit);
-
-        // Pass one: the glows, into the small layer. Pass two: the sharp lights over them.
-        for (int pass = 0; pass < 2; pass++) {
-            if (pass == 1) canvas.drawBitmap(soft, null, softBounds, softPaint);
-            drawPanels(canvas, pass == 0, w);
-            drawClusters(canvas, pass == 0, w, h);
-            drawFlares(canvas, pass == 0, w, h);
+        // The lamps: a faint ember when dark, white-hot at full strength.
+        int ember = Scene.mix(scene.key, 0xFF000000, 0.35f);
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLUMNS; c++) {
+                if (c % (STRIP + 1) == STRIP) continue; // the dark column between strips
+                float v = values[r * COLUMNS + c];
+                int colour = v < 0.02f ? ember : Scene.mix(scene.key, scene.led, 0.5f * v * v);
+                lamp.setColor(Scene.alpha(colour, 0.06f + 0.84f * v));
+                float x = left + c * pitch + gap, y = top + r * pitch + gap;
+                canvas.drawRect(x, y, x + cell, y + cell, lamp);
+            }
         }
         if (running) postInvalidateDelayed(FRAME_MS);
     }
 
-    /** The overhead panels: small lamps that twinkle, with chases running down each panel. */
-    private void drawPanels(Canvas canvas, boolean glows, float w) {
-        float dot = 2.4f * density, pitch = 4.8f * density;
-        for (int p = 0; p < PANEL_X.length; p++) {
-            float px = left + w * PANEL_X[p], py = top;
-            float envelope = 0.5f + 0.5f * (float) Math.sin(time * 0.37f + p * 1.7f);
-            double angle = Math.toRadians(PANEL_TILT[p]);
-            float cos = (float) Math.cos(angle), sin = (float) Math.sin(angle);
-            for (int r = 0; r < PANEL_ROWS; r++) {
-                float chase = (float) Math.pow(Math.max(0, Math.sin(r * 0.8 - time * 2.2 + p * 1.3)), 6) * envelope;
-                for (int c = 0; c < PANEL_COLS; c++) {
-                    float seed = seed(p * 97 + r * 13 + c);
-                    float twinkle = (float) Math.pow(Math.max(0, Math.sin(time * (1.3 + seed * 2.1) + seed * 50)), 6);
-                    float v = Math.min(1f, 0.85f * Math.max(twinkle, chase));
-                    if (v < 0.08f) continue;
-                    // The panel hangs from its top centre and tilts.
-                    float lx = (c - (PANEL_COLS - 1) / 2f) * pitch, ly = r * pitch + pitch;
-                    float x = px + lx * cos - ly * sin, y = py + lx * sin + ly * cos;
-                    if (glows) {
-                        glow(x, y, dot * 3f, v * 0.5f);
-                    } else {
-                        core.setColor(Scene.alpha(Scene.mix(scene.key, scene.led, 0.5f * v * v), 0.25f + 0.75f * v));
-                        canvas.drawCircle(x, y, dot / 2, core);
+    /** Works out every lamp's strength for now, panel by panel, easing from one pattern to the next. */
+    private void light() {
+        for (int s = 0; s < STRIPS; s++) {
+            for (int p = 0; p < 2; p++) {
+                int panel = s * 2 + p;
+                float clock = time / PATTERN_SECONDS + seed(panel * 7 + 3) * 3;
+                int turn = (int) Math.floor(clock);
+                float local = (clock - turn) * PATTERN_SECONDS;
+                int now = pattern(panel, turn), before = pattern(panel, turn - 1);
+                float blend = Math.min(1f, local / SWITCH_SECONDS);
+                float sum = 0f;
+                int count = 0;
+                for (int r = 0; r < PANEL_ROWS; r++) {
+                    for (int k = 0; k < STRIP; k++) {
+                        int c = s * (STRIP + 1) + k;
+                        if (c >= COLUMNS) continue;
+                        float v = lamp(now, local, r, k, panel, turn);
+                        if (blend < 1f) {
+                            float old = lamp(before, local + PATTERN_SECONDS, r, k, panel, turn - 1);
+                            v = old + (v - old) * blend;
+                        }
+                        values[(p * PANEL_ROWS + r) * COLUMNS + c] = v;
+                        sum += v;
+                        count++;
                     }
                 }
+                panelLight[panel] = count == 0 ? 0f : sum / count;
             }
         }
     }
 
-    /** The bar clusters: each fades up and down in its own time, flickers, and now and then flashes. */
-    private void drawClusters(Canvas canvas, boolean glows, float w, float h) {
-        for (int k = 0; k < CLUSTERS.length; k++) {
-            float[] c = CLUSTERS[k];
-            float near = c[2];
-            int bars = (int) c[3];
-            float barW = 6 * density * near, gap = 3.5f * density * near;
-            float width = bars * barW + (bars - 1) * gap;
-            float x0 = left + w * c[0] - width / 2, foot = top + h * c[1];
-            float envelope = cluster(c[4]);
-            float flash = (float) Math.pow(Math.max(0, Math.sin(time * 7.3 + c[4] * 3)), 30) * (1 - envelope);
-            float tallest = 0f;
-            for (int b = 0; b < bars; b++) tallest = Math.max(tallest, barHeight(k, b, near));
-            if (glows) {
-                float v = Math.min(1f, envelope + 0.6f * flash);
-                glow(x0 + width / 2, foot - tallest / 2, 70 * density * near, 0.6f * v);
+    /** Which pattern a panel plays on a given turn: picked by chance, the same every time. */
+    private static int pattern(int panel, int turn) {
+        float pick = seed(panel * 131 + turn * 17) * 20;
+        for (int i = 0; i < PATTERN_WEIGHTS.length; i++) {
+            pick -= PATTERN_WEIGHTS[i];
+            if (pick < 0) return i;
+        }
+        return OFF;
+    }
+
+    /** One lamp's strength in a pattern, {@code local} seconds into it; row and column within the panel. */
+    private float lamp(int pattern, float local, int row, int column, int panel, int turn) {
+        float progress = Math.min(1f, local / (PATTERN_SECONDS * 0.6f));
+        float eased = progress * progress * (3 - 2 * progress);
+        switch (pattern) {
+            case FILL_DOWN:
+                return row < eased * (PANEL_ROWS + 0.99f) ? flicker(row, column, panel) : 0f;
+            case FILL_UP:
+                return PANEL_ROWS - 1 - row < eased * (PANEL_ROWS + 0.99f) ? flicker(row, column, panel) : 0f;
+            case CHASE: {
+                float head = (local * 4f) % (PANEL_ROWS + 2) - 1;
+                float d = Math.abs(row - head);
+                return d < 1.5f ? 1f - d / 1.5f : 0f;
             }
-            for (int b = 0; b < bars; b++) {
-                float seed = seed(k * 31 + b);
-                float flicker = 0.85f + 0.15f * (float) Math.sin(time * 13 + seed * 20);
-                float v = Math.min(1f, envelope * flicker + 0.6f * flash);
-                if (v < 0.05f) continue;
-                float bh = barHeight(k, b, near);
-                float x = x0 + b * (barW + gap);
-                if (glows) {
-                    glow(x + barW / 2, foot - bh / 2, bh * 0.9f, 0.4f * v);
-                    continue;
-                }
-                core.setColor(Scene.alpha(Scene.mix(scene.key, scene.led, 0.35f * v), 0.3f + 0.7f * v));
-                rect.set(x, foot - bh, x + barW, foot);
-                canvas.drawRect(rect, core);
-                // A white-hot line down the middle while it's bright.
-                core.setColor(Scene.alpha(scene.led, 0.8f * v * v));
-                float inset = barW * 0.3f;
-                rect.set(x + inset, foot - bh + inset, x + barW - inset, foot - inset);
-                canvas.drawRect(rect, core);
+            case PIXELS: {
+                int frame = (int) (local / 0.18f);
+                return seed(panel * 59 + turn * 211 + frame * 31 + row * 7 + column) > 0.5f ? 0.9f : 0f;
             }
+            case FLASH:
+                return (float) Math.exp(-local * 2.5f);
+            case FULL:
+                return flicker(row, column, panel);
+            default:
+                return 0f;
         }
     }
 
-    /** Bright points that pop on, then fade. */
-    private void drawFlares(Canvas canvas, boolean glows, float w, float h) {
-        for (float[] f : FLARES) {
-            float period = 2.8f + f[2] * 2f;
-            float local = (time + f[2] * 7) % period;
-            float v = local < 0.08f ? local / 0.08f : (float) Math.exp(-(local - 0.08f) * 2.2f);
-            if (v < 0.05f) continue;
-            float x = left + w * f[0], y = top + h * f[1];
-            for (int i = 0; i < 2; i++) { // they come in pairs
-                float px = x + (i - 0.5f) * 7 * density;
-                if (glows) {
-                    glow(px, y, 12 * density, 0.6f * v);
-                } else {
-                    core.setColor(Scene.alpha(Scene.mix(scene.key, scene.led, 0.6f * v), v));
-                    canvas.drawCircle(px, y, 2.2f * density, core);
-                }
-            }
-        }
+    /** Lit lamps shimmer a little, each in its own time. */
+    private float flicker(int row, int column, int panel) {
+        float s = seed(panel * 37 + row * 5 + column);
+        return 0.82f + 0.18f * (float) Math.sin(time * (9 + s * 6) + s * 30);
     }
 
-    /** How lit a cluster is now: up for a while, down for a while, fading between. */
-    private float cluster(float phase) {
-        float s = 0.5f + 0.5f * (float) Math.sin(time * 0.55f + phase);
-        float t = Math.max(0f, Math.min(1f, (s - 0.05f) / 0.35f));
-        return t * t * (3 - 2 * t);
-    }
-
-    private float barHeight(int cluster, int bar, float near) {
-        return 32 * density * near * (0.75f + 0.5f * seed(cluster * 31 + bar + 7));
-    }
-
-    /** A soft round glow around a point, into the small layer. */
-    private void glow(float x, float y, float radius, float strength) {
-        if (strength < 0.01f) return;
+    /** A soft beam from a point, falling down and a little to the left, widening as it fades. */
+    private void drawBeam(float x, float y, float width, float length, float strength) {
         glowPaint.setColor(Scene.alpha(scene.key, Math.min(1f, strength)));
-        rect.set(x - radius, y - radius, x + radius, y + radius);
-        softCanvas.drawBitmap(sprite, null, rect, glowPaint);
+        softCanvas.save();
+        softCanvas.rotate(12f, x, y);
+        rect.set(x - width / 2, y, x + width / 2, y + length);
+        softCanvas.drawBitmap(beam, null, rect, glowPaint);
+        softCanvas.restore();
     }
 
-    /** A fixed pseudo-random number per light, so no two flicker in step. */
+    /** A beam's shape: narrow and strong at the top, wider and fading to nothing at the bottom. */
+    private static Bitmap beamSprite() {
+        int w = 32, h = 96;
+        Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8);
+        int[] pixels = new int[w * h];
+        for (int y = 0; y < h; y++) {
+            float t = y / (float) (h - 1);
+            float half = 0.3f + 0.7f * t;
+            for (int x = 0; x < w; x++) {
+                float across = Math.abs((x + 0.5f) / w * 2 - 1) / half;
+                float a = across >= 1f ? 0f : (float) Math.pow(1 - t, 1.4) * (1 - across * across);
+                pixels[y * w + x] = Math.round(a * 255) << 24;
+            }
+        }
+        bitmap.setPixels(pixels, 0, w, 0, 0, w, h);
+        return bitmap;
+    }
+
+    /** A fixed pseudo-random number, so the patterns never repeat in step. */
     private static float seed(int i) {
         double s = Math.sin(i * 127.1 + 311.7) * 43758.5453;
         return (float) (s - Math.floor(s));

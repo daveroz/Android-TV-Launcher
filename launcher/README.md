@@ -30,11 +30,13 @@ light takes each app's own colours.*
   visualizer beside it; a playing video shows its thumbnail full-screen. A glass pill of
   tabs sits at the top, the DECO mark on the left and the clock on the right. Rows of glass cards
   run along the bottom, and the next row peeks in.
-- **Every app gets a small light show** in its own colour, after Justice's stage: angled panels of
-  small lamps hang overhead and twinkle, with chases running down them; below, clusters of tall
-  bar lights stand at different depths in the haze, each fading up and down in its own time and
-  now and then flashing; a few bright points pop on and fade. Each light is sharp, white-hot when
-  brightest, with a soft round glow. Streaming apps get it too, instead of show previews.
+- **Every app gets a light show** in its own colour, where an album cover would be: a wall of
+  square lamps played like the LED panels on Justice's stage. The lamps stand in strips three
+  wide, in an upper and a lower panel, and each panel runs its own pattern for a couple of seconds
+  before switching: filling down or up, a band running down it, a flickering pixel pattern, a
+  flash that fades, all on, or dark. Dark lamps keep a faint ember so the panels still read; lit
+  ones are white-hot at full strength with a soft round glow, and lit panels throw soft beams down
+  into the haze. Streaming apps get it too, instead of show previews.
 - **Cards are one solid colour with a logo that matches the others:** the app's brand colour with
   its logo in white (or dark, on a light colour), from [Simple Icons](https://simpleicons.org)
   (CC0; each brand belongs to its owner) for about 40 TV apps: Netflix, YouTube, Spotify, Max,
