@@ -13,9 +13,9 @@ import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
 
 /**
- * A tile that is always 16:9, the shape of Android TV app banners. Focused, it shows a thin edge
- * in the scene's key colour (its lifted shadow glows in the scene's colours, see CardAdapter).
- * While its app is being moved, the edge is dashed instead.
+ * A tile that is always 16:9, in its app's own colour with its logo. Focused, it shows a thin
+ * white edge (its lifted shadow glows in the scene's colour, see CardAdapter). While its app is
+ * being moved, the edge is dashed instead.
  */
 public class TileView extends FrameLayout {
     private static final int[] FOCUSED = {android.R.attr.state_focused};
@@ -37,18 +37,8 @@ public class TileView extends FrameLayout {
         dashed.setStyle(Paint.Style.STROKE);
         dashed.setStrokeWidth(2 * density);
         dashed.setPathEffect(new DashPathEffect(new float[]{8 * density, 5 * density}, 0));
-        // The banner is rounded on its own, so the edge can be drawn over it.
-        setOutlineProvider(rounded(radius));
-    }
-
-    @Override
-    protected void onFinishInflate() {
-        super.onFinishInflate();
-        View banner = findViewById(R.id.banner);
-        if (banner != null) {
-            banner.setOutlineProvider(rounded(radius));
-            banner.setClipToOutline(true);
-        }
+        setOutlineProvider(rounded(radius)); // the shape of its glow
+        setClipToOutline(true);
     }
 
     @Override
@@ -82,14 +72,14 @@ public class TileView extends FrameLayout {
         if (moving()) {
             float inset = dashed.getStrokeWidth() / 2;
             rect.set(inset, inset, w - inset, h - inset);
-            dashed.setColor(scene.label);
+            dashed.setColor(scene.led);
             canvas.drawRoundRect(rect, radius, radius, dashed);
             return;
         }
         if (!showsFocus()) return;
         float inset = density / 2;
         rect.set(inset, inset, w - inset, h - inset);
-        edge.setColor(Scene.alpha(scene.key, 0.7f));
+        edge.setColor(Scene.alpha(scene.led, 0.85f));
         canvas.drawRoundRect(rect, radius, radius, edge);
     }
 

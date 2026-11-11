@@ -19,29 +19,33 @@ light takes each app's own colours.*
   of the screen's size and stretched across it, so it spreads like light in fog. Fog banks drift
   slowly behind everything and keep moving even when the music stops. A fine grain keeps the haze
   smooth.
-- **Two colours and white, never more.** Each screen has a *key* light, taken from what's in focus
-  (the album cover playing, or the focused app's own colour), and a *fill* that answers it low
-  from the opposite corner: cyan meets magenta, red meets blue, amber meets teal, green meets
-  violet. Grey art gets cyan and magenta.
-- **The background is a quiet light show,** the same on Home and Apps. Two big washes of the key
-  and fill drift slowly and swell a little with the bass, and a row of small lamps far overhead
-  runs a slow chase, like a lighting rig seen through haze.
+- **One colour and white, never more.** The light is the primary colour of what's in focus: the
+  focused app's own colour, or the main colour of the album cover playing. Apps and covers with no
+  real colour (black, grey, white) get a cool white light.
+- **The background is a quiet light show,** the same on Home and Apps. Two washes of the colour
+  drift slowly and swell a little with the bass, and a row of small lamps far overhead runs a
+  slow chase, like a lighting rig seen through haze.
 - **Layout after the Apple TV app.** The focused app fills the hero: its name on the left and a
-  wall of lamps on the right; music shows its album cover as an LP on the right with the
+  small light show on the right; music shows its album cover as an LP on the right with the
   visualizer beside it; a playing video shows its thumbnail full-screen. A glass pill of
   tabs sits at the top, the DECO mark on the left and the clock on the right. Rows of glass cards
   run along the bottom, and the next row peeks in.
-- **Every app gets a wall of lamps** in its own light, where an album cover would be: a slow
-  sweep in the key colour crosses a slower wave in the fill, and now and then a lamp flares white.
-  Each lamp is sharp with a soft round glow, the bottom row shows faintly on the floor, and the
-  wall fades in from the left, clear of the text. Streaming apps get it too, instead of show
-  previews.
+- **Every app gets a small light show** in its own colour, after Justice's stage: angled panels of
+  small lamps hang overhead and twinkle, with chases running down them; below, clusters of tall
+  bar lights stand at different depths in the haze, each fading up and down in its own time and
+  now and then flashing; a few bright points pop on and fade. Each light is sharp, white-hot when
+  brightest, with a soft round glow. Streaming apps get it too, instead of show previews.
+- **Cards are one solid colour with a logo that matches the others:** the app's brand colour with
+  its logo in white (or dark, on a light colour), from [Simple Icons](https://simpleicons.org)
+  (CC0; each brand belongs to its owner) for about 40 TV apps: Netflix, YouTube, Spotify, Max,
+  Apple TV, Plex, Kodi, VLC, Twitch, Crunchyroll, Paramount+, the Play Store and more. Other apps
+  get their own primary colour and the one-colour icon Android 13+ apps ship for themed icons, or
+  their own icon.
 - **Small labels** say what the hero shows, in spaced-out capitals with a hairline:
   NOW PLAYING — SPOTIFY, RECENTLY PLAYED — SPOTIFY, or TV APP above an app's name. Row titles have a hairline
-  that fades out to the right, and light up in the key colour while one of their cards has focus.
-- **Focus is the brightest thing on screen.** The focused card lifts a little, with a thin edge
-  in the key colour and a glow of the key above it and the fill below; the other cards step back
-  to half strength. In the top bar and menus, focus is a touch of light on the glass with a thin
+  that fades out to the right, and light up in the colour while one of their cards has focus.
+- **Focus is the brightest thing on screen.** The focused card lifts a little, with a thin white
+  edge and a glow of the colour around it; the other cards step back a little. In the top bar and menus, focus is a touch of light on the glass with a thin
   cyan edge; the current tab is simply the brighter one.
 - **Icons are thin lines** (1.6 on a 24 grid, rounded joins); only the play controls are filled.
 - **Type is Carbon+**, the same as Worldly and SAB Monitor: bold for titles, labels and the clock.
@@ -50,7 +54,7 @@ light takes each app's own colours.*
 
 | An app in focus | Apps page | Settings |
 |---|---|---|
-| ![Light wall](docs/preview-app.jpg) | ![Apps page](docs/preview-apps.jpg) | ![Settings menu](docs/preview-menu.png) |
+| ![Light show](docs/preview-app.jpg) | ![Apps page](docs/preview-apps.jpg) | ![Settings menu](docs/preview-menu.png) |
 
 ### Icon
 
@@ -98,7 +102,7 @@ YouTube video's thumbnail full-screen.
 
 **Recently played.** When nothing is playing, Spotify's (and any music app's) card shows what you
 last played in it, taking turns every 8 seconds: the cover as an LP in its sleeve, title, artist
-and when. Video thumbnails aren't shown, so video apps keep their wall of lamps. The launcher notes each track or video as it plays, even while you're in another app, and
+and when. Video thumbnails aren't shown, so video apps keep their light show. The launcher notes each track or video as it plays, even while you're in another app, and
 keeps the last 8 per app with their covers on the TV only (nothing is sent anywhere). It needs the
 same notification access as the mini player, and fills up as you play things.
 
@@ -135,9 +139,9 @@ and runs from the screen margin to the cover, trailing off as it passes behind t
 cells with sound light up; they're see-through, so the cover's glow shows through them, fade more
 toward the top so the text stays easy to read, and each bar's top cell is a little softer still. Each column rises with its part of the music and settles back gently, and the top
 cell of a column fades in and out, so the heights change smoothly. The cells take the album
-cover's colours: bands of its key and fill colour drift slowly across the panel, blending round
-the colour wheel between them so they never turn grey. Cells are a little whiter at the bottom,
-each has the same soft round glow as the wall of lamps (gentle, so they never blow out over the
+cover's primary colour, one colour only, with brighter bands of it drifting slowly across the
+panel. Cells are a little whiter at the bottom,
+each has the same soft round glow as an app's light show (gentle, so they never blow out over the
 haze), and they go dark on pause.
 
 All columns share one volume scale, so a bassy song lights mostly the left and a sung part mostly

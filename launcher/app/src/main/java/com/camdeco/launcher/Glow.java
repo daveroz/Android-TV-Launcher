@@ -3,7 +3,7 @@ package com.camdeco.launcher;
 import android.graphics.Bitmap;
 
 /**
- * The soft round glow behind a sharp light (the wall's lamps, the visualizer's cells): full in the
+ * The soft round glow behind a sharp light (an app's light show, the visualizer's cells): full in the
  * middle and fading to nothing at the edge. It's alpha only, so drawing it takes the paint's
  * colour, and it's drawn into a small layer that's stretched over the screen, like light in fog.
  */

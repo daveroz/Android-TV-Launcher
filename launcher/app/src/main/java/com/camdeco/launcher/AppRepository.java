@@ -8,7 +8,9 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.drawable.AdaptiveIconDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.text.TextUtils;
 
 import java.text.Collator;
@@ -54,8 +56,23 @@ final class AppRepository {
             ActivityInfo ai = ri.activityInfo;
             if (ai == null || out.containsKey(ai.packageName)) continue;
             Drawable banner = leanback ? ai.loadBanner(pm) : null;
-            Drawable icon = banner == null ? ai.loadIcon(pm) : null;
+            Drawable icon = ai.loadIcon(pm);
             CharSequence label = ri.loadLabel(pm);
+            // The card: one solid colour, the app's own, with a logo that matches the others.
+            Brands.Brand brand = Brands.of(ai.packageName);
+            int colour;
+            Drawable logo;
+            int logoKind;
+            if (brand != null) {
+                colour = brand.colour;
+                logo = context.getDrawable(brand.logo);
+                logoKind = AppEntry.LOGO_BRAND;
+            } else {
+                colour = AppColors.primary(banner != null ? banner : icon);
+                Drawable mono = monochrome(icon);
+                logo = mono != null ? mono : icon;
+                logoKind = mono != null ? AppEntry.LOGO_MONOCHROME : AppEntry.LOGO_ICON;
+            }
             String version = null;
             long updated = 0;
             try {
@@ -70,8 +87,14 @@ final class AppRepository {
                     label == null ? ai.packageName : label.toString(),
                     banner, icon, leanback, ai.applicationInfo,
                     banner != null ? ai.getBannerResource() : ai.getIconResource(),
-                    version, updated));
+                    version, updated, colour, logo, logoKind));
         }
+    }
+
+    /** The one-colour icon Android 13+ apps ship for themed icons, or null. */
+    private static Drawable monochrome(Drawable icon) {
+        if (Build.VERSION.SDK_INT < 33 || !(icon instanceof AdaptiveIconDrawable)) return null;
+        return ((AdaptiveIconDrawable) icon).getMonochrome();
     }
 
     /** A separate instance of a drawable, so two views never share bounds or state. */

@@ -9,8 +9,8 @@ import android.util.AttributeSet;
 import android.view.View;
 
 /**
- * How far through the song: a hairline, lit from the left by an LED line that fades from the
- * scene's fill colour to its key, with a soft glow of the key around it.
+ * How far through the song: a hairline, lit from the left by an LED line in the scene's colour,
+ * brightening toward where the song is, with a soft glow around it.
  */
 public class ProgressLineView extends View {
     private final float density;
@@ -53,7 +53,7 @@ public class ProgressLineView extends View {
     }
 
     private void updateShader() {
-        line.setShader(new LinearGradient(0, 0, Math.max(1, getWidth()), 0, scene.fill, scene.key, Shader.TileMode.CLAMP));
+        line.setShader(new LinearGradient(0, 0, Math.max(1, getWidth()), 0, Scene.alpha(scene.key, 0.5f), scene.key, Shader.TileMode.CLAMP));
         glow.setColor(Scene.alpha(scene.key, 0.22f));
     }
 

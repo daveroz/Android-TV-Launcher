@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * The big area at the top of Home. It shows one of three things for what has focus:
- * an app (its name on the left, a wall of lamps in its own light on the right), what was recently
+ * an app (its name on the left, a small light show in its colour on the right), what was recently
  * played in a music app (its covers taking turns, as an LP in its sleeve), or what's playing (the
  * cover as an LP with the visualizer beside it, or a video's thumbnail full-screen). A small label
  * on top says which: TV APP, RECENTLY PLAYED, NOW PLAYING.
@@ -57,8 +57,8 @@ final class Hero {
     /** A video's thumbnail across the screen, with the scrims that fade it into the night. */
     private final View photo;
     private final ImageView art;
-    /** A wall of lamps in the app's own light, on the right. */
-    private final LightWallView wall;
+    /** A small light show in the app's colour, on the right. */
+    private final LightShowView lights;
     /** The music's light panel beside the song. */
     private final SoundWaveView wave;
     /** What's playing, as an LP: the cover is the sleeve, and the record spins while it plays. */
@@ -104,7 +104,7 @@ final class Hero {
         text = activity.findViewById(R.id.hero_text);
         photo = activity.findViewById(R.id.hero_photo);
         art = activity.findViewById(R.id.hero_art);
-        wall = activity.findViewById(R.id.hero_wall);
+        lights = activity.findViewById(R.id.hero_show);
         wave = activity.findViewById(R.id.hero_wave);
         record = activity.findViewById(R.id.hero_record);
         eyebrow = activity.findViewById(R.id.hero_eyebrow);
@@ -129,12 +129,12 @@ final class Hero {
 
     // ---- Light ----
 
-    /** The scene's colours: the label, the visualizer, the wall, the sleeve's glow, the progress line. */
+    /** The scene's colour: the label, the visualizer, the light show, the sleeve's glow, the progress line. */
     void setScene(Scene newScene) {
         scene = newScene;
         label.setTextColor(newScene.label);
         wave.setScene(newScene);
-        wall.setScene(newScene);
+        lights.setScene(newScene);
         record.setGlow(newScene.key);
         bar.setScene(newScene);
     }
@@ -145,7 +145,7 @@ final class Hero {
 
     // ---- What to show ----
 
-    /** An app: its name, what kind of app it is above it, and its wall of lamps on the right. */
+    /** An app: its name, what kind of app it is above it, and its light show on the right. */
     void showApp(String kindLabel, String appName) {
         stopFeatures();
         stopProgress();
@@ -155,7 +155,7 @@ final class Hero {
         showHoldHint(true);
         hidePhoto();
         hideRecord();
-        showWall();
+        showLights();
     }
 
     /** What was recently played in a music app, taking turns: each cover as an LP in its sleeve. */
@@ -297,25 +297,25 @@ final class Hero {
 
     // ---- Lifecycle, paging, scrolling ----
 
-    /** Stops the turns, the wall and the clock while the launcher is in the background. */
+    /** Stops the turns, the light show and the clock while the launcher is in the background. */
     void pause() {
         running = false;
         main.removeCallbacks(rotate);
         main.removeCallbacks(tick);
-        wall.setRunning(false);
+        lights.setRunning(false);
     }
 
     void resume() {
         running = true;
         main.removeCallbacks(rotate);
         if (features.size() > 1) main.postDelayed(rotate, ROTATE_MS);
-        wall.setRunning(visible && wall.getAlpha() > 0f);
+        lights.setRunning(visible && lights.getAlpha() > 0f);
         if (progressTrack != null) updateProgress();
     }
 
     void setVisible(boolean show) {
         visible = show;
-        wall.setRunning(show && running && wall.getAlpha() > 0f); // no need to animate it off screen
+        lights.setRunning(show && running && lights.getAlpha() > 0f); // no need to animate it off screen
         root.animate().alpha(show ? scrollFade : 0f).setDuration(200).start();
     }
 
@@ -416,7 +416,7 @@ final class Hero {
     /** Cross-fades to a video's thumbnail, across the whole screen behind the text. */
     private void swapArt(Drawable sharp) {
         hideRecord();
-        hideWall();
+        hideLights();
         photo.animate().cancel();
         photo.animate().alpha(0f).setDuration(120).withEndAction(() -> {
             art.setImageDrawable(sharp);
@@ -427,7 +427,7 @@ final class Hero {
     /** Shows an album cover as an LP, lit by the stage in its colours. */
     private void swapCover(Drawable picture, boolean playing, String song) {
         hidePhoto();
-        hideWall();
+        hideLights();
         record.animate().cancel();
         record.setVisibility(View.VISIBLE);
         record.animate().alpha(1f).setDuration(280).start();
@@ -439,19 +439,19 @@ final class Hero {
         photo.animate().alpha(0f).setDuration(160).start();
     }
 
-    private void hideWall() {
-        wall.animate().cancel();
-        if (wall.getAlpha() == 0f) {
-            wall.setRunning(false);
+    private void hideLights() {
+        lights.animate().cancel();
+        if (lights.getAlpha() == 0f) {
+            lights.setRunning(false);
             return;
         }
-        wall.animate().alpha(0f).setDuration(250).withEndAction(() -> wall.setRunning(false)).start();
+        lights.animate().alpha(0f).setDuration(250).withEndAction(() -> lights.setRunning(false)).start();
     }
 
-    private void showWall() {
-        wall.animate().cancel();
-        wall.setRunning(running && visible);
-        wall.animate().alpha(1f).setDuration(300).start();
+    private void showLights() {
+        lights.animate().cancel();
+        lights.setRunning(running && visible);
+        lights.animate().alpha(1f).setDuration(300).start();
     }
 
     private void hideRecord() {
@@ -486,14 +486,14 @@ final class Hero {
         return wave.getVisibility() == View.VISIBLE && wave.getAlpha() > 0.5f;
     }
 
-    /** Whether the wall of lamps is on screen (for tests). */
-    boolean showsLightWall() {
-        return wall.getAlpha() > 0.5f;
+    /** Whether the light show is on screen (for tests). */
+    boolean showsLightShow() {
+        return lights.getAlpha() > 0.5f;
     }
 
-    /** The colour the wall glows with (for tests). */
-    int wallColour() {
-        return wall.keyColour();
+    /** The colour the light show is lit in (for tests). */
+    int showColour() {
+        return lights.keyColour();
     }
 
     /** Whether a video's thumbnail fills the screen (for tests). */

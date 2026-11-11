@@ -17,7 +17,7 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 
-/** The colours the hero glows with for apps that have nothing else to show. */
+/** The primary colour of a picture: the real colour that covers the most of it. */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -25,42 +25,26 @@ public class AppColorsTest {
 
     @Test
     public void aColourfulLogoGivesItsOwnColour() {
-        AppColors colours = AppColors.from(solid(0xFFE50914)); // a red logo
-        assertHue(colours.vivid, 357, 10);
-        assertHue(colours.deep, 357, 10);
-        assertTrue("deep is darker than vivid", value(colours.deep) < value(colours.vivid));
+        assertHue(AppColors.primary(solid(0xFFE50914)), 357, 10); // a red logo
     }
 
     @Test
-    public void aTwoColourBannerGivesABrightAndADarkColour() {
-        // A navy banner with a yellow logo on it.
+    public void theColourThatCoversTheMostWins() {
+        // A navy banner with a small yellow logo on it: navy is its primary colour.
         Bitmap bitmap = Bitmap.createBitmap(320, 180, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(0xFF12235A);
         Paint paint = new Paint();
         paint.setColor(0xFFFFC72C);
-        new Canvas(bitmap).drawRect(110, 50, 210, 130, paint);
-        AppColors colours = AppColors.from(drawable(bitmap));
-        assertHue(colours.vivid, 45, 15);
-        assertHue(colours.deep, 225, 20);
+        new Canvas(bitmap).drawRect(130, 60, 190, 120, paint);
+        assertHue(AppColors.primary(drawable(bitmap)), 225, 20);
     }
 
     @Test
-    public void glowsAreNeverNeonOrMuddy() {
-        AppColors bright = AppColors.from(solid(0xFF00FF00));
-        assertTrue(value(bright.vivid) <= 0.95f + 0.01f);
-        AppColors dark = AppColors.from(solid(0xFF0A3D12));
-        assertTrue(value(dark.vivid) >= 0.55f - 0.01f);
-        assertTrue(value(dark.deep) >= 0.25f - 0.01f);
-    }
-
-    @Test
-    public void greyOrWhiteLogosUseWorldlysColours() {
+    public void greyOrWhiteArtHasNoColour() {
         for (int grey : new int[]{0xFF808080, 0xFFFFFFFF, 0xFF202020}) {
-            AppColors colours = AppColors.from(solid(grey));
-            assertEquals(AppColors.WORLDLY_AMBER, colours.vivid);
-            assertEquals(AppColors.WORLDLY_SLATE, colours.deep);
+            assertEquals(AppColors.NONE, AppColors.primary(solid(grey)));
         }
-        assertEquals(AppColors.WORLDLY_AMBER, AppColors.from(null).vivid);
+        assertEquals(AppColors.NONE, AppColors.primary(null));
     }
 
     private static Drawable solid(int colour) {

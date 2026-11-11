@@ -21,9 +21,9 @@ import android.view.animation.AnimationUtils;
  *
  * Each column rises with its part of the music and settles back gently; the top cell of a column
  * fades in and out, so heights change smoothly rather than a whole cell at a time. The cells take
- * the scene's colours, from the album cover: bands of its key and fill colour drift slowly across
- * the panel, blending round the colour wheel between them, and every cell is a little whiter
- * toward the bottom. Each lit cell has a soft round glow, like the wall of lamps: drawn small and
+ * one colour, the album cover's primary colour, with brighter bands of it drifting slowly across
+ * the panel, and every cell is a little whiter toward the bottom. Each lit cell has a soft round
+ * glow, like the lights of an app's light show: drawn small and
  * stretched, and gentle enough that the cells never blow out over the haze. The grid goes dark
  * when the music stops.
  */
@@ -66,7 +66,7 @@ public class SoundWaveView extends View {
     private long lastFrame;
     private double time;
     private Scene scene = Scene.promise();
-    /** Steps from the fill to the key colour (33 of them), each per row (bottom first). */
+    /** Steps from the colour to its brighter band (33 of them), each per row (bottom first). */
     private static final int STEPS = 32;
     private int[] palette = new int[0];
     /** How long one band takes to drift across, in seconds, and how many bands fit across. */
@@ -88,7 +88,7 @@ public class SoundWaveView extends View {
         source = wave;
     }
 
-    /** The cells' colours: bands of the scene's key and fill colours. */
+    /** The cells' colour: the scene's, with brighter bands of it drifting across. */
     void setScene(Scene newScene) {
         scene = newScene;
         updateRows();
@@ -105,7 +105,7 @@ public class SoundWaveView extends View {
         time += seconds;
     }
 
-    /** Which step between fill and key this column wears now: bands drifting left to right. */
+    /** How far into its brighter band this column is now: bands drifting left to right. */
     private int step(int column) {
         double phase = 2 * Math.PI * (column / (double) ALL * BANDS - time / BAND_SECONDS);
         return (int) Math.round((0.5 + 0.5 * Math.sin(phase)) * STEPS);
@@ -183,7 +183,7 @@ public class SoundWaveView extends View {
             rowOpacity[r] = BOTTOM_OPACITY + (TOP_OPACITY - BOTTOM_OPACITY) * f;
         }
         for (int s = 0; s <= STEPS; s++) {
-            int hue = Scene.blend(scene.fill, scene.key, s / (float) STEPS);
+            int hue = Scene.mix(Scene.mix(scene.key, 0xFF000000, 0.12f), scene.led, 0.4f * s / STEPS);
             for (int r = 0; r < rows; r++) {
                 float f = rows > 1 ? r / (float) (rows - 1) : 0f;
                 palette[s * rows + r] = Scene.mix(hue, scene.led, 0.22f * (1 - f));

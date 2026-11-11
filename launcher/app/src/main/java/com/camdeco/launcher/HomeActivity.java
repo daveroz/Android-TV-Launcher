@@ -21,7 +21,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.util.LruCache;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageButton;
@@ -68,8 +67,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private final ExecutorService imageLoader = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
-    /** Each app's colours, from its banner or icon: they light the stage while it has focus. */
-    private final LruCache<String, AppColors> colourCache = new LruCache<>(32);
 
     private AppRepository repo;
     private ImageCache images;
@@ -296,7 +293,6 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
                 if (movingPackage != null) endMove();
                 repo.sort(apps);
                 allApps = apps;
-                colourCache.evictAll(); // an update may have brought new art
                 showApps(true);
             });
         });
@@ -465,20 +461,8 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         hero.showApp(getString(app.leanback ? R.string.kind_tv_app : R.string.kind_app), app.label);
         syncWave();
 
-        // The app's own colours light the stage and its wall of lamps.
-        AppColors cached = colourCache.get(app.packageName);
-        if (cached != null) {
-            setHomeScene(Scene.from(cached));
-        } else if (!loader.isShutdown()) {
-            loader.execute(() -> {
-                AppColors colours = AppColors.from(app.banner != null ? app.banner : app.icon);
-                main.post(() -> {
-                    if (isDestroyed()) return;
-                    colourCache.put(app.packageName, colours);
-                    if (heroApp == app && !heroShowsTrack) setHomeScene(Scene.from(colours));
-                });
-            });
-        }
+        // The app's own colour lights the stage and its light show.
+        setHomeScene(Scene.of(app.colour));
 
         // Music apps (Spotify...) when nothing of theirs is playing: the covers of what you played last.
         List<Hero.Feature> recent = recentlyPlayed(app);
@@ -487,7 +471,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
 
     /**
      * What was played in this app, newest first, as covers that take turns in the hero. Only album
-     * covers: a video's thumbnail isn't shown, so video apps keep their wall of lamps.
+     * covers: a video's thumbnail isn't shown, so video apps keep their light show.
      */
     private List<Hero.Feature> recentlyPlayed(AppEntry app) {
         List<Hero.Feature> list = new ArrayList<>();
@@ -543,23 +527,30 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         }
     }
 
-    /** While a song shows, its cover's colours light the stage, worked out in the background. */
+    /** While a song shows, its cover's primary colour lights the stage, worked out in the background. */
     private void updateTrackScene(NowPlaying.Track track) {
         if (track.art == sceneArt && sceneArt != null) return;
         sceneArt = track.art;
         Bitmap art = track.art;
-        if (art == null) {
-            AppColors app = colourCache.get(track.packageName);
-            setHomeScene(app != null ? Scene.from(app) : Scene.promise());
+        if (art == null) { // no cover: the player app's own colour
+            AppEntry app = findApp(track.packageName);
+            setHomeScene(app != null ? Scene.of(app.colour) : Scene.promise());
             return;
         }
         if (loader.isShutdown()) return;
         loader.execute(() -> {
-            AppColors colours = AppColors.from(new BitmapDrawable(getResources(), art));
+            int primary = AppColors.primary(new BitmapDrawable(getResources(), art));
             main.post(() -> {
-                if (!isDestroyed() && sceneArt == art && heroShowsTrack) setHomeScene(Scene.from(colours));
+                if (!isDestroyed() && sceneArt == art && heroShowsTrack) setHomeScene(Scene.of(primary));
             });
         });
+    }
+
+    private AppEntry findApp(String packageName) {
+        for (AppEntry app : allApps) {
+            if (app.packageName.equals(packageName)) return app;
+        }
+        return null;
     }
 
     // ---- Sound wave ----

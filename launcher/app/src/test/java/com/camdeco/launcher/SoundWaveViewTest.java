@@ -147,21 +147,21 @@ public class SoundWaveViewTest {
     }
 
     @Test
-    public void bandsOfTheScenesColoursDriftAcross() {
+    public void oneColourWithBrighterBandsDriftingAcross() {
         play(30, 30, 30, 2);
-        Scene signal = new Scene(0xFFFF3B2F, 0xFF3A6BFF, 0xFFFFEAE4); // red key, blue fill
-        view.setScene(signal);
+        view.setScene(new Scene(0xFFFF3B2F)); // a red cover
         int top = view.rows() - 1;
-        view.advanceForTests(2.25f); // a quarter of the way: the first column wears the fill
-        int first = view.cellColour(0, top);
-        assertTrue("blue now", Color.blue(first) > 200 && Color.red(first) < 120);
-        int further = view.cellColour(SoundWave.COLUMNS / 3, top);
-        assertTrue("further along, another colour", Color.red(further) > Color.red(first) + 60);
-        view.advanceForTests(4.5f); // half a band later, the key has drifted over it
-        int later = view.cellColour(0, top);
-        assertTrue("red now", Color.red(later) > 220 && Color.blue(later) < 120);
+        view.advanceForTests(2.25f); // a quarter of the way: the first column is out of the band
+        int dim = view.cellColour(0, top);
+        view.advanceForTests(4.5f); // half a band later, the band has drifted over it
+        int bright = view.cellColour(0, top);
+        assertTrue("brighter in the band", Scene.luminance(bright) > Scene.luminance(dim) + 0.1f);
+        float[] a = new float[3], b = new float[3];
+        Color.colorToHSV(dim, a);
+        Color.colorToHSV(bright, b);
+        assertTrue("the same red: " + a[0] + " " + b[0], Math.abs(a[0] - b[0]) < 6 || Math.abs(a[0] - b[0]) > 354);
         int base = view.cellColour(0, 0);
-        assertTrue("whiter at the bottom", Color.green(base) > Color.green(later) + 20);
+        assertTrue("whiter at the bottom", Scene.luminance(base) > Scene.luminance(bright));
     }
 
     /** The strongest opacity anywhere in this column. */

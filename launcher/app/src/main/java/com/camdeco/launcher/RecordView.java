@@ -64,12 +64,14 @@ public class RecordView extends View {
     private float fade = 1f;
     /** The record (vinyl, grooves and label) for the current cover, drawn once per cover and size. */
     private Bitmap disc;
+    /** The colour the record is pressed in (the scene's), or 0 to take it from the cover. */
+    private int tint;
 
     public RecordView(Context context, AttributeSet attrs) {
         super(context, attrs);
         density = context.getResources().getDisplayMetrics().density;
         sleevePaint.setColor(0xFF0B1220);
-        setGlow(Scene.promise().key);
+        sleevePaint.setShadowLayer(24 * density, 0, 6 * density, Scene.alpha(Scene.promise().key, 0.32f));
         edgePaint.setStyle(Paint.Style.STROKE);
         edgePaint.setStrokeWidth(density);
         edgePaint.setColor(0x1AFFFFFF);
@@ -98,9 +100,17 @@ public class RecordView extends View {
         start();
     }
 
-    /** The sleeve's glow, in the scene's key colour. */
+    /**
+     * The scene's colour: the sleeve glows in it, and the record is pressed in it, so the LP shares
+     * the cover's primary colour with the light. Until it's known, the record takes the cover's most
+     * colourful tone.
+     */
     void setGlow(int colour) {
         sleevePaint.setShadowLayer(24 * density, 0, 6 * density, Scene.alpha(colour, 0.32f));
+        if (tint != colour) {
+            tint = colour;
+            buildDisc();
+        }
         invalidate();
     }
 
@@ -230,7 +240,7 @@ public class RecordView extends View {
         disc = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(disc);
         float cx = size / 2f;
-        int vinyl = vinylColour(cover);
+        int vinyl = tint != 0 ? vinylFrom(tint) : vinylColour(cover);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         // Coloured vinyl, a little darker toward the middle.
         p.setShader(new RadialGradient(cx, cx, r, new int[]{darker(vinyl, 0.55f), darker(vinyl, 0.8f), vinyl},
@@ -350,6 +360,15 @@ public class RecordView extends View {
         }
         small.recycle();
         Color.colorToHSV(pick, hsv);
+        hsv[1] = Math.min(1f, Math.max(0.45f, hsv[1]));
+        hsv[2] = 0.55f;
+        return Color.HSVToColor(0xF2, hsv); // slightly see-through, like coloured vinyl
+    }
+
+    /** A deep coloured vinyl in this colour's hue. */
+    private static int vinylFrom(int colour) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(colour, hsv);
         hsv[1] = Math.min(1f, Math.max(0.45f, hsv[1]));
         hsv[2] = 0.55f;
         return Color.HSVToColor(0xF2, hsv); // slightly see-through, like coloured vinyl

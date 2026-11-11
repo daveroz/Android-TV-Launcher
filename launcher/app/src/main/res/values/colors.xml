@@ -9,7 +9,6 @@
     <color name="bg">#05070B</color>
     <color name="panel">#F20B1220</color>
     <color name="panel_glass">#B8080C12</color>
-    <color name="glass">#B80A0F16</color>
     <color name="surface_hi">#121B28</color>
     <!-- hairlines: thin cool lines instead of boxes -->
     <color name="hairline">#1FAADCFF</color>

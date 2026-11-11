@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One app: a 16:9 glass card. On the Apps page its name sits under it, and "Moving" while it
-     moves. The card draws its own focus brackets (TileView). -->
+<!-- One app: a 16:9 card in the app's own colour with its logo. On the Apps page its name sits
+     under it, and "Moving" while it moves. The card draws its own focus edge (TileView). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="@dimen/card_width"
     android:layout_height="wrap_content"
@@ -17,23 +17,16 @@
         android:id="@+id/card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/card_bg"
         android:duplicateParentState="true">
 
+        <!-- The app's logo, centred on its colour: white, or dark on a light colour. -->
         <ImageView
-            android:id="@+id/banner"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:importantForAccessibility="no"
-            android:scaleType="centerCrop"
-            android:visibility="gone" />
-
-        <ImageView
-            android:id="@+id/icon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:id="@+id/logo"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:layout_gravity="center"
-            android:importantForAccessibility="no" />
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter" />
     </com.camdeco.launcher.TileView>
 
     <TextView

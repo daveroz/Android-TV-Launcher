@@ -18,9 +18,9 @@ import android.view.animation.AnimationUtils;
 import java.util.Random;
 
 /**
- * The room behind everything, on Home and Apps alike: a dark stage in haze. Two washes of colour
- * drift slowly, the scene's key behind the cover and its fill low on the left, and swell a little
- * with the bass. Fog banks drift through and never stop, even when the music does, and a row of
+ * The room behind everything, on Home and Apps alike: a dark stage in haze, lit in one colour.
+ * Two washes of it drift slowly, a strong one behind the cover and a fainter one low on the left,
+ * and swell a little with the bass. Fog banks drift through and never stop, even when the music does, and a row of
  * small lamps far overhead runs a slow chase, like a lighting rig seen through haze.
  *
  * Every light has two parts: a soft glow, drawn at 1/8 of the screen's size and stretched so it
@@ -37,28 +37,25 @@ public class StageView extends View {
     private static final int FOG = 0xFFB4C8E1;
     private static final int RIG = 9;
 
-    /** The lights of one scene: a soft glow for each of its colours. */
+    /** The lights of one scene: a soft glow of its colour, and of its white. */
     private static final class Lights {
         final Scene scene;
         final Shader key;
-        final Shader fill;
         final Shader led;
 
         Lights(Scene scene) {
             this.scene = scene;
             key = unit(scene.key);
-            fill = unit(scene.fill);
             led = unit(scene.led);
         }
 
-        /** The rig alternates the key, white, the fill, white... */
+        /** The rig alternates the colour and white. */
         Shader rigTone(int i) {
-            return i % 2 == 1 ? led : i % 4 == 0 ? key : fill;
+            return i % 2 == 1 ? led : key;
         }
 
         int rigColour(int i) {
-            int tone = i % 2 == 1 ? scene.led : i % 4 == 0 ? scene.key : scene.fill;
-            return Scene.mix(tone, scene.led, 0.6f);
+            return Scene.mix(i % 2 == 1 ? scene.led : scene.key, scene.led, 0.6f);
         }
     }
 
@@ -152,7 +149,7 @@ public class StageView extends View {
     private void paintSoft(Lights l, float weight) {
         glow(l.key, 1100 + 30 * (float) Math.sin(air * 0.07), 230 + 20 * (float) Math.cos(air * 0.05), 620, 620,
                 (0.15f + 0.06f * bass) * weight);
-        glow(l.fill, 260 + 50 * (float) Math.sin(air * 0.06 + 1), 640, 600, 600, (0.11f + 0.05f * bass) * weight);
+        glow(l.key, 260 + 50 * (float) Math.sin(air * 0.06 + 1), 640, 600, 600, (0.07f + 0.04f * bass) * weight);
         for (int i = 0; i < RIG; i++) glow(l.rigTone(i), 100 + i * 135, 33, 120, 120, rigBrightness(i) * 0.3f * weight);
     }
 

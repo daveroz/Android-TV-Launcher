@@ -90,7 +90,7 @@ public class HomeActivityTest {
         assertEquals(NETFLIX, home.heroApp.packageName);
         assertEquals("TV app", home.hero.eyebrowText());
         assertEquals("Netflix", text(home, R.id.hero_title));
-        assertTrue(home.hero.showsLightWall());
+        assertTrue(home.hero.showsLightShow());
         assertEquals(View.GONE, home.findViewById(R.id.hero_version).getVisibility());
         assertEquals(View.GONE, home.findViewById(R.id.hero_desc).getVisibility());
         // Cards keep the 16:9 banner shape.
@@ -321,13 +321,18 @@ public class HomeActivityTest {
                 new android.graphics.drawable.BitmapDrawable(RuntimeEnvironment.getApplication().getResources(), red));
         HomeActivity home = start().get(); // Netflix is the first card and has focus
         waitFor(() -> hue(home.scene().key) < 10 || hue(home.scene().key) > 350);
-        // No shows from the internet: its name, and a wall of lamps in red with a blue fill.
+        // No shows from the internet: its name, and a light show in its own red.
         assertEquals("Netflix", text(home, R.id.hero_title));
-        assertTrue(home.hero.showsLightWall());
+        assertTrue(home.hero.showsLightShow());
         assertFalse(home.hero.showsPhoto());
         assertFalse(home.hero.showsRecord());
-        assertEquals(home.scene().key, home.hero.wallColour());
-        assertEquals(225f, hue(home.scene().fill), 3f);
+        assertEquals(home.scene().key, home.hero.showColour());
+        // Its card: Netflix's own red, with its logo in white.
+        View card = card(home, 0, 0).findViewById(R.id.card);
+        assertEquals(0xFFE50914, ((android.graphics.drawable.GradientDrawable) card.getBackground()).getColor().getDefaultColor());
+        android.widget.ImageView logo = card.findViewById(R.id.logo);
+        assertNotNull(logo.getDrawable());
+        assertEquals(android.graphics.Color.WHITE, logo.getImageTintList().getDefaultColor());
         // The launcher doesn't use the internet at all.
         String[] permissions = RuntimeEnvironment.getApplication().getPackageManager()
                 .getPackageInfo(RuntimeEnvironment.getApplication().getPackageName(), android.content.pm.PackageManager.GET_PERMISSIONS)
@@ -360,7 +365,7 @@ public class HomeActivityTest {
         card(home, 0, 3).requestFocus();
         idle();
         assertEquals("YouTube", text(home, R.id.hero_title));
-        assertTrue(home.hero.showsLightWall());
+        assertTrue(home.hero.showsLightShow());
 
         // Paused: still there. Stopped: gone.
         shadowOf(spotify).setPlaybackState(state(PlaybackState.STATE_PAUSED));
@@ -383,9 +388,8 @@ public class HomeActivityTest {
         waitFor(() -> home.hero.showsRecord() && hue(home.scene().key) > 300);
         assertFalse(home.hero.showsPhoto());
         assertEquals("Now playing · Spotify", home.hero.eyebrowText());
-        // The pink cover keys the light; its fill is the colour that answers pink: cyan.
-        float fill = hue(home.scene().fill);
-        assertTrue("fill " + fill, fill > 170 && fill < 210);
+        // The pink cover's primary colour is the only light.
+        assertEquals(330f, hue(home.scene().key), 8f);
         StageView stage = home.findViewById(R.id.stage);
         assertTrue(home.scene().sameAs(stage.scene()));
     }
@@ -416,6 +420,26 @@ public class HomeActivityTest {
     }
 
     @Test
+    public void everyCardIsOneColourWithAMatchingLogo() throws Exception {
+        HomeActivity home = start().get();
+        idle();
+        // YouTube has a brand logo: its red, with a white glyph.
+        View youtube = card(home, 0, 2).findViewById(R.id.card);
+        assertEquals(0xFFFF0000, ((android.graphics.drawable.GradientDrawable) youtube.getBackground()).getColor().getDefaultColor());
+        assertNotNull(((android.widget.ImageView) youtube.findViewById(R.id.logo)).getImageTintList());
+        // Prime Video has none here and no colour of its own in this test: a slate card with its icon.
+        View prime = card(home, 0, 1).findViewById(R.id.card);
+        android.graphics.drawable.GradientDrawable shape = (android.graphics.drawable.GradientDrawable) prime.getBackground();
+        assertEquals(CardAdapter.cardColour(AppColors.NONE), shape.getColor().getDefaultColor());
+        // Every brand logo is a drawable that loads.
+        for (String pkg : new String[]{NETFLIX, YOUTUBE, VLC, "com.spotify.tv.android", "com.android.vending", "com.plexapp.android"}) {
+            assertNotNull(pkg, home.getDrawable(Brands.of(pkg).logo));
+        }
+        // A light brand colour gets a dark logo, so it still reads.
+        assertTrue(Scene.luminance(CardAdapter.cardColour(0xFF1ED760)) > 0.55f); // Spotify green
+    }
+
+    @Test
     public void theAppsPageKeepsHomesLight() throws Exception {
         HomeActivity home = start().get();
         StageView stage = home.findViewById(R.id.stage);
@@ -433,7 +457,7 @@ public class HomeActivityTest {
         idle();
         View focused = card(home, 0, 0), other = card(home, 0, 1);
         assertEquals(1f, focused.getAlpha(), 0.01f);
-        assertTrue("others step back: " + other.getAlpha(), other.getAlpha() < 0.7f);
+        assertTrue("others step back: " + other.getAlpha(), other.getAlpha() < 0.8f);
         assertTrue(((TileView) focused.findViewById(R.id.card)).showsFocus());
         assertFalse(((TileView) other.findViewById(R.id.card)).showsFocus());
         // The row's title lights up in the scene's colour.
@@ -551,26 +575,24 @@ public class HomeActivityTest {
         HomeActivity home = start().get();
 
         card(home, 1, 0).requestFocus(); // VLC: no shows, nothing playing
-        waitFor(() -> VLC.equals(home.heroApp.packageName) && home.hero.showsLightWall());
+        waitFor(() -> VLC.equals(home.heroApp.packageName) && home.hero.showsLightShow());
         assertEquals("App", home.hero.eyebrowText()); // not a TV app
         float[] hsv = new float[3];
-        android.graphics.Color.colorToHSV(home.hero.wallColour(), hsv);
+        android.graphics.Color.colorToHSV(home.hero.showColour(), hsv);
         assertTrue("glows orange, not " + hsv[0], hsv[0] > 20 && hsv[0] < 45 && hsv[1] > 0.5f);
-        // The orange keys the light, with a teal fill.
-        assertTrue("teal fill, not " + hue(home.scene().fill), hue(home.scene().fill) > 160 && hue(home.scene().fill) < 190);
 
         // Something playing in it: the LP, lit by the cover's colours, replaces the wall.
         play(VLC, "Midnight City", "M83", cover());
         waitFor(() -> hue(home.scene().key) > 300);
-        assertFalse(home.hero.showsLightWall());
+        assertFalse(home.hero.showsLightShow());
         assertTrue(home.hero.showsRecord());
     }
 
     @Test
-    public void theWallSitsBetweenTheTopBarAndTheRowsAtTheScreenMargin() throws Exception {
+    public void theLightShowSitsBetweenTheTopBarAndTheRowsAtTheScreenMargin() throws Exception {
         HomeActivity home = start().get(); // Netflix, the first row in place
         float dp = home.getResources().getDisplayMetrics().density;
-        LightWallView wall = home.findViewById(R.id.hero_wall);
+        LightShowView wall = home.findViewById(R.id.hero_show);
         View topBar = (View) home.findViewById(R.id.tabs).getParent();
         View title = home.findViewById(R.id.hero_text);
         RecyclerView rows = home.findViewById(R.id.rows);
@@ -578,7 +600,7 @@ public class HomeActivityTest {
 
         int[] at = new int[2];
         wall.getLocationInWindow(at);
-        float[] bounds = wall.wallBounds();
+        float[] bounds = wall.showBounds();
         float wallLeft = at[0] + bounds[0], wallTop = at[1] + bounds[1];
         float wallRight = at[0] + bounds[2], wallBottom = at[1] + bounds[3];
         topBar.getLocationInWindow(at);
@@ -588,8 +610,8 @@ public class HomeActivityTest {
         rows.getChildAt(0).getLocationInWindow(at);
         int rowsTop = at[1];
 
-        assertTrue("clear of the top bar", wallTop - barBottom >= 16 * dp);
-        assertEquals("lines up with the text", titleTop, wallTop, 1f);
+        assertTrue("clear of the top bar", wallTop - barBottom >= 6 * dp);
+        assertTrue("starts above the text's top", wallTop <= titleTop);
         assertEquals("ends at the screen margin", screenWidth - 48 * dp, wallRight, 1f);
         assertTrue("ends above the rows", rowsTop - wallBottom >= 16 * dp);
         assertTrue("clear of the text", wallLeft > titleRight);
@@ -620,7 +642,7 @@ public class HomeActivityTest {
         card(home, 0, 0).requestFocus(); // Netflix
         idle();
         assertEquals("Netflix", text(home, R.id.hero_title));
-        assertTrue(home.hero.showsLightWall());
+        assertTrue(home.hero.showsLightShow());
     }
 
     @Test
@@ -641,7 +663,7 @@ public class HomeActivityTest {
         idle();
         assertEquals("YouTube", text(home, R.id.hero_title));
         assertNull(home.hero.currentFeature());
-        assertTrue(home.hero.showsLightWall());
+        assertTrue(home.hero.showsLightShow());
         assertFalse(home.hero.showsPhoto());
     }
 

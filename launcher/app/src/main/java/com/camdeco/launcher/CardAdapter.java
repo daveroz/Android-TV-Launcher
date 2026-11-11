@@ -1,5 +1,9 @@
 package com.camdeco.launcher;
 
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,8 +32,13 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
     }
 
     private static final float FOCUS_SCALE = 1.06f;
+    /** Logo sizes: a brand glyph, an app's one-colour icon (drawn with room around it), its own icon. */
+    private static final float[] LOGO_DP = {34f, 64f, 46f};
+    private static final int DARK_LOGO = 0xFF0B0F14;
+    /** Cards for apps with no colour of their own, and the darkest a card gets on the night background. */
+    private static final int NO_COLOUR = 0xFF1A2230, DARKEST = 0xFF14171D;
     /** How strong the cards without focus are: Home's rows, and the Apps grid with its names. */
-    private static final float ROW_DIM = 0.55f, GRID_DIM = 0.65f;
+    private static final float ROW_DIM = 0.72f, GRID_DIM = 0.78f;
 
     private final List<AppEntry> apps = new ArrayList<>();
     private final Listener listener;
@@ -126,16 +135,19 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         view.setContentDescription(app.label);
         boolean moving = app.packageName.equals(movingPackage);
         view.setActivated(moving);
-        if (app.banner != null) {
-            holder.banner.setImageDrawable(app.banner);
-            holder.banner.setVisibility(View.VISIBLE);
-            holder.icon.setVisibility(View.GONE);
-        } else {
-            holder.banner.setImageDrawable(null);
-            holder.banner.setVisibility(View.GONE);
-            holder.icon.setImageDrawable(app.icon);
-            holder.icon.setVisibility(View.VISIBLE);
+        // One solid colour, the app's own, and its logo: all logos the same size and colour.
+        int colour = cardColour(app.colour);
+        holder.card.setBackground(background(colour, holder.card.getResources()));
+        holder.logo.setImageDrawable(AppRepository.copy(app.logo));
+        int size = Math.round(view.getResources().getDisplayMetrics().density * LOGO_DP[app.logoKind]);
+        ViewGroup.LayoutParams lp = holder.logo.getLayoutParams();
+        if (lp.width != size) {
+            lp.width = size;
+            lp.height = size;
+            holder.logo.setLayoutParams(lp);
         }
+        holder.logo.setImageTintList(app.logoKind == AppEntry.LOGO_ICON ? null
+                : ColorStateList.valueOf(Scene.luminance(colour) > 0.55f ? DARK_LOGO : Color.WHITE));
         // Home's rows show just the cards. The Apps page names each app, and says when one is moving.
         holder.title.setVisibility(fillWidth ? View.VISIBLE : View.GONE);
         holder.title.setText(app.label);
@@ -153,30 +165,39 @@ final class CardAdapter extends RecyclerView.Adapter<CardAdapter.Holder> {
         if (focused) listener.onCardFocused(view, app, true);
     }
 
-    /**
-     * The lifted card's shadow becomes a glow in the scene's colours: the key all around, the fill
-     * where the shadow falls, below it.
-     */
+    /** The lifted card's shadow becomes a glow in the scene's colour. */
     static void glow(View card) {
         if (Build.VERSION.SDK_INT < 28 || !(card.getContext() instanceof Scene.Holder)) return;
         Scene scene = ((Scene.Holder) card.getContext()).scene();
         card.setOutlineAmbientShadowColor(scene.key);
-        card.setOutlineSpotShadowColor(scene.fill);
+        card.setOutlineSpotShadowColor(scene.key);
         card.invalidate();
+    }
+
+    /** The card's colour: the app's own, or slate for none; black is lifted a touch so it shows. */
+    static int cardColour(int colour) {
+        if (colour == AppColors.NONE) return NO_COLOUR;
+        return Scene.luminance(colour) < Scene.luminance(DARKEST) ? DARKEST : colour | 0xFF000000;
+    }
+
+    private static Drawable background(int colour, android.content.res.Resources res) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(colour);
+        shape.setCornerRadius(res.getDimension(R.dimen.card_radius));
+        shape.setStroke(Math.max(1, Math.round(res.getDisplayMetrics().density)), res.getColor(R.color.hairline_soft, null));
+        return shape;
     }
 
     final class Holder extends RecyclerView.ViewHolder {
         final View card;
-        final ImageView banner;
-        final ImageView icon;
+        final ImageView logo;
         final TextView title;
         final TextView subtitle;
 
         Holder(View view) {
             super(view);
             card = view.findViewById(R.id.card);
-            banner = view.findViewById(R.id.banner);
-            icon = view.findViewById(R.id.icon);
+            logo = view.findViewById(R.id.logo);
             title = view.findViewById(R.id.title);
             subtitle = view.findViewById(R.id.subtitle);
         }

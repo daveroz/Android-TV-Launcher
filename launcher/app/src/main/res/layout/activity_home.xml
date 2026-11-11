@@ -57,9 +57,9 @@
                 android:background="@drawable/scrim_top" />
         </FrameLayout>
 
-        <!-- An app: a wall of lamps in its own light, on the right where a cover would be. -->
-        <com.camdeco.launcher.LightWallView
-            android:id="@+id/hero_wall"
+        <!-- An app: a small light show in its own colour, on the right where a cover would be. -->
+        <com.camdeco.launcher.LightShowView
+            android:id="@+id/hero_show"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:alpha="0"
