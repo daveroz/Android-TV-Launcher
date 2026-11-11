@@ -24,8 +24,9 @@ import android.view.animation.AnimationUtils;
  * cover, and the new record slides out and spins.
  *
  * The record is tinted from the cover, with fine grooves, and has the cover art on its label, so
- * the spin shows; a fixed sheen of light across it makes it read as vinyl. The sleeve glows softly
- * in the scene's key colour, like a cover lit on a stage.
+ * the spin shows; a fixed sheen of light across it makes it read as vinyl. It only changes colour
+ * while it's back in the sleeve, out of sight, so each song's record comes out as a different disc.
+ * The sleeve glows softly in the scene's key colour, like a cover lit on a stage.
  */
 public class RecordView extends View {
     static final float RPM = 100f / 3; // 33⅓
@@ -66,6 +67,8 @@ public class RecordView extends View {
     private Bitmap disc;
     /** The colour the record is pressed in (the scene's), or 0 to take it from the cover. */
     private int tint;
+    /** The colour the next record out will be pressed in: it only changes while the record is out of sight. */
+    private int wantTint;
 
     public RecordView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -103,15 +106,26 @@ public class RecordView extends View {
     /**
      * The scene's colour: the sleeve glows in it, and the record is pressed in it, so the LP shares
      * the cover's primary colour with the light. Until it's known, the record takes the cover's most
-     * colourful tone.
+     * colourful tone. The sleeve's glow changes at once, but a record only changes colour while it's
+     * back in its sleeve, out of sight: the next one comes out in its own colour, like a different
+     * disc, rather than the one on show changing colour.
      */
     void setGlow(int colour) {
         sleevePaint.setShadowLayer(24 * density, 0, 6 * density, Scene.alpha(colour, 0.32f));
-        if (tint != colour) {
-            tint = colour;
-            buildDisc();
-        }
+        wantTint = colour;
+        if (slide == 0f) pressIn(colour);
         invalidate();
+    }
+
+    private void pressIn(int colour) {
+        if (tint == colour) return;
+        tint = colour;
+        buildDisc();
+    }
+
+    /** The colour the record on show is pressed in (for tests). */
+    int tint() {
+        return tint;
     }
 
     /** Play or pause: the record spins, or slows to a stop. */
@@ -174,6 +188,7 @@ public class RecordView extends View {
         }
         fade = Math.min(1f, fade + dt / FADE_SECONDS);
         angle = (angle + speed * RPM * 6 * dt) % 360f; // rpm × 360° / 60 s
+        if (slide == 0f) pressIn(wantTint); // in its sleeve, out of sight: the next one out is in the new colour
     }
 
     private boolean moving() {

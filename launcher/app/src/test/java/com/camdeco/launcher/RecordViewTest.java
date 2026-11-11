@@ -113,6 +113,32 @@ public class RecordViewTest {
     }
 
     @Test
+    public void aRecordOnlyChangesColourInItsSleeve() {
+        RecordView record = record();
+        record.show(blueCover, true, "A");
+        record.setGlow(0xFFFF2020);
+        run(record, 2.5f);
+        assertEquals("out", 1f, record.slide(), 0f);
+        assertEquals("pressed in its song's colour", 0xFFFF2020, record.tint());
+        // A new song, in green: the red record goes back still red, and the next one comes out green.
+        record.show(blueCover, true, "B");
+        record.setGlow(0xFF20FF20);
+        boolean redGoingBack = false;
+        for (int i = 0; i < 300 && !(record.slide() > 0f && record.tint() == 0xFF20FF20); i++) {
+            if (record.slide() > 0f && record.slide() < 1f && record.tint() == 0xFFFF2020) redGoingBack = true;
+            record.step(1 / 60f);
+        }
+        assertTrue("the red record slides back still red", redGoingBack);
+        run(record, 2.5f);
+        assertEquals("the new record is out", 1f, record.slide(), 0f);
+        assertEquals("and it's green: a different disc", 0xFF20FF20, record.tint());
+        // A change of light while it's on show doesn't repaint it.
+        record.setGlow(0xFFFF2020);
+        run(record, 0.5f);
+        assertEquals("stays green while on show", 0xFF20FF20, record.tint());
+    }
+
+    @Test
     public void recentlyPlayedStaysInItsSleeve() {
         RecordView record = record();
         record.show(blueCover, false, "A");

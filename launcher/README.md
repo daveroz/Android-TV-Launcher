@@ -129,7 +129,9 @@ The album cover is shown as an LP: the cover is the sleeve. When the song plays,
 out to the left and spins at 33⅓ rpm; on pause it slows to a stop. When the song changes, the
 record stops, slides back into the sleeve, the sleeve changes to the new cover, and the new record
 slides out and spins. The record is tinted from the cover, with grooves and the cover art on its
-label. Recently played songs show their LP with the record in the sleeve.
+label, and only changes colour while it's back in the sleeve: the old record goes back in its own
+colour and the new one comes out in the new song's, like a different disc. Recently played songs
+show their LP with the record in the sleeve.
 
 Players often resend the song they're playing, sometimes with a new copy of the cover or for a
 moment without one, and some drop out for a split second between songs. Deco goes by the song
