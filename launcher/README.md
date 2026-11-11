@@ -36,9 +36,10 @@ light takes each app's own colours.*
   follows the sound: each lamp column is a part of the music, bass on the left and treble on the
   right, filling up from the bottom with it. Music players also get the LP, and their light show
   takes the album cover's colour, its music ending where the record starts. **When it's paused,
-  or nothing plays,** each panel runs its own pattern for a couple of seconds before switching:
-  filling down or up, a band running down it, a flickering pixel pattern, a flash that fades, all
-  on, or dark. The two blend into each other. Dark lamps keep a faint ember; lit ones are white-hot
+  or nothing plays,** steam drifts across the wall ("Steam Pixel Wave", after the LED rig of
+  Justice's Iris tour): thin wisps of light curling and folding from left to right, a slow swell
+  of energy travelling the same way so some stretches glow hot and others fade, and the top row lit
+  wherever there's energy. The two blend into each other. Dark lamps keep a faint ember; lit ones are white-hot
   at full strength with a soft round glow, and lit panels throw soft beams down into the haze.
   Behind the app's name the lamps are dimmer, so it stays easy to read.
 - **Cards are one solid colour with a logo that matches the others:** the app's brand colour with
@@ -144,7 +145,7 @@ through voices in the middle to the treble on the right (16 kHz), and fills up f
 it, rising quickly and settling back gently; its top lamp fades in and out, so the heights change
 smoothly. It's in the focused app's colour, or the album cover's when the music app's card or the
 mini player has focus, where the music's columns end at the LP's record and the ones behind it
-echo the treble. Paused, or when nothing plays, it goes back to its patterns.
+echo the treble. Paused, or when nothing plays, it goes back to the steam.
 
 All the music shares one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher parts get lifted to make up for music naturally carrying far more energy in

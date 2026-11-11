@@ -53,7 +53,7 @@ public class LightShowViewTest {
     }
 
     @Test
-    public void panelsPlayPatternsThatChange() {
+    public void steamDriftsAcrossTheWall() {
         int lit = 0;
         String before = null;
         boolean changed = false;
@@ -73,7 +73,7 @@ public class LightShowViewTest {
             before = state.toString();
         }
         assertTrue("lamps light up: " + lit, lit > 100);
-        assertTrue("the patterns move on", changed);
+        assertTrue("the steam moves on", changed);
     }
 
     @Test
