@@ -18,7 +18,7 @@ light takes each app's own colours.*
 - **Every light has two parts:** a sharp core drawn at full detail, and a soft glow drawn at 1/8
   of the screen's size and stretched across it, so it spreads like light in fog. Fog banks drift
   slowly behind everything and keep moving even when the music stops. A fine grain keeps the haze
-  smooth, and a film grain, lighter and darker specks, lies over the whole screen.
+  smooth, and a faint film grain, lighter and darker specks, lies over the whole screen.
 - **One colour and white, never more.** The light is the primary colour of what's in focus: the
   focused app's own colour, or the main colour of the album cover playing. Apps and covers with no
   real colour (black, grey, white) get a cool white light.
