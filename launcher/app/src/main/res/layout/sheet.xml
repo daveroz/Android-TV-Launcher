@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A glass panel: used for every menu and question. -->
+<!-- A glass panel (LotoLab's glass, drawn in code by Sheet): used for every menu and question. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sheet_card"
     android:layout_width="520dp"
     android:layout_height="wrap_content"
-    android:background="@drawable/sheet_bg"
     android:orientation="vertical"
     android:padding="28dp">
 

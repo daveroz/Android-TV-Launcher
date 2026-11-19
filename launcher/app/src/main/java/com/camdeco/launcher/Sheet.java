@@ -10,7 +10,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
-/** Menus and questions, drawn as Worldly's floating graphite card with amber focus. */
+/** Menus and questions, on a floating card of LotoLab's glass, focus lit on it ({@link Glass}). */
 final class Sheet {
     interface OnPick {
         void onPick(int which);
@@ -72,6 +72,8 @@ final class Sheet {
     private static Dialog create(Activity activity, CharSequence title, CharSequence message) {
         Dialog dialog = new Dialog(activity, R.style.Theme_Launcher_Sheet);
         dialog.setContentView(R.layout.sheet);
+        float d = activity.getResources().getDisplayMetrics().density;
+        dialog.findViewById(R.id.sheet_card).setBackground(new Glass.Pane(activity, 20 * d, Glass.Tone.PANE));
         ((TextView) dialog.findViewById(R.id.sheet_title)).setText(title);
         if (message != null) {
             TextView text = dialog.findViewById(R.id.sheet_message);
@@ -85,6 +87,7 @@ final class Sheet {
         TextView row = (TextView) LayoutInflater.from(rows.getContext())
                 .inflate(R.layout.sheet_row, rows, false);
         row.setText(label);
+        row.setBackground(Glass.control(rows.getContext(), 12 * rows.getResources().getDisplayMetrics().density, false));
         rows.addView(row);
         return row;
     }

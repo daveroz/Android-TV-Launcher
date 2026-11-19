@@ -18,7 +18,7 @@ light takes each app's own colours.*
 - **Every light has two parts:** a sharp core drawn at full detail, and a soft glow drawn at 1/8
   of the screen's size and stretched across it, so it spreads like light in fog. Fog banks drift
   slowly behind everything and keep moving even when the music stops. A fine grain keeps the haze
-  smooth.
+  smooth, and a film grain, lighter and darker specks, lies over the whole screen.
 - **One colour and white, never more.** The light is the primary colour of what's in focus: the
   focused app's own colour, or the main colour of the album cover playing. Apps and covers with no
   real colour (black, grey, white) get a cool white light.
@@ -28,18 +28,25 @@ light takes each app's own colours.*
 - **Layout after the Apple TV app.** A light show runs right across the hero for every app, with
   the focused app's name on the left; music players also show the album cover as an LP on the right
   (videos don't show a picture, just the light show). A glass pill of
-  tabs sits at the top, the DECO mark on the left and the clock on the right. Rows of glass cards
-  run along the bottom, and the next row peeks in.
+  tabs sits at the top, the DECO mark (its light a small lamp) on the left and the clock on the
+  right. Rows of cards run along the bottom, and the next row peeks in.
+- **Glass after LotoLab.** The tab pill, the menus and the message pill are panes of dark glass,
+  drawn as LotoLab draws them: a charcoal body with a sheen across the top, depth at the bottom, a
+  fine grain, and a bright rim that's warmest where the light falls on it. The stage's light
+  falls on the glass in the scene's colour, so the panes take on the focused app's or the album
+  cover's colour. The current tab is a lighter lens of glass, and the remote's keys (OK, HOLD OK)
+  and the version are small lenses.
 - **Every app gets a light show** right across the screen from margin to margin, as tall as an
   album cover, in its own colour: a wall of square lamps like the LED panels on Justice's stage,
   in strips three wide in an upper and a lower panel. **While something plays** (in any app), it
   follows the sound: each lamp column is a part of the music, bass on the left and treble on the
   right, filling up from the bottom with it. Music players also get the LP, and their light show
   takes the album cover's colour, its music ending where the record starts. **When it's paused,
-  or nothing plays,** steam drifts across the wall ("Steam Pixel Wave", after the LED rig of
-  Justice's Iris tour): thin wisps of light curling and folding from left to right, a slow swell
-  of energy travelling the same way so some stretches glow hot and others fade, and the top row lit
-  wherever there's energy. The two blend into each other. Dark lamps keep a faint ember; lit ones are white-hot
+  or nothing plays,** an airstream crosses the wall, the same as Worldly's Sound widget (tuned in
+  its Sound Wall Simulator): air comes in on the left on a wind that gusts slowly, and turbulence
+  bends and rolls it as it crosses, spreading it out towards the right. Each bit of air leaves
+  light in the lamps it passes, fading over two seconds, and a lamp lights once enough air has
+  passed through it. The two blend into each other. Dark lamps keep a faint ember; lit ones are white-hot
   at full strength with a soft round glow, and lit panels throw soft beams down into the haze.
   Behind the app's name the lamps are dimmer, so it stays easy to read.
 - **Cards are one solid colour with a logo that matches the others:** the app's brand colour with
@@ -52,8 +59,9 @@ light takes each app's own colours.*
   NOW PLAYING — SPOTIFY, RECENTLY PLAYED — SPOTIFY, or TV APP above an app's name. Row titles have a hairline
   that fades out to the right, and light up in the colour while one of their cards has focus.
 - **Focus is the brightest thing on screen.** The focused card lifts a little, with a thin white
-  edge and a glow of the colour around it; the other cards step back a little. In the top bar and menus, focus is a touch of light on the glass with a thin
-  cyan edge; the current tab is simply the brighter one.
+  edge and a glow of the colour around it; the other cards step back a little. In the top bar and
+  menus, focus is lit glass, as in LotoLab: a cyan wash, a soft glow inside the edge, a glint at
+  the top and a bright cyan rim.
 - **Icons are thin lines** (1.6 on a 24 grid, rounded joins); only the play controls are filled.
 - **Type is Carbon+**, the same as Worldly and SAB Monitor: bold for titles, labels and the clock.
   Colours: night `#05070B`, panels `#0B1220`, text `#EEF4F8` / `#C9D4DD` / `#8FA0B3`, hairlines at
@@ -61,7 +69,7 @@ light takes each app's own colours.*
 
 | An app in focus | Apps page | Settings |
 |---|---|---|
-| ![Light show](docs/preview-app.jpg) | ![Apps page](docs/preview-apps.jpg) | ![Settings menu](docs/preview-menu.png) |
+| ![Light show](docs/preview-app.jpg) | ![Apps page](docs/preview-apps.jpg) | ![Settings menu](docs/preview-menu.jpg) |
 
 ### Icon
 
@@ -153,7 +161,7 @@ through voices in the middle to the treble on the right (16 kHz), and fills up f
 it, rising quickly and settling back gently; its top lamp fades in and out, so the heights change
 smoothly. It's in the focused app's colour, or the album cover's when the music app's card or the
 mini player has focus, where the music's columns end at the LP's record and the ones behind it
-echo the treble. Paused, or when nothing plays, it goes back to the steam.
+echo the treble. Paused, or when nothing plays, it goes back to the airstream.
 
 All the music shares one volume scale, so a bassy song lights mostly the left and a sung part mostly
 the middle. Higher parts get lifted to make up for music naturally carrying far more energy in

@@ -53,7 +53,7 @@ public class LightShowViewTest {
     }
 
     @Test
-    public void steamDriftsAcrossTheWall() {
+    public void theAirstreamCrossesTheWall() {
         int lit = 0;
         String before = null;
         boolean changed = false;
@@ -73,7 +73,7 @@ public class LightShowViewTest {
             before = state.toString();
         }
         assertTrue("lamps light up: " + lit, lit > 100);
-        assertTrue("the steam moves on", changed);
+        assertTrue("the air moves on", changed);
     }
 
     @Test

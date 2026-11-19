@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Focus: a touch of light on the glass with a thin cyan edge. The current tab is just brighter text. -->
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@drawable/tab_focus" android:state_focused="true" />
-    <item android:drawable="@android:color/transparent" />
-</selector>

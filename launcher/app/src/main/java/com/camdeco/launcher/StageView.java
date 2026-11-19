@@ -25,7 +25,8 @@ import java.util.Random;
  *
  * Every light has two parts: a soft glow, drawn at 1/8 of the screen's size and stretched so it
  * spreads like light in fog, and a sharp core drawn at full detail. A fine grain over the haze
- * keeps its gradients smooth.
+ * keeps its gradients smooth; {@link Film} lays a film grain, lighter and darker specks, over the
+ * whole screen, the cards and text included, as LotoLab and Worldly do.
  */
 public class StageView extends View {
     /** The stage is laid out on a 1280 × 720 grid: 4/3 of a dp on a 960 × 540 dp TV. */
@@ -182,6 +183,44 @@ public class StageView extends View {
     /** A round glow of radius 1 around the origin, from the colour to nothing. */
     private static Shader unit(int colour) {
         return new RadialGradient(0, 0, 1, colour | 0xFF000000, colour & 0x00FFFFFF, Shader.TileMode.CLAMP);
+    }
+
+    private static Bitmap film;
+
+    /** A tile of film grain: faint specks, lighter and darker, so it shows on light as well as in the dark. */
+    static synchronized Bitmap filmGrain() {
+        if (film != null) return film;
+        int size = 128;
+        int[] pixels = new int[size * size];
+        Random random = new Random(7);
+        for (int i = 0; i < pixels.length; i++) {
+            float v = random.nextFloat();
+            if (v > 0.55f) pixels[i] = (Math.round((v - 0.55f) / 0.45f * 14) << 24) | 0x00FFFFFF;
+            else if (v < 0.3f) pixels[i] = Math.round((0.3f - v) / 0.3f * 12) << 24;
+        }
+        film = Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888);
+        return film;
+    }
+
+    /**
+     * Film grain laid over the whole screen (the cards, text and top bar as well as the stage), for a cinematic,
+     * physical texture. It takes no focus and no touches.
+     */
+    static final class Film extends View {
+        private final Paint paint = new Paint();
+
+        Film(Context context) {
+            super(context);
+            paint.setShader(new BitmapShader(filmGrain(), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT));
+            setFocusable(false);
+            setClickable(false);
+            setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
+        }
     }
 
     /** A tile of faint white specks, like film grain. */
