@@ -132,7 +132,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/chip_bg"
                     android:ellipsize="end"
                     android:letterSpacing="0.08"
                     android:maxWidth="200dp"
@@ -216,9 +215,9 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/hero_ok_key"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/key_ok_bg"
                     android:letterSpacing="0.12"
                     android:paddingStart="6dp"
                     android:paddingTop="2dp"
@@ -248,7 +247,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
-                    android:background="@drawable/key_ok_bg"
                     android:letterSpacing="0.12"
                     android:paddingStart="6dp"
                     android:paddingTop="2dp"
@@ -385,7 +383,8 @@
         android:textSize="16sp"
         android:visibility="gone" />
 
-    <!-- ===== Top bar: the mark on the left, tabs in a glass pill, the clock on the right ===== -->
+    <!-- ===== Top bar: the mark on the left, tabs in a glass pill, the clock on the right =====
+         The glass, the lit focus and the lamp are drawn in code (Glass), as LotoLab draws them. -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -401,10 +400,13 @@
             android:importantForAccessibility="noHideDescendants"
             android:orientation="horizontal">
 
+            <!-- A status lamp: its core is a third of it, blooming into the haze (the margins keep the mark in place). -->
             <View
-                android:layout_width="5dp"
-                android:layout_height="5dp"
-                android:background="@drawable/led_square" />
+                android:id="@+id/mark_lamp"
+                android:layout_width="15dp"
+                android:layout_height="15dp"
+                android:layout_marginStart="-5dp"
+                android:layout_marginEnd="-5dp" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -422,7 +424,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:background="@drawable/pill_bar_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="4dp">
@@ -479,7 +480,6 @@
                     android:id="@+id/np_open"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:background="@drawable/tab_bg"
                     android:clickable="true"
                     android:contentDescription="@string/now_playing_title"
                     android:focusable="true"
@@ -566,7 +566,6 @@
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="36dp"
         android:alpha="0"
-        android:background="@drawable/hint_bg"
         android:paddingStart="22dp"
         android:paddingTop="10dp"
         android:paddingEnd="22dp"

@@ -876,7 +876,7 @@ public class HomeActivityTest {
         idle();
         home.soundWave.levels(1.3, levels);
         assertEquals(0f, max(levels), 0f);
-        assertFalse("paused: back to the steam", home.hero.followsSound());
+        assertFalse("paused: back to the airstream", home.hero.followsSound());
         assertTrue(home.hero.showsLightShow());
     }
 
@@ -900,7 +900,7 @@ public class HomeActivityTest {
         assertTrue(sheetMessage().contains("Deco isn't allowed to hear the TV's sound"));
         assertEquals(List.of("Let Deco hear the TV's sound", "Turn off the visualizer", "Close"), sheetItems());
         choose("Turn off the visualizer");
-        assertFalse(home.hero.followsSound()); // just the steam
+        assertFalse(home.hero.followsSound()); // just the airstream
         home.findViewById(R.id.tab_settings).performClick();
         assertTrue(sheetItems().contains("Audio visualizer: Off"));
     }

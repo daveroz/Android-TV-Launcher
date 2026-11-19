@@ -182,6 +182,7 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         tabs = findViewById(R.id.tabs);
         tabHome = findViewById(R.id.tab_home);
         tabApps = findViewById(R.id.tab_apps);
+        dressChrome();
 
         // Mini player in the top bar.
         npBar = findViewById(R.id.np_bar);
@@ -526,12 +527,13 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
         if (page == PAGE_HOME) applyScene(newScene);
     }
 
-    /** Lights the stage, the hero, the focused card and its row title in this scene. */
+    /** Lights the stage, the hero, the glass, the focused card and its row title in this scene. */
     private void applyScene(Scene newScene) {
         if (newScene.sameAs(scene)) return;
         scene = newScene;
         stage.setScene(newScene);
         hero.setScene(newScene);
+        Glass.setLight(newScene.key);
         ((TextView) findViewById(R.id.apps_label)).setTextColor(newScene.label);
         if (activeRowTitle != null) activeRowTitle.setTextColor(newScene.label);
         View focused = getWindow().getDecorView().findFocus();
@@ -1037,6 +1039,29 @@ public class HomeActivity extends Activity implements CardAdapter.Listener, Scen
 
     private static Uri packageUri(AppEntry app) {
         return Uri.fromParts("package", app.packageName, null);
+    }
+
+    /**
+     * The chrome as LotoLab draws it ({@link Glass}): the tab pill and the message pill are glass, the current tab a
+     * lighter lens, focus lit in the house cyan, the remote's keys and the version small lenses, and the DECO mark's
+     * light a lamp. Film grain lies over the whole screen.
+     */
+    private void dressChrome() {
+        float d = getResources().getDisplayMetrics().density, pill = 999 * d;
+        tabs.setBackground(new Glass.Pane(this, pill, Glass.Tone.PANE));
+        tabHome.setBackground(Glass.control(this, pill, true));
+        tabApps.setBackground(Glass.control(this, pill, true));
+        for (int id : new int[]{R.id.tab_store, R.id.tab_settings, R.id.np_open, R.id.np_play, R.id.np_next}) {
+            findViewById(id).setBackground(Glass.control(this, pill, false));
+        }
+        hint.setBackground(new Glass.Pane(this, pill, Glass.Tone.PANE));
+        for (int id : new int[]{R.id.hero_version, R.id.hero_ok_key, R.id.hero_hold_key}) {
+            findViewById(id).setBackground(new Glass.Pane(this, 4 * d, Glass.Tone.LENS));
+        }
+        findViewById(R.id.mark_lamp).setBackground(new Glass.Lamp(getColor(R.color.led)));
+        ((android.view.ViewGroup) findViewById(R.id.root)).addView(new StageView.Film(this),
+                new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     /** A short message in a glass pill at the bottom of the screen. */

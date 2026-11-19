@@ -22,9 +22,9 @@ import android.view.animation.AnimationUtils;
  * on the left and treble on the right, filling up from the bottom with it, rising quickly and
  * settling back gently, its top lamp fading in and out. With an LP on screen, the music's columns
  * end where the record starts and the ones behind it echo the treble. When nothing plays, or it's
- * paused, steam drifts across the wall ({@link Steam}): wisps of light curling from left to right,
- * with a slow swell of energy travelling the same way, the top row lit wherever there's energy. The
- * two blend into each other.
+ * paused, an airstream with turbulence crosses the wall ({@link Airstream}, the same as Worldly's
+ * Sound widget): a dense stream of air flowing in from the left on a slowly gusting wind, bent and
+ * rolled by large eddies, lighting the lamps it passes. The two blend into each other.
  *
  * Dark lamps keep a faint ember, so the panels still read. Each lit lamp is sharp, white-hot at full
  * strength, with a soft round glow, and lit panels throw soft beams down into the haze. Behind the
@@ -42,7 +42,7 @@ public class LightShowView extends View {
     private static final int BANDS = SoundWave.COLUMNS;
     /** Following the sound: the top lamp of each column, and the one under it, are a little softer. */
     private static final float[] TIP = {0.6f, 0.85f};
-    /** How long the wall takes to go from the steam to the sound, or back. */
+    /** How long the wall takes to go from the airstream to the sound, or back. */
     private static final float REACT_SECONDS = 0.6f;
 
     private final float density;
@@ -65,12 +65,9 @@ public class LightShowView extends View {
     private Scene scene = Scene.promise();
     private boolean running;
     private long lastFrame;
-    private float time;
-    /** The steam: each lamp's light, easing toward its target, and its own warmth (a touch of variation). */
-    private float[] steam = new float[0], tone = new float[0];
-    /** When the steam was last worked out (to ease it by the time since), and whether it has been yet. */
-    private float steamAt;
-    private boolean steamStarted;
+    /** The airstream (the wall's own motion when it isn't following the sound), and each lamp's own warmth. */
+    private Airstream air;
+    private float[] tone = new float[0];
     /** The wall's top-left lamp space, and the pitch and size of the lamps. */
     private float left, top, pitch, cell;
     /** The sound: where it comes from, the levels it's heading for, and the levels on show. */
@@ -108,7 +105,7 @@ public class LightShowView extends View {
         source = wave;
     }
 
-    /** Follow the sound (something is playing), or show the steam (paused, or nothing playing). */
+    /** Follow the sound (something is playing), or show the airstream (paused, or nothing playing). */
     void setReactive(boolean on) {
         if (reactive == on) return;
         reactive = on;
@@ -165,7 +162,7 @@ public class LightShowView extends View {
 
     /** Moves the show on by this many seconds (for tests). */
     void advanceForTests(float seconds) {
-        time += seconds;
+        for (float t = 0f; t < seconds && air != null; t += 1 / 12f) air.step(1 / 12f);
     }
 
     /** How lit a lamp is right now, 0 to 1, after the last frame drawn (for tests). */
@@ -184,7 +181,7 @@ public class LightShowView extends View {
     }
 
     /** Whether a column is a dark gap between strips: the first of every four. */
-    private static boolean gap(int column) {
+    static boolean gap(int column) {
         return column % (STRIP + 1) == 0;
     }
 
@@ -201,10 +198,10 @@ public class LightShowView extends View {
         left = w - margin - columns * pitch;
         top = getResources().getDimension(R.dimen.hero_top);
         values = new float[ROWS * columns];
-        steam = new float[ROWS * columns];
         tone = new float[ROWS * columns];
         for (int i = 0; i < tone.length; i++) tone[i] = 0.82f + 0.18f * seed(i * 13 + 7);
-        steamStarted = false;
+        air = new Airstream(columns, ROWS);
+        for (int i = 0; i < 60; i++) air.step(1 / 12f); // the wall starts already in motion
         panelLight = new float[strips * 2];
         // Behind the text (the left 440dp) the lamps are dimmer, brightening just past it.
         float textRight = margin + 440 * density;
@@ -264,7 +261,7 @@ public class LightShowView extends View {
         long now = AnimationUtils.currentAnimationTimeMillis();
         float dt = lastFrame == 0 ? 0f : Math.min(0.1f, (now - lastFrame) / 1000f);
         lastFrame = now;
-        time += dt;
+        if (react < 1f) air.step(dt); // the air moves on while it shows
         listen(dt);
         light();
         if (react > 0f) followSound();
@@ -373,23 +370,13 @@ public class LightShowView extends View {
         }
     }
 
-    /**
-     * Works out every lamp's strength for now from the steam: each lamp eases toward its target (quickly, so the
-     * filaments keep crisp edges), takes its own warmth, and is dimmer behind the text.
-     */
+    /** Every lamp's strength for now from the airstream: each takes its own warmth, and is dimmer behind the text. */
     private void light() {
-        float ease = steamStarted ? Math.min(1f, (time - steamAt) * Steam.EASE) : 1f;
-        steamAt = time;
-        steamStarted = true;
-        float t = time * Steam.SPEED;
         for (int c = 0; c < columns; c++) {
             if (gap(c)) continue;
-            float energy = Steam.energy(c, t);
             for (int r = 0; r < ROWS; r++) {
                 int i = r * columns + c;
-                float target = Steam.target(c, r, t, energy, r == 0);
-                steam[i] += (target - steam[i]) * ease;
-                values[i] = steam[i] * tone[i] * columnStrength[c];
+                values[i] = air.at(r, c) * tone[i] * columnStrength[c];
             }
         }
     }
