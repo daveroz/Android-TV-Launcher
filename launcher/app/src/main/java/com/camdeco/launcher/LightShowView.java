@@ -3,11 +3,13 @@ package com.camdeco.launcher;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.AnimationUtils;
@@ -23,12 +25,16 @@ import android.view.animation.AnimationUtils;
  * settling back gently, its top lamp fading in and out. With an LP on screen, the music's columns
  * end where the record starts and the ones behind it echo the treble. When nothing plays, or it's
  * paused, an airstream with turbulence crosses the wall ({@link Airstream}, the same as Worldly's
- * Sound widget): a dense stream of air flowing in from the left on a slowly gusting wind, bent and
- * rolled by large eddies, lighting the lamps it passes. The two blend into each other.
+ * Sound widget): two streams of air flowing in from the left on a slowly gusting wind, bent and
+ * rolled by large eddies, lighting the lamps they pass. The two blend into each other.
  *
- * Dark lamps keep a faint ember, so the panels still read. Each lit lamp is sharp, white-hot at full
- * strength, with a soft round glow, and lit panels throw soft beams down into the haze. Behind the
- * text on the left the lamps are dimmer, so it stays easy to read.
+ * The lamps are lit as on Worldly's Sound widget: light sources in a dark, hazy room, not a brighter
+ * picture. Each lit lamp has a warm core (white-hot only at full strength) with a soft, diffused
+ * edge; its light blooms out around it (a tight bloom filling the gaps between lamps, and a wider
+ * glow), scatters in the air over each lit strip (volumetric haze) and in a fog lit from below by
+ * the wall, and lit panels throw soft beams down into it. Dark lamps keep a faint ember, caught by
+ * the light of the lamps next to them, so the panels still read. Behind the text on the left the
+ * lamps are dimmer, so it stays easy to read.
  */
 public class LightShowView extends View {
     private static final int ROWS = 10;
@@ -37,7 +43,9 @@ public class LightShowView extends View {
     private static final int PANEL_ROWS = ROWS / 2;
     /** Each lamp's size, as a share of the pitch. */
     private static final float LAMP = 0.7f;
+    /** The haze and wide glows are drawn at this share of the view's size, the tight bloom at {@link #BLOOM}. */
     private static final float SOFT = 1 / 8f;
+    private static final float BLOOM = 1 / 4f;
     private static final long FRAME_MS = 33;
     private static final int BANDS = SoundWave.COLUMNS;
     /** Following the sound: the top lamp of each column, and the one under it, are a little softer. */
@@ -46,22 +54,32 @@ public class LightShowView extends View {
     private static final float REACT_SECONDS = 0.6f;
 
     private final float density;
-    private final Paint lamp = new Paint();
+    private final Paint lamp = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** Dark lamps are too faint for their rounded corners to show: plain squares, quicker to draw. */
+    private final Paint emberPaint = new Paint();
     private final Paint glowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint softPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
+    /** The tight bloom is light on light: screened, so it brightens and never darkens. */
+    private final Paint bloomPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
+    private final Paint bloomLamp = new Paint();
+    private final Paint fogPaint = new Paint(Paint.DITHER_FLAG);
     private final Bitmap sprite = Glow.sprite();
     private final Bitmap beam = beamSprite();
     private final RectF rect = new RectF();
-    private final Rect softBounds = new Rect();
+    private final Rect softBounds = new Rect(), bloomBounds = new Rect();
     /** This frame's strength for each lamp, and each panel's average. */
     private float[] values = new float[0];
     private float[] panelLight = new float[0];
+    /** Each strip's light (all its lamps, 0 to 1) and how high it sits (the light-weighted middle, in pixels). */
+    private float[] stripLight = new float[0], stripY = new float[0];
+    /** The colour the fog was made for. */
+    private int fogKey;
     /** Per column: how strong its lamps may be (dimmer behind the text). */
     private float[] columnStrength = new float[0];
     /** As many columns as fit between the margins, and the strips of three they make. */
     private int columns, strips;
-    private Bitmap soft;
-    private Canvas softCanvas;
+    private Bitmap soft, bloom;
+    private Canvas softCanvas, bloomCanvas;
     private Scene scene = Scene.promise();
     private boolean running;
     private long lastFrame;
@@ -88,6 +106,7 @@ public class LightShowView extends View {
         super(context, attrs);
         density = context.getResources().getDisplayMetrics().density;
         glowPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD)); // light adds up
+        bloomPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
     }
 
     void setScene(Scene newScene) {
@@ -185,6 +204,16 @@ public class LightShowView extends View {
         return column % (STRIP + 1) == 0;
     }
 
+    /** A strip's first column. */
+    private static int firstOf(int strip) {
+        return strip * (STRIP + 1) + 1;
+    }
+
+    /** How many columns a strip has: three, or fewer for the last one at the margin. */
+    private int widthOf(int strip) {
+        return Math.max(0, Math.min(STRIP, columns - firstOf(strip)));
+    }
+
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         // As tall as the cover would be, level with the text, its right edge at the screen margin.
@@ -203,6 +232,9 @@ public class LightShowView extends View {
         air = new Airstream(columns, ROWS);
         for (int i = 0; i < 60; i++) air.step(1 / 12f); // the wall starts already in motion
         panelLight = new float[strips * 2];
+        stripLight = new float[strips];
+        stripY = new float[strips];
+        fogKey = 0;
         // Behind the text (the left 440dp) the lamps are dimmer, brightening just past it.
         float textRight = margin + 440 * density;
         columnStrength = new float[columns];
@@ -216,17 +248,24 @@ public class LightShowView extends View {
             soundStrength[c] = 0.7f + 0.3f * ease; // the music's bass is behind the text: dim it less
         }
         mapBands();
-        // The glow spreads around the wall, and the beams fall well below it, behind the rows.
-        softBounds.set(Math.round(left - 64 * density), Math.round(top - 40 * density),
-                Math.round(left + columns * pitch + 40 * density), Math.round(top + height + 150 * density));
+        // The haze, glows and beams spread over the whole screen (the fog reaches up to its top, the beams fall behind
+        // the rows); the tight bloom stays close around the wall.
+        softBounds.set(0, 0, w, h);
+        bloomBounds.set(Math.round(left - 2 * pitch), Math.round(top - 2 * pitch),
+                Math.round(left + (columns + 2) * pitch), Math.round(top + (ROWS + 2) * pitch));
         if (soft != null) soft.recycle();
-        soft = null;
-        if (softBounds.width() > 0 && softBounds.height() > 0) {
-            soft = Bitmap.createBitmap(Math.max(1, Math.round(softBounds.width() * SOFT)),
-                    Math.max(1, Math.round(softBounds.height() * SOFT)), Bitmap.Config.ARGB_8888);
+        if (bloom != null) bloom.recycle();
+        soft = bloom = null;
+        if (w > 0 && h > 0 && columns > 0) {
+            soft = Bitmap.createBitmap(Math.max(1, Math.round(w * SOFT)), Math.max(1, Math.round(h * SOFT)),
+                    Bitmap.Config.ARGB_8888);
             softCanvas = new Canvas(soft);
             softCanvas.scale(SOFT, SOFT);
-            softCanvas.translate(-softBounds.left, -softBounds.top);
+            bloom = Bitmap.createBitmap(Math.max(1, Math.round(bloomBounds.width() * BLOOM)),
+                    Math.max(1, Math.round(bloomBounds.height() * BLOOM)), Bitmap.Config.ARGB_8888);
+            bloomCanvas = new Canvas(bloom);
+            bloomCanvas.scale(BLOOM, BLOOM);
+            bloomCanvas.translate(-bloomBounds.left, -bloomBounds.top);
         }
     }
 
@@ -269,48 +308,120 @@ public class LightShowView extends View {
 
         soft.eraseColor(0);
         float gap = (pitch - cell) / 2;
+        haze();
         // Beams from the lit panels, falling down and a little to the left into the haze.
         for (int s = 0; s < strips; s++) {
+            int width = widthOf(s);
+            if (width <= 0) continue;
             for (int p = 0; p < 2; p++) {
                 float b = panelLight[s * 2 + p];
                 if (b < 0.15f) continue;
-                int first = s * (STRIP + 1) + 1;
-                int width = Math.min(STRIP, columns - first);
-                if (width <= 0) continue;
-                float x = left + (first + width / 2f) * pitch;
+                float x = left + (firstOf(s) + width / 2f) * pitch;
                 float y = top + (p + 1) * PANEL_ROWS * pitch - gap;
-                drawBeam(x, y, width * pitch * 2.4f, 140 * density, 0.4f * b);
+                drawBeam(x, y, width * pitch * 2.4f, 140 * density, 0.35f * b);
             }
         }
-        // A soft round glow around every lit lamp.
+        // A wide, soft glow around every lit lamp.
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < columns; c++) {
                 float v = values[r * columns + c];
                 if (v < 0.08f) continue;
                 float x = left + c * pitch + gap, y = top + r * pitch + gap;
-                glowPaint.setColor(Scene.alpha(scene.key, v * 0.5f));
-                rect.set(x - 1.6f * cell, y - 1.6f * cell, x + 2.6f * cell, y + 2.6f * cell);
+                glowPaint.setColor(Scene.alpha(scene.deep, v * 0.3f));
+                rect.set(x - 1.8f * cell, y - 1.8f * cell, x + 2.8f * cell, y + 2.8f * cell);
                 softCanvas.drawBitmap(sprite, null, rect, glowPaint);
             }
         }
         canvas.drawBitmap(soft, null, softBounds, softPaint);
 
-        // The lamps: a faint ember when dark, white-hot at full strength.
-        int ember = Scene.mix(scene.key, 0xFF000000, 0.35f);
+        // The bloom: the lit lamps again, blurred (drawn small, spread out as it's scaled back up) and screened onto
+        // the dark around them, so their light bleeds softly into the gaps between them without washing out their cores.
+        float spread = cell * 0.12f;
+        boolean anyLit = false;
+        bloom.eraseColor(0);
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < columns; c++) {
+                float v = values[r * columns + c];
+                if (v < 0.08f) continue;
+                float x = left + c * pitch + gap, y = top + r * pitch + gap;
+                bloomLamp.setColor(Scene.alpha(scene.deep, 0.95f * v));
+                bloomCanvas.drawRect(x - spread, y - spread, x + cell + spread, y + cell + spread, bloomLamp);
+                anyLit = true;
+            }
+        }
+        if (anyLit) canvas.drawBitmap(bloom, null, bloomBounds, bloomPaint);
+
+        // The lamps. Lit: a warm core (deeper when dim, hot when bright, white-hot only at the very top), its edge
+        // softened by a faint skirt of its light. Dark: a faint ember, catching the light of the lamps around it.
+        int ember = Scene.mix(scene.deep, 0xFF000000, 0.3f);
+        float round = cell * 0.18f, skirt = cell * 0.16f;
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < columns; c++) {
                 if (gap(c)) continue; // the dark column between strips
                 float v = values[r * columns + c];
-                int colour = v < 0.02f ? ember : Scene.mix(scene.key, scene.led, 0.5f * v * v);
-                lamp.setColor(Scene.alpha(colour, 0.06f + 0.84f * v));
                 float x = left + c * pitch + gap, y = top + r * pitch + gap;
-                canvas.drawRect(x, y, x + cell, y + cell, lamp);
+                if (v < 0.02f) {
+                    emberPaint.setColor(Scene.alpha(ember, 0.03f + 0.2f * spill(r, c)));
+                    canvas.drawRect(x, y, x + cell, y + cell, emberPaint);
+                    continue;
+                }
+                lamp.setColor(Scene.alpha(scene.deep, 0.35f * v));
+                rect.set(x - skirt, y - skirt, x + cell + skirt, y + cell + skirt);
+                canvas.drawRoundRect(rect, round + skirt, round + skirt, lamp);
+                int core = Scene.mix(Scene.mix(scene.deep, scene.hot, v), scene.led, 0.06f * v * v * v * v);
+                lamp.setColor(Scene.alpha(core, Math.min(1f, 0.15f + v)));
+                rect.set(x, y, x + cell, y + cell);
+                canvas.drawRoundRect(rect, round, round, lamp);
             }
         }
         if (running) {
             if (reactive || react > 0f) postInvalidateOnAnimation(); // the sound needs every frame
             else postInvalidateDelayed(FRAME_MS);
         }
+    }
+
+    /**
+     * The light the wall scatters into the air: a fog lit from below by the whole wall (strongest at its foot, fading
+     * up to the top of the screen and down behind the rows, so the dark around it is never quite black while it's
+     * lit), and a haze around each lit strip's light, reaching up past its top into the dark.
+     */
+    private void haze() {
+        float all = 0f;
+        for (int s = 0; s < strips; s++) all += stripLight[s];
+        all /= Math.max(1, strips);
+        if (fogKey != scene.key) {
+            fogKey = scene.key;
+            float wallBottom = top + ROWS * pitch, below = wallBottom + 200 * density;
+            fogPaint.setShader(new LinearGradient(0, 0, 0, below,
+                    new int[]{Scene.alpha(scene.deep, 0.12f), Scene.alpha(scene.deep, 0.45f), scene.deep,
+                            scene.deep & 0x00FFFFFF},
+                    new float[]{0f, top / below, wallBottom / below, 1f}, Shader.TileMode.CLAMP));
+        }
+        fogPaint.setAlpha(Math.round(255 * Math.min(0.24f, 0.08f + 0.4f * all)));
+        softCanvas.drawRect(softBounds, fogPaint);
+        for (int s = 0; s < strips; s++) {
+            float light = stripLight[s];
+            int width = widthOf(s);
+            if (light < 0.03f || width <= 0) continue;
+            float x = left + (firstOf(s) + width / 2f) * pitch;
+            float rx = STRIP * pitch * 2.2f, ry = Math.max(ROWS * pitch * 0.6f, 5 * pitch);
+            glowPaint.setColor(Scene.alpha(scene.deep, Math.min(0.6f, 0.8f * light)));
+            rect.set(x - rx, stripY[s] - ry, x + rx, stripY[s] + ry);
+            softCanvas.drawBitmap(sprite, null, rect, glowPaint);
+        }
+    }
+
+    /** How much light a dark lamp catches from the lamps around it, 0 to 1. */
+    private float spill(int r, int c) {
+        float s = 0.6f * Math.max(at(r - 1, c), at(r + 1, c));
+        s = Math.max(s, 0.45f * Math.max(at(r, c - 1), at(r, c + 1)));
+        s = Math.max(s, 0.3f * Math.max(at(r - 2, c), at(r + 2, c)));
+        s = Math.max(s, 0.3f * Math.max(Math.max(at(r - 1, c - 1), at(r - 1, c + 1)), Math.max(at(r + 1, c - 1), at(r + 1, c + 1))));
+        return s;
+    }
+
+    private float at(int r, int c) {
+        return r < 0 || r >= ROWS || c < 0 || c >= columns ? 0f : values[r * columns + c];
     }
 
     /** Moves the sound's levels on, and the blend between the patterns and the sound. */
@@ -351,9 +462,20 @@ public class LightShowView extends View {
         }
     }
 
-    /** Each panel's average light, for its beam. */
+    /** Each panel's average light, for its beam, and each strip's light and its middle, for the haze. */
     private void measurePanels() {
         for (int s = 0; s < strips; s++) {
+            int width = widthOf(s);
+            float all = 0f, at = 0f;
+            for (int r = 0; r < ROWS; r++) {
+                for (int k = 0; k < width; k++) {
+                    float v = values[r * columns + firstOf(s) + k];
+                    all += v;
+                    at += v * r;
+                }
+            }
+            stripLight[s] = width == 0 ? 0f : all / (width * ROWS);
+            stripY[s] = top + (all > 0f ? at / all + 0.5f : ROWS) * pitch;
             for (int p = 0; p < 2; p++) {
                 float sum = 0f;
                 int count = 0;

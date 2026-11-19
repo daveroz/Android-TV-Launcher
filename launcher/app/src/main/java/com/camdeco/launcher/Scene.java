@@ -5,7 +5,9 @@ import android.graphics.Color;
 /**
  * The light on the stage: one colour, the primary colour of what is in focus (an app's own colour,
  * or the album cover playing), and the near-white of an LED's core. One colour and white, never
- * more. Art with no real colour (grey, black or white) gets a cool white light.
+ * more: the colour's shades are the same light seen differently, deeper where it scatters in the
+ * haze, hot (overexposed) at a lamp's core, as on Worldly's Sound widget. Art with no real colour
+ * (grey, black or white) gets a cool white light.
  */
 final class Scene {
     /** Anything that can say which scene is on, for views that draw in its colours. */
@@ -15,12 +17,25 @@ final class Scene {
 
     final int key;
     final int led;
+    /**
+     * The key overexposed, as a bright light reads to the eye or a camera: the warm core of a lit
+     * lamp, white-hot only at its very brightest. Its channels clip, so it isn't simply paler.
+     */
+    final int hot;
+    /** The key, richer and a little deeper: light seen through the haze around a lamp (its bloom, halo and glow). */
+    final int deep;
     /** The key, a little lighter, for text: labels stay easy to read on the night background. */
     final int label;
 
     Scene(int key) {
         this.key = key | 0xFF000000;
         this.led = mix(key, Color.WHITE, 0.88f);
+        this.hot = mix(gain(key, 1.2f), Color.WHITE, 0.06f);
+        float[] hsv = new float[3];
+        Color.colorToHSV(this.key, hsv);
+        hsv[1] = Math.min(0.95f, hsv[1] * 1.5f);
+        hsv[2] *= 0.92f;
+        this.deep = Color.HSVToColor(hsv);
         this.label = mix(key, Color.WHITE, 0.25f);
     }
 
@@ -55,6 +70,12 @@ final class Scene {
     static int alpha(int colour, float a) {
         int value = Math.max(0, Math.min(255, Math.round(a * 255)));
         return (value << 24) | (colour & 0x00FFFFFF);
+    }
+
+    /** A colour {@code g} times as bright, each channel clipping at full, as an overexposed light does. */
+    static int gain(int colour, float g) {
+        return Color.rgb(Math.min(255, Math.round(Color.red(colour) * g)), Math.min(255, Math.round(Color.green(colour) * g)),
+                Math.min(255, Math.round(Color.blue(colour) * g)));
     }
 
     static int mix(int from, int to, float f) {

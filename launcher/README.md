@@ -46,9 +46,13 @@ light takes each app's own colours.*
   its Sound Wall Simulator): air comes in on the left on a wind that gusts slowly, and turbulence
   bends and rolls it as it crosses, spreading it out towards the right. Each bit of air leaves
   light in the lamps it passes, fading over two seconds, and a lamp lights once enough air has
-  passed through it. The two blend into each other. Dark lamps keep a faint ember; lit ones are white-hot
-  at full strength with a soft round glow, and lit panels throw soft beams down into the haze.
-  Behind the app's name the lamps are dimmer, so it stays easy to read.
+  passed through it. The two blend into each other. The lamps are lit as on Worldly's Sound
+  widget: light sources in a dark, hazy room rather than a brighter picture. Each lit lamp has a
+  warm core in a deeper shade of the colour (white-hot only at full strength) with a soft,
+  diffused edge; its light blooms into the gaps between lamps and in a wider glow around them,
+  scatters in a haze over each lit strip and in a fog lit from below by the wall, and lit panels
+  throw soft beams down into it. Dark lamps keep a faint ember, catching the light of the lamps
+  next to them. Behind the app's name the lamps are dimmer, so it stays easy to read.
 - **Cards are one solid colour with a logo that matches the others:** the app's brand colour with
   its logo in white (or dark, on a light colour), from [Simple Icons](https://simpleicons.org)
   (CC0; each brand belongs to its owner) for about 40 TV apps: Netflix, YouTube, Spotify, Max,
@@ -136,10 +140,19 @@ off, run the same command with `disallow_listener`.
 The album cover is shown as an LP: the cover is the sleeve. When the song plays, the record slides
 out to the left and spins at 33⅓ rpm; on pause it slows to a stop. When the song changes, the
 record stops, slides back into the sleeve, the sleeve changes to the new cover, and the new record
-slides out and spins. The record is tinted from the cover, with grooves and the cover art on its
-label, and only changes colour while it's back in the sleeve: the old record goes back in its own
-colour and the new one comes out in the new song's, like a different disc. Recently played songs
+slides out and spins. The record is pressed in the light's colour, with grooves and the cover art
+on its label, and only changes colour while it's back in the sleeve: the old record goes back in its
+own colour and the new one comes out in the new song's, like a different disc. Recently played songs
 show their LP with the record in the sleeve.
+
+It's lit as on Worldly's Sound widget. The record is luminous coloured vinyl, with warm light
+caught in its grooves in two soft wedges that stay put while it turns, and a soft halo of light
+round its edge. The light comes from inside the sleeve rather than from behind it: a dark cover's
+bright parts shine as if lit from within, taking on a little of the light's colour (the art keeps
+its own colours), with a thin halo hugging them (a bright cover is left as it is), on the sleeve and
+on the record's label alike; a line of light runs along the sleeve's mouth and falls on the record
+and its label as it comes out, brightest nearest the sleeve; and around the square sleeve there's
+only a soft glow and a faint rim.
 
 Players often resend the song they're playing, sometimes with a new copy of the cover or for a
 moment without one, some drop out for a split second between songs, and many send the next song's
