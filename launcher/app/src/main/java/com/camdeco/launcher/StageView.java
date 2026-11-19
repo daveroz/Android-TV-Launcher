@@ -207,11 +207,14 @@ public class StageView extends View {
      * physical texture. It takes no focus and no touches.
      */
     static final class Film extends View {
+        /** How strongly it lies over the screen: a little under full, so it's felt more than seen. */
+        private static final float STRENGTH = 0.7f;
         private final Paint paint = new Paint();
 
         Film(Context context) {
             super(context);
             paint.setShader(new BitmapShader(filmGrain(), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT));
+            paint.setAlpha(Math.round(255 * STRENGTH));
             setFocusable(false);
             setClickable(false);
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
