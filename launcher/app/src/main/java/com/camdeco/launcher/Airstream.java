@@ -19,18 +19,18 @@ final class Airstream {
     /** How fast it all runs: seconds of air for each second shown (the simulator's speed control, set to 2×). */
     static final float PACE = 2f;
     /** The wind's speed, how much it gusts (0 to 1) and how often (gusts a second), and a drift up (below 0: down). */
-    static final float WIND = 5f, GUST = 0.45f, GUST_RATE = 0.02f, RISE = 0f;
+    static final float WIND = 5f, GUST = 0.48f, GUST_RATE = 0.02f, RISE = 0f;
     /** How many streams enter on the left, how wide each is (lamps) and how much its source wanders (0 to 1). */
-    static final int LANES = 1;
+    static final int LANES = 2;
     static final float SPREAD = 0f, WANDER = 0f;
     /** Bits of air a second in each stream, how long the light they leave lasts (s), and how much it fades along the way. */
-    static final float DENSITY = 38f, TRAIL = 2f, FADE_ALONG = 0f;
+    static final float DENSITY = 10f, TRAIL = 2f, FADE_ALONG = 0f;
     /** Turbulence: its strength, eddy size (lamps), how fast the eddies change, how much it builds towards the right
      * (0 to 1), and the share of small eddies riding on the big ones. */
-    static final float TURB = 1.55f, EDDY = 12f, CHURN = 2f, DEVELOP = 0f, DETAIL = 0.04f;
+    static final float TURB = 1.7f, EDDY = 12f, CHURN = 2f, DEVELOP = 0f, DETAIL = 0.05f;
     /** Lamps: how much air brightens them, how much they need before they light, how softly they come on, and how
      * quickly they follow (a second). */
-    static final float GAIN = 2.9f, THRESHOLD = 0.73f, SOFTNESS = 0.02f, RESPONSE = 4f;
+    static final float GAIN = 3.05f, THRESHOLD = 0.74f, SOFTNESS = 0.02f, RESPONSE = 4f;
     /** Whether the top row lights wherever the air is strong in its column. */
     static final boolean TOP_ROW = false;
     /** The turbulence pattern (the simulator's "New turbulence"). */
